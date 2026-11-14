@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.LayoutInflater
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.view.View
 import io.noties.markwon.LinkResolverDef
 import io.noties.markwon.MarkwonConfiguration
@@ -26,7 +27,7 @@ import android.view.animation.OvershootInterpolator
 import android.speech.tts.UtteranceProgressListener
 import android.animation.ValueAnimator
 import android.view.ViewGroup
-import android.graphics.Color
+import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.FrameLayout
@@ -625,6 +626,17 @@ class MediaInfoFragment : Fragment() {
                         private var mCustomViewCallback: CustomViewCallback? = null
                         private var mOriginalSystemUiVisibility = 0
 
+                        // errors from the trailer page end up in the log file (Settings > log to file)
+                        override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                            if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                                Logger.log(
+                                    Log.WARN,
+                                    "Trailer WebView: ${message.message()} (${message.sourceId()}:${message.lineNumber()})"
+                                )
+                            }
+                            return true
+                        }
+
                         override fun onHideCustomView() {
                             (requireActivity().window.decorView as FrameLayout).removeView(
                                 mCustomView
@@ -682,7 +694,6 @@ class MediaInfoFragment : Fragment() {
                         frame.isClickable = false
                         val trailerView = WebView(requireContext()).apply {
                             layoutParams = FrameLayout.LayoutParams(-1, -1)
-                            setBackgroundColor(Color.BLACK)
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.databaseEnabled = true
@@ -729,18 +740,24 @@ class MediaInfoFragment : Fragment() {
                                 <iframe
                                     src="https://www.youtube-nocookie.com/embed/$trailerId?autoplay=1&rel=0&modestbranding=1&controls=1&fs=0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    referrerpolicy="strict-origin-when-cross-origin"
                                     frameborder="0">
                                 </iframe>
                             </body>
                             </html>
                         """.trimIndent()
-                        trailerView.loadDataWithBaseURL(
-                            "https://www.youtube-nocookie.com",
-                            trailerHtml,
-                            "text/html",
-                            "utf-8",
-                            null
-                        )
+                        // load once the WebView is attached to the window, so it starts rendering right away.
+                        // YouTube refuses embeds that don't identify the embedder (error 153) and ones whose
+                        // page claims to be youtube.com (error 152), so the page is loaded as coming from the app
+                        trailerView.post {
+                            trailerView.loadDataWithBaseURL(
+                                "https://${trailerView.context.packageName}",
+                                trailerHtml,
+                                "text/html",
+                                "utf-8",
+                                null
+                            )
+                        }
                     }
                     bind.root.tag = "dynamic_view"
                     parent.addView(bind.root)
