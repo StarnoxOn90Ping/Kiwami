@@ -48,6 +48,11 @@ object Logger {
     }
 
     fun log(message: String) {
+        if (file == null) {
+            // no log file: nothing to record, so skip building the stack trace for every call
+            Log.d("Internal Logger", message)
+            return
+        }
         val trace = Thread.currentThread().stackTrace[3]
         loggerExecutor.execute {
             if (file == null) Log.d("Internal Logger", message)
@@ -62,6 +67,10 @@ object Logger {
     }
 
     fun log(level: Int, message: String, tag: String = "Internal Logger") {
+        if (file == null) {
+            Log.println(level, tag, message)
+            return
+        }
         val trace = Thread.currentThread().stackTrace[3]
         loggerExecutor.execute {
             if (file == null) Log.println(level, tag, message)

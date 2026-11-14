@@ -100,7 +100,7 @@ class App : Application(), GraphProvider<AppGraph> {
 
         setupNotificationChannels()
         if (!LogcatLogger.isInstalled) {
-            LogcatLogger.install(AndroidLogcatLogger(LogPriority.VERBOSE))
+            LogcatLogger.install(AndroidLogcatLogger(LogPriority.WARN))
         }
 
         if (PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 0) {

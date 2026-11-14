@@ -12,6 +12,13 @@
 
 -dontobfuscate
 
+# Release builds only keep warnings and errors: strip verbose, debug and info logs
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
+
 
 #############################################
 # Kotlin / Coroutines / Serialization
