@@ -1,0 +1,37 @@
+# Baseline profile
+#
+# Tells Android which code to precompile at install time, so launching the app and opening
+# the common screens does not start out slow. Sideloaded installs get it through
+# androidx.profileinstaller (already a dependency). Flags: H = hot, S = startup, P = after startup.
+# Rarely used areas (downloads, torrents, parsers, addons, widgets, forum, calendar,
+# onboarding) are left out on purpose to keep the install small.
+
+# App start: application class, main screen and shared helpers
+HSPLnox/kiwami/*;->**(**)**
+Lnox/kiwami/*;
+HSPLnox/kiwami/di/**;->**(**)**
+Lnox/kiwami/di/**;
+HSPLnox/kiwami/core/**;->**(**)**
+Lnox/kiwami/core/**;
+HSPLnox/kiwami/themes/**;->**(**)**
+Lnox/kiwami/themes/**;
+HSPLnox/kiwami/util/**;->**(**)**
+Lnox/kiwami/util/**;
+HSPLnox/kiwami/settings/saving/**;->**(**)**
+Lnox/kiwami/settings/saving/**;
+HSPLnox/kiwami/connections/**;->**(**)**
+Lnox/kiwami/connections/**;
+HSPLnox/kiwami/others/**;->**(**)**
+Lnox/kiwami/others/**;
+
+# Home screen
+HSPLnox/kiwami/home/**;->**(**)**
+Lnox/kiwami/home/**;
+
+# Media details: info, watch and comments tabs and their adapters (not the player or readers)
+HPLnox/kiwami/media/*;->**(**)**
+Lnox/kiwami/media/*;
+
+# Profile
+HPLnox/kiwami/profile/**;->**(**)**
+Lnox/kiwami/profile/**;
