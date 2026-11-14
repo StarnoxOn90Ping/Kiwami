@@ -26,7 +26,9 @@ import android.view.animation.OvershootInterpolator
 import android.speech.tts.UtteranceProgressListener
 import android.animation.ValueAnimator
 import android.view.ViewGroup
+import android.graphics.Color
 import android.webkit.WebChromeClient
+import android.webkit.WebView
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -53,6 +55,7 @@ import nox.kiwami.databinding.ItemQuelsBinding
 import nox.kiwami.databinding.ItemTitleChipgroupBinding
 import nox.kiwami.databinding.ItemTitleRecyclerBinding
 import nox.kiwami.databinding.ItemTitleTextBinding
+import com.bumptech.glide.Glide
 import nox.kiwami.databinding.ItemTitleTrailerBinding
 import nox.kiwami.loadImage
 import nox.kiwami.navBarHeight
@@ -660,70 +663,43 @@ class MediaInfoFragment : Fragment() {
                         false
                     )
                     styleSectionHeading(bind.mediaInfoTrailerText)
-                    bind.mediaInfoTrailer.apply {
-                        visibility = View.VISIBLE
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.databaseEnabled = true
-                        settings.useWideViewPort = true
-                        settings.loadWithOverviewMode = true
-                        settings.mediaPlaybackRequiresUserGesture = false
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        }
-                        settings.userAgentString = null
-                        isSoundEffectsEnabled = true
-                        webChromeClient = MyChrome()
+                    val trailerId = media.trailer!!
+                    val thumbBase = "https://img.youtube.com/vi/$trailerId/"
+                    // plain image instead of a WebView; the biggest thumbnail first, then the standard one
+                    Glide.with(bind.root.context)
+                        .load(thumbBase + "maxresdefault.jpg")
+                        .error(
+                            Glide.with(bind.root.context)
+                                .load(thumbBase + "hqdefault.jpg")
+                                .centerCrop()
+                        )
+                        .centerCrop()
+                        .into(bind.mediaInfoTrailerThumb)
 
-                        val trailerId = media.trailer!!
-
-                        addJavascriptInterface(object {
-                            @android.webkit.JavascriptInterface
-                            fun loadVideo() {
-                                val trailerHtml = """
-                                    <!DOCTYPE html>
-                                    <html>
-                                    <head>
-                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                        <style>
-                                            * {
-                                                margin: 0;
-                                                padding: 0;
-                                                box-sizing: border-box;
-                                                -webkit-tap-highlight-color: transparent;
-                                            }
-                                            html, body {
-                                                width: 100%;
-                                                height: 100%;
-                                                background: #000;
-                                                overflow: hidden;
-                                            }
-                                            iframe {
-                                                width: 100%;
-                                                height: 100%;
-                                                border: none;
-                                                display: block;
-                                            }
-                                        </style>
-                                    </head>
-                                    <body>
-                                        <iframe
-                                            src="https://www.youtube-nocookie.com/embed/$trailerId?autoplay=1&rel=0&modestbranding=1&controls=1&fs=0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            frameborder="0">
-                                        </iframe>
-                                    </body>
-                                    </html>
-                                """.trimIndent()
-                                context.let {
-                                     (it as? android.app.Activity)?.runOnUiThread {
-                                         loadDataWithBaseURL("https://www.youtube-nocookie.com", trailerHtml, "text/html", "utf-8", null)
-                                     }
-                                }
+                    // the WebView only exists once the trailer is actually played
+                    bind.mediaInfoTrailerFrame.setOnClickListener { frame ->
+                        frame.setOnClickListener(null)
+                        frame.isClickable = false
+                        val trailerView = WebView(requireContext()).apply {
+                            layoutParams = FrameLayout.LayoutParams(-1, -1)
+                            setBackgroundColor(Color.BLACK)
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.databaseEnabled = true
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
+                            settings.mediaPlaybackRequiresUserGesture = false
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                             }
-                        }, "Android")
-
-                        val placeholderHtml = """
+                            settings.userAgentString = null
+                            isSoundEffectsEnabled = true
+                            webChromeClient = MyChrome()
+                        }
+                        bind.mediaInfoTrailerFrame.addView(trailerView)
+                        bind.mediaInfoTrailerThumb.visibility = View.GONE
+                        bind.mediaInfoTrailerPlay.visibility = View.GONE
+                        val trailerHtml = """
                             <!DOCTYPE html>
                             <html>
                             <head>
@@ -734,120 +710,37 @@ class MediaInfoFragment : Fragment() {
                                         padding: 0;
                                         box-sizing: border-box;
                                         -webkit-tap-highlight-color: transparent;
-                                        -webkit-touch-callout: none;
-                                        -webkit-user-select: none;
-                                        user-select: none;
                                     }
-                                    body, html {
+                                    html, body {
                                         width: 100%;
                                         height: 100%;
                                         background: #000;
                                         overflow: hidden;
                                     }
-                                    .thumbnail-container {
-                                        position: relative;
+                                    iframe {
                                         width: 100%;
                                         height: 100%;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
-                                        background: #000;
-                                    }
-                                    .thumbnail {
-                                        width: 100%;
-                                        height: 100%;
-                                        object-fit: cover;
-                                        transform-origin: center center;
-                                    }
-                                    .play-button {
-                                        position: absolute;
-                                        width: 68px;
-                                        height: 48px;
-                                        background: rgba(255, 0, 0, 0.8);
-                                        border-radius: 12px;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
-                                        transition: transform 0.2s;
-                                    }
-                                    .thumbnail-container:active .play-button {
-                                        transform: scale(0.95);
-                                    }
-                                    .play-icon {
-                                        width: 0;
-                                        height: 0;
-                                        border-left: 20px solid white;
-                                        border-top: 12px solid transparent;
-                                        border-bottom: 12px solid transparent;
-                                        margin-left: 4px;
+                                        border: none;
+                                        display: block;
                                     }
                                 </style>
                             </head>
                             <body>
-                                <div class="thumbnail-container" onclick="Android.loadVideo()">
-                                    <img id="thumb" class="thumbnail" alt="Trailer">
-                                    <div class="play-button">
-                                        <div class="play-icon"></div>
-                                    </div>
-                                </div>
-                                <script>
-                                    var img = document.getElementById('thumb');
-                                    var base = 'https://img.youtube.com/vi/$trailerId/';
-                                    // try the big thumbnail first, readable (cors) before plain
-                                    var tries = [
-                                        [base + 'maxresdefault.jpg', true],
-                                        [base + 'hqdefault.jpg', true],
-                                        [base + 'maxresdefault.jpg', false],
-                                        [base + 'hqdefault.jpg', false]
-                                    ];
-                                    var idx = 0;
-                                    function load() {
-                                        var t = tries[idx];
-                                        if (t[1]) { img.crossOrigin = 'anonymous'; }
-                                        else { img.removeAttribute('crossorigin'); }
-                                        img.src = t[0];
-                                    }
-                                    img.onerror = function () {
-                                        if (idx < tries.length - 1) { idx++; load(); }
-                                    };
-                                    img.onload = function () {
-                                        try {
-                                            var w = 64;
-                                            var h = Math.max(2, Math.round(w * img.naturalHeight / img.naturalWidth));
-                                            var cv = document.createElement('canvas');
-                                            cv.width = w; cv.height = h;
-                                            var cx = cv.getContext('2d');
-                                            cx.drawImage(img, 0, 0, w, h);
-                                            var d = cx.getImageData(0, 0, w, h).data;
-                                            function dark(r) {
-                                                var s = 0;
-                                                for (var i = 0; i < w; i++) {
-                                                    var k = (r * w + i) * 4;
-                                                    s += d[k] + d[k + 1] + d[k + 2];
-                                                }
-                                                return s / (w * 3) < 20;
-                                            }
-                                            var top = 0;
-                                            while (top < h / 2 && dark(top)) top++;
-                                            var bot = 0;
-                                            while (bot < h / 2 && dark(h - 1 - bot)) bot++;
-                                            // object-fit: cover already crops rows that fall outside the 16:9 frame
-                                            // (e.g. the bars of a 4:3 thumbnail), so only count the bars still visible
-                                            var imgAspect = img.naturalWidth / img.naturalHeight;
-                                            var hidden = imgAspect < 16 / 9 ? (1 - imgAspect / (16 / 9)) / 2 : 0;
-                                            var bar = Math.max(0, Math.min(top, bot) / h - hidden) / (1 - 2 * hidden);
-                                            if (bar > 0.02) {
-                                                var s = Math.min(1 / (1 - 2 * bar), 1.8);
-                                                img.style.transform = 'scale(' + s.toFixed(3) + ')';
-                                            }
-                                        } catch (e) { /* image not readable: object-fit cover still fills the frame */ }
-                                    };
-                                    load();
-                                </script>
+                                <iframe
+                                    src="https://www.youtube-nocookie.com/embed/$trailerId?autoplay=1&rel=0&modestbranding=1&controls=1&fs=0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    frameborder="0">
+                                </iframe>
                             </body>
                             </html>
                         """.trimIndent()
-                        loadDataWithBaseURL("https://www.youtube-nocookie.com", placeholderHtml, "text/html", "utf-8", null)
+                        trailerView.loadDataWithBaseURL(
+                            "https://www.youtube-nocookie.com",
+                            trailerHtml,
+                            "text/html",
+                            "utf-8",
+                            null
+                        )
                     }
                     bind.root.tag = "dynamic_view"
                     parent.addView(bind.root)
