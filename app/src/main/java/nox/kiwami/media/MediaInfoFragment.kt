@@ -831,7 +831,11 @@ class MediaInfoFragment : Fragment() {
                                             while (top < h / 2 && dark(top)) top++;
                                             var bot = 0;
                                             while (bot < h / 2 && dark(h - 1 - bot)) bot++;
-                                            var bar = Math.min(top, bot) / h;
+                                            // object-fit: cover already crops rows that fall outside the 16:9 frame
+                                            // (e.g. the bars of a 4:3 thumbnail), so only count the bars still visible
+                                            var imgAspect = img.naturalWidth / img.naturalHeight;
+                                            var hidden = imgAspect < 16 / 9 ? (1 - imgAspect / (16 / 9)) / 2 : 0;
+                                            var bar = Math.max(0, Math.min(top, bot) / h - hidden) / (1 - 2 * hidden);
                                             if (bar > 0.02) {
                                                 var s = Math.min(1 / (1 - 2 * bar), 1.8);
                                                 img.style.transform = 'scale(' + s.toFixed(3) + ')';
