@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.view.View
 import android.view.animation.PathInterpolator
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import java.util.WeakHashMap
@@ -39,28 +40,20 @@ class TabPageTransformer : ViewPager2.PageTransformer {
 }
 
 private val running = WeakHashMap<ViewPager2, ValueAnimator>()
-private val wanted = WeakHashMap<ViewPager2, Int>()
 private val guarded = WeakHashMap<ViewPager2, Boolean>()
 
-/** Whatever happens while switching quickly, the pager always ends on the tab that was asked for last. */
-private fun ViewPager2.ensureGuard() {
+/** Quiet safety net: once the pager is idle, make sure every page is in its resting look. */
+private fun ViewPager2.ensureRestGuard() {
     if (guarded.put(this, true) != null) return
     val pager = this
     registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
         override fun onPageScrollStateChanged(state: Int) {
-            if (state != ViewPager2.SCROLL_STATE_IDLE) return
-            if (running[pager]?.isRunning == true || pager.isFakeDragging) return
-            val w = wanted[pager] ?: return
-            if (pager.currentItem != w) pager.setCurrentItem(w, false)
-            // The transformer only runs on scroll events. When a glide is interrupted by a quick
-            // tab tap, the page that ends up selected can be left at alpha 0 / shifted (all black).
-            // Once everything has settled, put every page into its proper resting state.
-            pager.post { pager.restPages() }
+            if (state == ViewPager2.SCROLL_STATE_IDLE) pager.post { pager.restPages() }
         }
     })
 }
 
-/** Forces each page to its idle look: the selected one fully visible, the others hidden. */
+/** Selected page fully visible, the others hidden. Does nothing when the pages are already right. */
 private fun ViewPager2.restPages() {
     if (scrollState != ViewPager2.SCROLL_STATE_IDLE || isFakeDragging) return
     if (running[this]?.isRunning == true) return
@@ -68,57 +61,67 @@ private fun ViewPager2.restPages() {
     for (i in 0 until rv.childCount) {
         val page = rv.getChildAt(i)
         val selected = rv.getChildAdapterPosition(page) == currentItem
-        page.alpha = if (selected) 1f else 0f
-        page.scaleX = 1f
-        page.scaleY = 1f
-        page.translationX = 0f
+        val alpha = if (selected) 1f else 0f
+        if (page.alpha != alpha) page.alpha = alpha
+        if (page.scaleX != 1f) { page.scaleX = 1f; page.scaleY = 1f }
+        if (page.translationX != 0f) page.translationX = 0f
     }
 }
 
+/** Where the pager really is right now, in pages (1.5 = halfway between tab 1 and tab 2). */
+private fun ViewPager2.pagePosition(): Float {
+    val lm = (getChildAt(0) as? RecyclerView)?.layoutManager as? LinearLayoutManager
+        ?: return currentItem.toFloat()
+    val first = lm.findFirstVisibleItemPosition()
+    val view = lm.findViewByPosition(first) ?: return currentItem.toFloat()
+    return first - view.left / width.toFloat()
+}
+
 /**
- * Switches to [item] with a longer, softer glide than ViewPager2's built-in smooth scroll
- * (fast start, long gentle landing). If a switch is still in flight the glide is stopped cleanly
- * and the built-in smooth scroll takes over, so quick taps never leave the pager on a wrong tab.
+ * Switches to [item] with a long, soft glide (fast start, gentle landing).
+ *
+ * One glide drives the whole switch. If you tap another tab while it is still moving, the same
+ * glide is simply re-aimed from wherever the pages are right now, so quick taps flow into each
+ * other instead of stopping, jumping or restarting. The fade and scale come from
+ * [TabPageTransformer], which follows the scroll position, so they look right at any speed.
  */
 fun ViewPager2.switchTabSmoothly(item: Int, duration: Long = 480L) {
-    wanted[this] = item
-    ensureGuard()
+    ensureRestGuard()
     if (width == 0) {
         setCurrentItem(item, false)
         return
     }
-    val busy = isFakeDragging || running[this]?.isRunning == true ||
-        scrollState != ViewPager2.SCROLL_STATE_IDLE
-    if (busy) {
-        // stop the running glide (its end handler finishes the fake drag), then re-aim.
-        // setCurrentItem throws while fake dragging.
-        running[this]?.cancel()
+    val pager = this
+    running[pager]?.let {
+        it.removeAllListeners()
+        it.cancel()
+    }
+    val diff = item - pagePosition()
+    if (abs(diff) < 0.01f) {
         if (isFakeDragging) endFakeDrag()
+        return
+    }
+    // keeps the running fake drag when re-aiming, only starts one when idle
+    if (!isFakeDragging && !beginFakeDrag()) {
         setCurrentItem(item, true)
         return
     }
-    val diff = item - currentItem
-    if (diff == 0) return
-    val total = width * diff
-    var last = 0
-    val animator = ValueAnimator.ofInt(0, total).apply {
-        this.duration = duration
+    var last = 0f
+    val animator = ValueAnimator.ofFloat(0f, diff * width).apply {
+        this.duration = (duration * abs(diff).coerceIn(0.45f, 1f)).toLong()
         interpolator = PathInterpolator(0.22f, 1f, 0.36f, 1f) // easeOutQuint-ish
         addUpdateListener {
-            val v = it.animatedValue as Int
-            fakeDragBy(-(v - last).toFloat())
+            val v = it.animatedValue as Float
+            fakeDragBy(-(v - last))
             last = v
         }
         addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationStart(animation: Animator) {
-                beginFakeDrag()
-            }
-
             override fun onAnimationEnd(animation: Animator) {
-                if (isFakeDragging) endFakeDrag()
+                if (running[pager] === animation) running.remove(pager)
+                if (pager.isFakeDragging) pager.endFakeDrag()
             }
         })
     }
-    running[this] = animator
+    running[pager] = animator
     animator.start()
 }
