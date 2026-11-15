@@ -140,8 +140,9 @@ class MainActivity : AppCompatActivity() {
                 return
             }
         }
-        TaskScheduler.scheduleSingleWork(this)
-        // keep the episode-release alarms armed (cheap; refreshes airing times from AniList)
+        lifecycleScope.launch(Dispatchers.IO) {
+            TaskScheduler.scheduleSingleWork(this@MainActivity)
+        }
         nox.kiwami.notifications.airing.AiringAlarmScheduler.restoreAll(applicationContext)
 
         if (Intent.ACTION_VIEW == intent.action) {
