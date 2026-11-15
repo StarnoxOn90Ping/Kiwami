@@ -173,6 +173,21 @@
 -dontwarn ca.mpreg.webgpuviewer.**
 
 #############################################
+# libass (io.github.peerless2012:ass-media / ass-kt)
+#############################################
+# libass is native code that calls back into Kotlin/Java classes, methods and fields through JNI.
+# R8 cannot see those calls, so it removed or changed them in release builds and the native side
+# aborted the whole process as soon as the player started (screen rotated, then the app restarted).
+-keep class io.github.peerless2012.** { *; }
+-keepclassmembers class io.github.peerless2012.** { *; }
+-dontwarn io.github.peerless2012.**
+
+# Any class with native methods may be called back from native code, so R8 must leave it alone
+-keepclasseswithmembers,includedescriptorclasses class * {
+    native <methods>;
+}
+
+#############################################
 # ML Kit / Firebase component registrars
 #############################################
 # ML Kit and Firebase create their components by class name through reflection (ComponentDiscovery).
