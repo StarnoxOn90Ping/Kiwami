@@ -188,6 +188,14 @@
 }
 
 #############################################
+# Cronet / protobuf
+#############################################
+# R8 class merging breaks protobuf-lite when Cronet reads its flags file, which aborts ART on release builds
+-keep class com.google.protobuf.** { *; }
+-keep class org.chromium.net.** { *; }
+-dontwarn org.chromium.net.**
+
+#############################################
 # ML Kit / Firebase component registrars
 #############################################
 # ML Kit and Firebase create their components by class name through reflection (ComponentDiscovery).
