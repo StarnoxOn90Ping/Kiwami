@@ -21,6 +21,7 @@ import okhttp3.Request
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import java.net.URL
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.ServerSocket
@@ -283,8 +284,9 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
         statCallback: (Double) -> Unit
     ): Long {
         val sessionId = nextSessionId.incrementAndGet()
-        val isHls = videoUrl.contains(".m3u8", ignoreCase = true) || videoUrl.contains("m3u8", ignoreCase = true)
         val isDash = videoUrl.contains(".mpd", ignoreCase = true) || videoUrl.contains("mpd", ignoreCase = true)
+        val isHls = videoUrl.contains("m3u8", ignoreCase = true) ||
+            (!isDash && !hasVideoExtension(videoUrl) && isHlsPlaylist(videoUrl, headers))
 
         if (isHls && subtitleUrls.isEmpty() && audioUrls.isEmpty()) {
             // HLS → parallel segments → remux once straight to destination MKV
@@ -1335,6 +1337,42 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
      * [outputPath] may be a filesystem path or an FFmpeg SAF write parameter.
      * Forces mpegts demuxer when appropriate so FFmpeg never misdetects png_pipe.
      */
+    private fun hasVideoExtension(url: String): Boolean {
+        val path = runCatching { URL(url).path.lowercase() }.getOrDefault("")
+        return listOf(".mp4", ".mkv", ".webm", ".mov", ".avi", ".flv").any { path.endsWith(it) }
+    }
+
+    private suspend fun isHlsPlaylist(url: String, headers: Map<String, String>): Boolean =
+        withContext(Dispatchers.IO) {
+            val parsed = runCatching { URL(url) }.getOrNull() ?: return@withContext false
+            val host = parsed.host.lowercase()
+            if (!parsed.protocol.startsWith("http") || host == "localhost" || host == "127.0.0.1") {
+                return@withContext false
+            }
+            try {
+                val client = Injekt.get<NetworkHelper>().downloadClient
+                val request = Request.Builder()
+                    .url(url)
+                    .headers(headers.toHeaders())
+                    .header("Range", "bytes=0-1023")
+                    .build()
+                client.newCall(request).execute().use { res ->
+                    if (!res.isSuccessful) return@use false
+                    val buffer = ByteArray(1024)
+                    val read = res.body.byteStream().read(buffer)
+                    val isPlaylist = read > 0 &&
+                        String(buffer, 0, read).trimStart('\uFEFF', ' ', '\n', '\r').startsWith("#EXTM3U")
+                    if (isPlaylist) Logger.log("Built-in: $url is an HLS playlist without an m3u8 extension")
+                    isPlaylist
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.log("Built-in: HLS sniff failed for $url: ${e.message}")
+                false
+            }
+        }
+
     private fun remuxMpegTsToMkv(
         videoTs: File,
         outputPath: String,
