@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
@@ -798,10 +799,12 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                 }
 
                                 if (launch == true) {
-                                    Intent(activity, ExoplayerView::class.java).apply {
-                                        ExoplayerView.media = media
-                                        ExoplayerView.initialized = true
-                                        startActivity(this)
+                                    if (!openInExternalPlayer(activity, media, ep, video)) {
+                                        Intent(activity, ExoplayerView::class.java).apply {
+                                            ExoplayerView.media = media
+                                            ExoplayerView.initialized = true
+                                            startActivity(this)
+                                        }
                                     }
                                 } else {
                                     val epKey = media.anime?.selectedEpisode
@@ -847,8 +850,18 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
             }
         }
 
+        val externalEpisode = episode
+        val externalVideo = externalEpisode?.let { ep ->
+            ep.extractors?.find { it.server.name == ep.selectedExtractor }
+                ?.videos?.getOrNull(ep.selectedVideo)
+        }
+        val openedExternally = launch == true && externalEpisode != null && externalVideo != null &&
+                openInExternalPlayer(activity ?: currActivity(), media, externalEpisode, externalVideo)
+
         dismissAllowingStateLoss()
-        if (launch!!) {
+        if (openedExternally) {
+            stopAddingToList()
+        } else if (launch!!) {
             stopAddingToList()
             val intent = Intent(activity, ExoplayerView::class.java)
             ExoplayerView.media = media
@@ -861,6 +874,17 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                 model.setEpisode(targetEp, "startExo no launch")
             }
         }
+    }
+
+    /**
+     * Hands the chosen video to the external player picked in Settings > Anime > External player.
+     * Returns true when it was opened there, false when the built in player should be used.
+     */
+    private fun openInExternalPlayer(context: Context?, currentMedia: Media, ep: Episode, video: Video): Boolean {
+        val ctx = context ?: return false
+        val subtitles = ep.extractors?.find { it.server.name == ep.selectedExtractor }
+            ?.subtitles ?: emptyList()
+        return ExternalPlayerLauncher.launch(ctx, currentMedia, ep, video, subtitles)
     }
 
     private fun stopAddingToList() {

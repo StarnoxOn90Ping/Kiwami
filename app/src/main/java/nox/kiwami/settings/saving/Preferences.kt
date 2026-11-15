@@ -148,6 +148,8 @@ enum class PrefName(val data: Pref) {
 
 
     //Player
+    // 0 = built in player, otherwise the id of an ExternalPlayer (1 = VLC)
+    ExternalPlayer(Pref(Location.Player, Int::class, 0)),
     DefaultSpeed(Pref(Location.Player, Int::class, 5)),
     CursedSpeeds(Pref(Location.Player, Boolean::class, false)),
     Resize(Pref(Location.Player, Int::class, 0)),

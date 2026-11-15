@@ -1,6 +1,7 @@
 package nox.kiwami.settings
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -13,18 +14,49 @@ import nox.kiwami.databinding.ActivitySettingsAnimeBinding
 import nox.kiwami.download.DownloadsManager
 import nox.kiwami.initActivity
 import nox.kiwami.media.MediaType
+import nox.kiwami.media.anime.ExternalPlayer
+import nox.kiwami.media.anime.ExternalPlayerLauncher
 import nox.kiwami.navBarHeight
 import nox.kiwami.restartApp
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.statusBarHeight
 import nox.kiwami.themes.ThemeManager
+import nox.kiwami.toast
 import nox.kiwami.util.customAlertDialog
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 class SettingsAnimeActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsAnimeBinding
+    private fun externalPlayerSummary(context: Context): String {
+        val player = ExternalPlayerLauncher.selected()
+        return context.getString(
+            R.string.external_player_summary,
+            player?.displayName ?: context.getString(R.string.external_player_off)
+        )
+    }
+
+    /** One dialog: "Off" plus every third party player (only VLC for now). */
+    private fun showExternalPlayerDialog(context: Context, onChanged: () -> Unit) {
+        val players = ExternalPlayer.entries
+        val names = (listOf(context.getString(R.string.external_player_off)) +
+                players.map { it.displayName }).toTypedArray()
+        val current = ExternalPlayerLauncher.selected()
+        context.customAlertDialog().apply {
+            setTitle(R.string.external_player)
+            singleChoiceItems(names, (current?.let { players.indexOf(it) + 1 }) ?: 0) { index ->
+                val chosen = players.getOrNull(index - 1)
+                PrefManager.setVal(PrefName.ExternalPlayer, chosen?.id ?: ExternalPlayer.OFF)
+                if (chosen != null && !ExternalPlayerLauncher.isInstalled(context, chosen)) {
+                    toast(context.getString(R.string.external_player_not_installed, chosen.displayName))
+                }
+                onChanged()
+            }
+            show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -51,6 +83,17 @@ class SettingsAnimeActivity : AppCompatActivity() {
                             startActivity(Intent(context, PlayerSettingsActivity::class.java))
                         },
                         isActivity = true
+                    ),
+                    Settings(
+                        type = 1,
+                        name = getString(R.string.external_player),
+                        desc = externalPlayerSummary(context),
+                        icon = R.drawable.ic_open_24,
+                        onClick = { item ->
+                            showExternalPlayerDialog(context) {
+                                item.settingsDesc.text = externalPlayerSummary(context)
+                            }
+                        }
                     ),
                     Settings(
                         type = 1,

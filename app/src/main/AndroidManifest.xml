@@ -58,6 +58,7 @@
         <package android:name="idm.internet.download.manager" />
         <package android:name="idm.internet.download.manager.adm.lite" />
         <package android:name="com.dv.adm" />
+        <package android:name="org.videolan.vlc" />
         <package android:name="moe.shizuku.privileged.api" />
         <package android:name="rikka.art.shizuku" />
         <intent>

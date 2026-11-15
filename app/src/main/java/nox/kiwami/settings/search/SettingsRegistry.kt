@@ -335,6 +335,17 @@ object SettingsRegistry {
         )
         list.add(
             SearchableSetting(
+                title = context.getString(R.string.external_player),
+                desc = context.getString(R.string.external_player_desc),
+                icon = R.drawable.ic_open_24,
+                category = context.getString(R.string.anime),
+                breadcrumbs = "${context.getString(R.string.settings)} > ${context.getString(R.string.anime)}",
+                targetActivity = SettingsAnimeActivity::class.java,
+                highlightKey = context.getString(R.string.external_player)
+            )
+        )
+        list.add(
+            SearchableSetting(
                 title = context.getString(R.string.prefer_dub),
                 desc = context.getString(R.string.prefer_dub_desc),
                 icon = R.drawable.ic_round_audiotrack_24,

@@ -202,6 +202,12 @@
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Extension updates available</string>
     <string name="player_settings">Player Settings</string>
+    <string name="external_player">External player</string>
+    <string name="external_player_desc">Open episodes in a third party video player instead of the built in one</string>
+    <string name="external_player_off">Off (built in player)</string>
+    <string name="external_player_summary">Currently: %1$s</string>
+    <string name="external_player_not_installed">%1$s isn\'t installed, using the built in player</string>
+    <string name="external_player_failed">Couldn\'t open %1$s, using the built in player</string>
     <string name="recentlyListOnly">Only show my content in \"Recently Updated\"</string>
     <string name="download_manager_select">Download Manager</string>
     <string name="downloadInSd">Download in SD card</string>
