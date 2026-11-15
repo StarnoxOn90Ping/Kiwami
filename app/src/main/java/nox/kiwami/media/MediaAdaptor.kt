@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -47,6 +46,12 @@ class MediaAdaptor(
     private val fav: Boolean = false,
     private val isOtherUser: Boolean = false,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private val releasingText by lazy { activity.getString(R.string.status_releasing) }
+    private val episodePlural by lazy { activity.getString(R.string.episode_plural) }
+    private val episodeSingular by lazy { activity.getString(R.string.episode_singular) }
+    private val chapterPlural by lazy { activity.getString(R.string.chapter_plural) }
+    private val chapterSingular by lazy { activity.getString(R.string.chapter_singular) }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (type) {
@@ -91,27 +96,17 @@ class MediaAdaptor(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (type) {
             0 -> {
-                val b = (holder as MediaViewHolder).binding
+                val vh = holder as MediaViewHolder
+                val b = vh.binding
                 setAnimation(activity, b.root)
                 val media = mediaList?.getOrNull(position)
                 if (media != null) {
-                    val density = activity.resources.displayMetrics.density
                     if (media.id < 0) {
-                        b.itemCompactTitle.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                            width = (108 * density).toInt()
-                            height = (12 * density).toInt()
-                            bottomMargin = (4 * density).toInt()
-                            topMargin = (4 * density).toInt()
+                        if (vh.skeleton != true) {
+                            showSkeletonLayout(b)
+                            vh.skeleton = true
                         }
-                        b.itemCompactTitle.background = ContextCompat.getDrawable(b.root.context, R.drawable.skeleton_text_placeholder)
                         b.itemCompactTitle.text = ""
-
-                        b.itemCompactProgressContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                            width = (54 * density).toInt()
-                            height = (8 * density).toInt()
-                            topMargin = (2 * density).toInt()
-                        }
-                        b.itemCompactProgressContainer.background = ContextCompat.getDrawable(b.root.context, R.drawable.skeleton_stats_placeholder)
                         b.itemCompactUserProgress.text = ""
                         b.itemCompactTotal.text = ""
                         b.itemCompactScoreBG.isVisible = false
@@ -119,32 +114,19 @@ class MediaAdaptor(
                         b.itemCompactType.isVisible = false
                         b.itemCompactImage.setImageResource(R.drawable.skeleton_cover_placeholder)
                     } else {
-                        b.itemCompactTitle.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                            width = (108 * density).toInt()
-                            height = ViewGroup.LayoutParams.WRAP_CONTENT
-                            bottomMargin = 0
-                            topMargin = 0
+                        if (vh.skeleton != false) {
+                            showContentLayout(b)
+                            vh.skeleton = false
                         }
-                        b.itemCompactTitle.background = null
-
-                        b.itemCompactProgressContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                            width = ViewGroup.LayoutParams.MATCH_PARENT
-                            height = ViewGroup.LayoutParams.WRAP_CONTENT
-                            topMargin = 0
-                        }
-                        b.itemCompactProgressContainer.background = null
                         b.itemCompactScoreBG.isVisible = true
                         b.itemCompactImage.loadImage(media.cover)
                         b.itemCompactOngoing.isVisible =
-                            media.status == b.root.context.getString(R.string.status_releasing)
+                            media.status == releasingText
                         b.itemCompactTitle.text = media.userPreferredName
                         b.itemCompactScore.text =
                             ((if (media.userScore == 0) (media.meanScore
                                 ?: 0) else media.userScore) / 10.0).toString()
-                        b.itemCompactScoreBG.background = ContextCompat.getDrawable(
-                            b.root.context,
-                            (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
-                        )
+                        b.itemCompactScoreBG.setBackgroundResource(if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                         b.itemCompactUserProgress.text = (media.userProgress ?: "~").toString()
                         if (media.relation != null) {
                             b.itemCompactRelation.text = "${media.relation}  "
@@ -168,21 +150,11 @@ class MediaAdaptor(
                         }
                         
                         if (media.anime != null) {
-                            if (media.relation != null) b.itemCompactTypeImage.setImageDrawable(
-                                AppCompatResources.getDrawable(
-                                    activity,
-                                    R.drawable.ic_round_movie_filter_24
-                                )
-                            )
+                            if (media.relation != null) b.itemCompactTypeImage.setImageResource(R.drawable.ic_round_movie_filter_24)
                             b.itemCompactTotal.text =
                                 " | ${if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " | " + (media.anime.totalEpisodes ?: "~").toString()) else (media.anime.totalEpisodes ?: "~").toString()}"
                         } else if (media.manga != null) {
-                            if (media.relation != null) b.itemCompactTypeImage.setImageDrawable(
-                                AppCompatResources.getDrawable(
-                                    activity,
-                                    R.drawable.ic_round_import_contacts_24
-                                )
-                            )
+                            if (media.relation != null) b.itemCompactTypeImage.setImageResource(R.drawable.ic_round_import_contacts_24)
                             b.itemCompactTotal.text = " | ${media.manga.totalChapters ?: "~"}"
                         }
                     }
@@ -198,21 +170,16 @@ class MediaAdaptor(
                     b.itemCompactImage.loadImage(media.cover)
                     blurImage(b.itemCompactBanner, media.banner ?: media.cover)
                     b.itemCompactOngoing.isVisible =
-                        media.status == b.root.context.getString(R.string.status_releasing)
+                        media.status == releasingText
                     b.itemCompactTitle.text = media.userPreferredName
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore
                             ?: 0) else media.userScore) / 10.0).toString()
-                    b.itemCompactScoreBG.background = ContextCompat.getDrawable(
-                        b.root.context,
-                        (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
-                    )
+                    b.itemCompactScoreBG.setBackgroundResource(if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     if (media.anime != null) {
                         val itemTotal = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1
-                        ) b.root.context.getString(R.string.episode_plural) else b.root.context.getString(
-                            R.string.episode_singular
-                        )
+                        ) episodePlural else episodeSingular
                         b.itemTotal.text = itemTotal
                         b.itemCompactTotal.text =
                             if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
@@ -221,9 +188,7 @@ class MediaAdaptor(
                     } else if (media.manga != null) {
                         val itemTotal = " " + if ((media.manga.totalChapters
                                 ?: 0) != 1
-                        ) b.root.context.getString(R.string.chapter_plural) else b.root.context.getString(
-                            R.string.chapter_singular
-                        )
+                        ) chapterPlural else chapterSingular
                         b.itemTotal.text = itemTotal
                         b.itemCompactTotal.text = "${media.manga.totalChapters ?: "??"}"
                     }
@@ -255,21 +220,18 @@ class MediaAdaptor(
                         media.banner ?: media.cover
                     )
                     b.itemCompactOngoing.isVisible =
-                        media.status == b.root.context.getString(R.string.status_releasing)
+                        media.status == releasingText
                     b.itemCompactTitle.text = media.userPreferredName
                     bindCarouselLogo(media, b.itemCompactTitle, b.itemCompactLogo)
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore
                             ?: 0) else media.userScore) / 10.0).toString()
-                    b.itemCompactScoreBG.background = ContextCompat.getDrawable(
-                        b.root.context,
-                        (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
-                    )
+                    b.itemCompactScoreBG.setBackgroundResource(if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     if (media.anime != null) {
                         b.itemTotal.text = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1
-                        ) b.root.context.getString(R.string.episode_plural)
-                        else b.root.context.getString(R.string.episode_singular)
+                        ) episodePlural
+                        else episodeSingular
                         b.itemCompactTotal.text =
                             if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
                                 ?: "??").toString()) else (media.anime.totalEpisodes
@@ -277,8 +239,8 @@ class MediaAdaptor(
                     } else if (media.manga != null) {
                         b.itemTotal.text = " " + if ((media.manga.totalChapters
                                 ?: 0) != 1
-                        ) b.root.context.getString(R.string.chapter_plural)
-                        else b.root.context.getString(R.string.chapter_singular)
+                        ) chapterPlural
+                        else chapterSingular
                         b.itemCompactTotal.text = "${media.manga.totalChapters ?: "??"}"
                     }
                     @SuppressLint("NotifyDataSetChanged")
@@ -308,7 +270,7 @@ class MediaAdaptor(
                         media.banner ?: media.cover
                     )
                     b.itemCompactOngoing.isVisible =
-                        media.status == b.root.context.getString(R.string.status_releasing)
+                        media.status == releasingText
                     b.itemCompactTitle.text = media.userPreferredName
                     bindCarouselLogo(
                         media,
@@ -320,10 +282,7 @@ class MediaAdaptor(
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore
                             ?: 0) else media.userScore) / 10.0).toString()
-                    b.itemCompactScoreBG.background = ContextCompat.getDrawable(
-                        b.root.context,
-                        (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
-                    )
+                    b.itemCompactScoreBG.setBackgroundResource(if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     if (media.genres.isNotEmpty()) {
                         b.itemCompactGenres.text = media.genres.joinToString(" • ")
                     } else if (media.tags.isNotEmpty()) {
@@ -335,8 +294,8 @@ class MediaAdaptor(
                     if (media.anime != null) {
                         b.itemTotal.text = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1
-                        ) b.root.context.getString(R.string.episode_plural)
-                        else b.root.context.getString(R.string.episode_singular)
+                        ) episodePlural
+                        else episodeSingular
                         b.itemCompactTotal.text =
                             if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
                                 ?: "??").toString()) else (media.anime.totalEpisodes
@@ -344,8 +303,8 @@ class MediaAdaptor(
                     } else if (media.manga != null) {
                         b.itemTotal.text = " " + if ((media.manga.totalChapters
                                 ?: 0) != 1
-                        ) b.root.context.getString(R.string.chapter_plural)
-                        else b.root.context.getString(R.string.chapter_singular)
+                        ) chapterPlural
+                        else chapterSingular
                         b.itemCompactTotal.text = "${media.manga.totalChapters ?: "??"}"
                     }
                     @SuppressLint("NotifyDataSetChanged")
@@ -357,6 +316,40 @@ class MediaAdaptor(
                 }
             }
         }
+    }
+
+    private fun showSkeletonLayout(b: ItemMediaCompactBinding) {
+        val density = activity.resources.displayMetrics.density
+        b.itemCompactTitle.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            width = (108 * density).toInt()
+            height = (12 * density).toInt()
+            bottomMargin = (4 * density).toInt()
+            topMargin = (4 * density).toInt()
+        }
+        b.itemCompactTitle.background = ContextCompat.getDrawable(b.root.context, R.drawable.skeleton_text_placeholder)
+        b.itemCompactProgressContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            width = (54 * density).toInt()
+            height = (8 * density).toInt()
+            topMargin = (2 * density).toInt()
+        }
+        b.itemCompactProgressContainer.background = ContextCompat.getDrawable(b.root.context, R.drawable.skeleton_stats_placeholder)
+    }
+
+    private fun showContentLayout(b: ItemMediaCompactBinding) {
+        val density = activity.resources.displayMetrics.density
+        b.itemCompactTitle.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            width = (108 * density).toInt()
+            height = ViewGroup.LayoutParams.WRAP_CONTENT
+            bottomMargin = 0
+            topMargin = 0
+        }
+        b.itemCompactTitle.background = null
+        b.itemCompactProgressContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = ViewGroup.LayoutParams.WRAP_CONTENT
+            topMargin = 0
+        }
+        b.itemCompactProgressContainer.background = null
     }
 
     private fun bindCarouselLogo(
@@ -504,6 +497,8 @@ class MediaAdaptor(
 
     inner class MediaViewHolder(val binding: ItemMediaCompactBinding) :
         RecyclerView.ViewHolder(binding.root) {
+        var skeleton: Boolean? = null
+
         init {
             if (matchParent) itemView.updateLayoutParams { width = -1 }
             itemView.setSafeOnClickListener {
