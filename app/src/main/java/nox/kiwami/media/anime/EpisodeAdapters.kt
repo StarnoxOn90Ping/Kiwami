@@ -414,15 +414,16 @@ class EpisodeAdapter(
         val badge: View?,
         val cont: LinearLayout,
         val bar: View,
-        val empty: View
+        val empty: View,
+        val anchor: View? = null
     )
 
     private fun watchViews(holder: RecyclerView.ViewHolder): WatchViews? = when (holder) {
         is EpisodeListViewHolder -> holder.binding.let {
-            WatchViews(it.itemEpisodeViewedCover, it.itemEpisodeViewed, it.itemMediaProgressCont, it.itemMediaProgress, it.itemMediaProgressEmpty)
+            WatchViews(it.itemEpisodeViewedCover, it.itemEpisodeViewed, it.itemMediaProgressCont, it.itemMediaProgress, it.itemMediaProgressEmpty, it.itemMediaImage)
         }
         is EpisodeGridViewHolder -> holder.binding.let {
-            WatchViews(it.itemEpisodeViewedCover, it.itemEpisodeViewed, it.itemMediaProgressCont, it.itemMediaProgress, it.itemMediaProgressEmpty)
+            WatchViews(it.itemEpisodeViewedCover, it.itemEpisodeViewed, it.itemMediaProgressCont, it.itemMediaProgress, it.itemMediaProgressEmpty, it.itemMediaImage)
         }
         is EpisodeCompactViewHolder -> holder.binding.let {
             WatchViews(it.itemEpisodeViewedCover, null, it.itemMediaProgressCont, it.itemMediaProgress, it.itemMediaProgressEmpty)
@@ -435,6 +436,7 @@ class EpisodeAdapter(
         val v = watchViews(holder) ?: return
         v.cover.animate().cancel()
         v.badge?.animate()?.cancel()
+        EpisodeWatchAnimator.cancel(holder.itemView)
         holder.itemView.animate().cancel()
         v.cover.alpha = base(v.cover)
         v.badge?.let { it.alpha = base(it); it.scaleX = 1f; it.scaleY = 1f }
@@ -450,35 +452,23 @@ class EpisodeAdapter(
         val shown = v.cover.visibility == View.VISIBLE
         if (watched == shown) return // already looks right, leave the tile completely alone
 
-        val root = holder.itemView
-        val soft = android.view.animation.DecelerateInterpolator(1.6f)
+        val card = holder.itemView as? ViewGroup ?: return
         val pop = android.view.animation.OvershootInterpolator(2.4f)
         v.cover.animate().cancel()
         v.badge?.animate()?.cancel()
+        v.cover.alpha = base(v.cover)
         if (watched) {
-            // the tile dims in, the check pops in just after, and the whole card gives a little nod
-            v.cover.alpha = 0f
-            v.cover.visibility = View.VISIBLE
-            v.cover.animate().alpha(base(v.cover)).setDuration(650).setInterpolator(soft).start()
+            val stagger = EpisodeWatchAnimator.markWatched(card, v.cover, v.anchor)
             v.badge?.let {
                 it.alpha = 0f
                 it.scaleX = 0.2f
                 it.scaleY = 0.2f
                 it.visibility = View.VISIBLE
                 it.animate().alpha(base(it)).scaleX(1f).scaleY(1f)
-                    .setStartDelay(240).setDuration(520).setInterpolator(pop).start()
+                    .setStartDelay(stagger + 380).setDuration(520).setInterpolator(pop).start()
             }
-            root.animate().cancel()
-            root.animate().scaleX(0.965f).scaleY(0.965f).setDuration(160).withEndAction {
-                root.animate().scaleX(1f).scaleY(1f).setDuration(460)
-                    .setInterpolator(android.view.animation.OvershootInterpolator(2.6f)).start()
-            }.start()
         } else {
-            // un-watched: the dimming lifts and the check shrinks away
-            v.cover.animate().alpha(0f).setDuration(380).setInterpolator(soft).withEndAction {
-                v.cover.visibility = View.GONE
-                v.cover.alpha = base(v.cover)
-            }.start()
+            EpisodeWatchAnimator.markUnwatched(card, v.cover)
             v.badge?.let { b ->
                 b.animate().alpha(0f).scaleX(0.2f).scaleY(0.2f).setDuration(260).withEndAction {
                     b.visibility = View.GONE
