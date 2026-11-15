@@ -134,13 +134,16 @@ class SettingsAboutActivity : AppCompatActivity() {
                                 return@Settings
                             }
                             CoroutineScope(Dispatchers.IO).launch {
-                                val res = try {
+                                // Online copy first, then the policy bundled inside the app
+                                val online = try {
                                     val out = client.get(pPLink)
-                                    if (out.code != 200) {
-                                        client.get(backup)
-                                    } else {
-                                        out
-                                    }.text
+                                    val ok = if (out.code == 200) out else client.get(backup)
+                                    if (ok.code == 200) ok.text else null
+                                } catch (e: Exception) {
+                                    null
+                                }
+                                val res = online ?: try {
+                                    assets.open("privacy_policy.md").bufferedReader().use { it.readText() }
                                 } catch (e: Exception) {
                                     getString(R.string.failed_to_load)
                                 }

@@ -26,6 +26,7 @@ import nox.kiwami.databinding.ActivitySettingsBinding
 import nox.kiwami.initActivity
 import nox.kiwami.navBarHeight
 import nox.kiwami.openLinkInBrowser
+import nox.kiwami.others.AppUpdater
 import nox.kiwami.others.CustomBottomDialog
 import nox.kiwami.pop
 import nox.kiwami.setSafeOnClickListener
@@ -273,6 +274,12 @@ class SettingsActivity : AppCompatActivity() {
             (settingsLogo.drawable as Animatable).start()
             val array = resources.getStringArray(R.array.tips)
 
+            settingsLogo.setOnLongClickListener {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    AppUpdater.check(this@SettingsActivity, true)
+                }
+                true
+            }
             settingsLogo.setSafeOnClickListener {
                 cursedCounter++
                 (settingsLogo.drawable as Animatable).start()

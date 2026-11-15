@@ -48,6 +48,7 @@ import nox.kiwami.home.OfflineLaunchDialog
 import nox.kiwami.home.OfflinePill
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.notifications.TaskScheduler
+import nox.kiwami.others.AppUpdater
 import nox.kiwami.others.CustomBottomDialog
 import nox.kiwami.others.calc.CalcActivity
 import nox.kiwami.profile.ProfileActivity
@@ -450,6 +451,11 @@ class MainActivity : AppCompatActivity() {
                         dismiss()
                     }
                 }.show(supportFragmentManager, "dialog")
+            }
+        }
+        if (PrefManager.getVal<Boolean>(PrefName.CheckUpdate)) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                AppUpdater.check(this@MainActivity)
             }
         }
         if (PrefManager.getVal(PrefName.OC)) {

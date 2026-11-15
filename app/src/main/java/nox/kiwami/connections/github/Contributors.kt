@@ -49,7 +49,7 @@ class Contributors {
             Developer(
                 "Dantotsu",
                 "https://github.com/rebelonion.png",
-                "Original project Kiwami is based on, by rebelonion & contributors",
+                "Original project Kiwami is based on",
                 "https://github.com/rebelonion/Dantotsu"
             )
         )
