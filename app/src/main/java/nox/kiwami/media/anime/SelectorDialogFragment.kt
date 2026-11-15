@@ -882,9 +882,10 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
      */
     private fun openInExternalPlayer(context: Context?, currentMedia: Media, ep: Episode, video: Video): Boolean {
         val ctx = context ?: return false
-        val subtitles = ep.extractors?.find { it.server.name == ep.selectedExtractor }
-            ?.subtitles ?: emptyList()
-        return ExternalPlayerLauncher.launch(ctx, currentMedia, ep, video, subtitles)
+        val extractor = ep.extractors?.find { it.server.name == ep.selectedExtractor } ?: return false
+        return ExternalPlayerLauncher.launch(
+            ctx, currentMedia, ep, video, extractor.server, extractor.subtitles
+        )
     }
 
     private fun stopAddingToList() {

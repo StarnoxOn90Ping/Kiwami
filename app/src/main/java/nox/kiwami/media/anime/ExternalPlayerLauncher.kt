@@ -8,9 +8,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import nox.kiwami.R
+import androidx.documentfile.provider.DocumentFile
+import nox.kiwami.download.DownloadsManager
+import nox.kiwami.download.video.DrmDownloader
 import nox.kiwami.media.Media
+import nox.kiwami.media.MediaType
 import nox.kiwami.parsers.Subtitle
 import nox.kiwami.parsers.Video
+import nox.kiwami.parsers.VideoServer
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.toast
@@ -50,11 +55,11 @@ object ExternalPlayerLauncher {
     }
 
     /**
-     * Opens [video] in the selected external player.
+     * Opens [video] (or, for a downloaded episode, the downloaded file) in the selected external player.
      *
      * Returns true when the external player was started, so the caller must not start the built in
-     * player. Returns false when nothing was launched (no external player selected, a local or
-     * offline file the other app cannot read, or the player is not installed), in which case the
+     * player. Returns false when nothing was launched (no external player selected, an encrypted
+     * download the other app cannot decrypt, or the player is not installed), in which case the
      * caller carries on with the built in player.
      */
     fun launch(
@@ -62,12 +67,28 @@ object ExternalPlayerLauncher {
         media: Media,
         episode: Episode,
         video: Video,
+        server: VideoServer,
         subtitles: List<Subtitle>
     ): Boolean {
         val player = selected() ?: return false
-        val url = video.file.url
-        // Downloaded episodes live in Kiwami's own storage, which other apps cannot open
-        if (!url.startsWith("http://") && !url.startsWith("https://")) return false
+
+        // Where the video comes from: a stream url, or a downloaded file in the downloads folder
+        val videoUri: Uri
+        var subtitleUri: String? = null
+        var headers: Map<String, String> = emptyMap()
+        if (server.offline) {
+            val files = findDownloadedFiles(context, server) ?: return false
+            videoUri = files.first.uri
+            subtitleUri = files.second?.uri?.toString()
+        } else {
+            val url = video.file.url
+            if (!url.startsWith("http://") && !url.startsWith("https://")) return false
+            videoUri = Uri.parse(url)
+            headers = video.file.headers
+            val subtitle = subtitles.firstOrNull { it.language.contains("english", ignoreCase = true) }
+                ?: subtitles.firstOrNull()
+            subtitleUri = subtitle?.file?.url?.takeIf { it.startsWith("http") }
+        }
 
         if (!isInstalled(context, player)) {
             toast(context.getString(R.string.external_player_not_installed, player.displayName))
@@ -76,24 +97,28 @@ object ExternalPlayerLauncher {
 
         val episodeName = episode.title?.takeIf { it.isNotBlank() }
             ?: context.getString(R.string.episode_num, episode.number)
-        val subtitle = subtitles.firstOrNull { it.language.contains("english", ignoreCase = true) }
-            ?: subtitles.firstOrNull()
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             component = ComponentName(player.packageName, player.activityName)
-            setDataAndType(Uri.parse(url), "video/*")
+            setDataAndType(videoUri, "video/*")
             putExtra("title", "${media.userPreferredName} - $episodeName")
-            if (video.file.headers.isNotEmpty()) {
+            if (headers.isNotEmpty()) {
                 // Alternating key, value pairs
-                putExtra(
-                    "headers",
-                    video.file.headers.flatMap { listOf(it.key, it.value) }.toTypedArray()
-                )
+                putExtra("headers", headers.flatMap { listOf(it.key, it.value) }.toTypedArray())
             }
-            subtitle?.file?.url?.takeIf { it.startsWith("http") }?.let {
-                putExtra("subtitles_location", it)
-            }
+            subtitleUri?.let { putExtra("subtitles_location", it) }
+            if (server.offline) addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        if (server.offline) {
+            // The downloads folder belongs to Kiwami, so give the player read access to the files
+            runCatching {
+                context.grantUriPermission(player.packageName, videoUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                subtitleUri?.let {
+                    context.grantUriPermission(player.packageName, Uri.parse(it), Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            }
         }
 
         return try {
@@ -108,5 +133,29 @@ object ExternalPlayerLauncher {
             toast(context.getString(R.string.external_player_failed, player.displayName))
             false
         }
+    }
+
+    /**
+     * The video file (and subtitle file, if there is one) of a downloaded episode, found the same
+     * way the built in player finds them. Null when the files are missing or the download is
+     * encrypted (DRM), which only the built in player can play.
+     */
+    private fun findDownloadedFiles(context: Context, server: VideoServer): Pair<DocumentFile, DocumentFile?>? {
+        val parts = server.name.split("/")
+        val directory = DownloadsManager.findSubDirectory(
+            context, MediaType.ANIME, parts.first(), parts.last()
+        ) ?: return null
+        if (DrmDownloader.offlineMediaItem(context, directory) != null) return null
+
+        val files = directory.listFiles().filter { it.isFile && !it.name.orEmpty().startsWith(".") }
+        val videos = files.filter { !it.name.orEmpty().contains("subtitle", ignoreCase = true) }
+        val video = videos.firstOrNull {
+            val name = it.name.orEmpty()
+            name.endsWith(".mp4", true) || name.endsWith(".mkv", true) ||
+                name.endsWith(".webm", true) || name.endsWith(".ts", true) ||
+                it.type?.startsWith("video/") == true
+        } ?: videos.firstOrNull() ?: return null
+        val subtitle = files.firstOrNull { it.name.orEmpty().contains("subtitle", ignoreCase = true) }
+        return video to subtitle
     }
 }
