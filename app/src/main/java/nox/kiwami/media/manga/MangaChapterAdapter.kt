@@ -3,6 +3,7 @@ package nox.kiwami.media.manga
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.view.animation.LinearInterpolator
 import android.widget.NumberPicker
 import androidx.lifecycle.coroutineScope
@@ -14,6 +15,7 @@ import nox.kiwami.databinding.ItemChapterListBinding
 import nox.kiwami.databinding.ItemEpisodeCompactBinding
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaNameAdapter
+import nox.kiwami.media.anime.EpisodeWatchAnimator
 import nox.kiwami.media.anime.applySelectionStyle
 import nox.kiwami.setAnimation
 import nox.kiwami.util.SizeFormatter
@@ -34,6 +36,9 @@ class MangaChapterAdapter(
     companion object {
         /** Partial bind: only refresh the selected/unselected look of a card. */
         private const val PAYLOAD_SELECTION = "selection"
+
+        /** Partial bind: read / unread look, animated only when it actually changed. */
+        private const val PAYLOAD_READ = "read_state"
     }
 
     /** Chapters picked in multi-select mode, keyed by uniqueNumber() (number + scanlator). */
@@ -77,11 +82,80 @@ class MangaChapterAdapter(
         position: Int,
         payloads: MutableList<Any>
     ) {
+        var handled = false
         if (payloads.contains(PAYLOAD_SELECTION)) {
             if (position in arr.indices) applySelection(holder, arr[position], true)
-            return
+            handled = true
         }
+        if (payloads.contains(PAYLOAD_READ)) {
+            if (position in arr.indices) bindReadState(holder, arr[position])
+            handled = true
+        }
+        if (handled) return
         super.onBindViewHolder(holder, position, payloads)
+    }
+
+    fun refreshReadState() {
+        if (arr.isNotEmpty()) notifyItemRangeChanged(0, arr.size, PAYLOAD_READ)
+    }
+
+    private class ReadViews(val cover: View, val badge: View?)
+
+    private fun readViews(holder: RecyclerView.ViewHolder): ReadViews? = when (holder) {
+        is ChapterCompactViewHolder -> ReadViews(holder.binding.itemEpisodeViewedCover, null)
+        is ChapterListViewHolder ->
+            ReadViews(holder.binding.itemEpisodeViewedCover, holder.binding.itemEpisodeViewed)
+        else -> null
+    }
+
+    private fun isRead(chapter: MangaChapter): Boolean {
+        val progress = media.userProgress ?: return false
+        return (MediaNameAdapter.findChapterNumber(chapter.number) ?: 9999f) <= progress.toFloat()
+    }
+
+    private fun showReadState(holder: RecyclerView.ViewHolder, chapter: MangaChapter) {
+        val views = readViews(holder) ?: return
+        EpisodeWatchAnimator.cancel(holder.itemView)
+        views.badge?.animate()?.cancel()
+        val read = isRead(chapter)
+        views.cover.visibility = if (read) View.VISIBLE else View.GONE
+        views.badge?.let {
+            it.visibility = if (read) View.VISIBLE else View.GONE
+            it.alpha = 1f
+            it.scaleX = 1f
+            it.scaleY = 1f
+        }
+    }
+
+    private fun bindReadState(holder: RecyclerView.ViewHolder, chapter: MangaChapter) {
+        val views = readViews(holder) ?: return
+        val card = holder.itemView as? ViewGroup ?: return
+        val read = isRead(chapter)
+        if (read == (views.cover.visibility == View.VISIBLE)) return
+
+        views.badge?.animate()?.cancel()
+        if (read) {
+            val stagger = EpisodeWatchAnimator.markWatched(card, views.cover, null)
+            views.badge?.let {
+                it.alpha = 0f
+                it.scaleX = 0.2f
+                it.scaleY = 0.2f
+                it.visibility = View.VISIBLE
+                it.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                    .setStartDelay(stagger + 380).setDuration(520)
+                    .setInterpolator(OvershootInterpolator(2.4f)).start()
+            }
+        } else {
+            EpisodeWatchAnimator.markUnwatched(card, views.cover)
+            views.badge?.let { badge ->
+                badge.animate().alpha(0f).scaleX(0.2f).scaleY(0.2f).setDuration(260).withEndAction {
+                    badge.visibility = View.GONE
+                    badge.alpha = 1f
+                    badge.scaleX = 1f
+                    badge.scaleY = 1f
+                }.start()
+            }
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -431,16 +505,7 @@ class MangaChapterAdapter(
                 val ep = arr[position]
                 val parsedNumber = MediaNameAdapter.findChapterNumber(ep.number)?.toInt()
                 binding.itemEpisodeNumber.text = parsedNumber?.toString() ?: ep.number
-                if (media.userProgress != null) {
-                    if ((MediaNameAdapter.findChapterNumber(ep.number)
-                            ?: 9999f) <= media.userProgress!!.toFloat()
-                    )
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                    else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                        // long-press now selects the chapter (see the view holders)
-                    }
-                }
+                showReadState(holder, ep)
             }
 
             is ChapterListViewHolder -> {
@@ -470,21 +535,7 @@ class MangaChapterAdapter(
                     binding.itemChapterTitle.visibility = View.GONE
                 } else binding.itemChapterTitle.visibility = View.VISIBLE
 
-                if (media.userProgress != null) {
-                    if ((MediaNameAdapter.findChapterNumber(ep.number)
-                            ?: 9999f) <= media.userProgress!!.toFloat()
-                    ) {
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                        binding.itemEpisodeViewed.visibility = View.VISIBLE
-                    } else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                        binding.itemEpisodeViewed.visibility = View.GONE
-                        // long-press now selects the chapter (see the view holders)
-                    }
-                } else {
-                    binding.itemEpisodeViewedCover.visibility = View.GONE
-                    binding.itemEpisodeViewed.visibility = View.GONE
-                }
+                showReadState(holder, ep)
             }
         }
         if (position in arr.indices) applySelection(holder, arr[position], false)

@@ -381,7 +381,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         chapterAdapter.clearSelection()
         view?.postDelayed({
             if (_binding != null && ::chapterAdapter.isInitialized) {
-                chapterAdapter.notifyDataSetChanged()
+                chapterAdapter.refreshReadState()
             }
         }, 1500)
     }
@@ -424,7 +424,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         Refresh.all()
                         withContext(Dispatchers.Main) {
                             if (_binding != null && ::chapterAdapter.isInitialized) {
-                                chapterAdapter.notifyDataSetChanged()
+                                chapterAdapter.refreshReadState()
                             }
                             toast("Progress set to chapter $newProgress")
                         }
