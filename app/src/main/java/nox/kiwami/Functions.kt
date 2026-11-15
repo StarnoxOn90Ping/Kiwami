@@ -58,6 +58,8 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationSet
+import android.view.animation.AnimationUtils
+import android.view.animation.Interpolator
 import android.view.animation.OvershootInterpolator
 import android.view.animation.ScaleAnimation
 import android.view.animation.TranslateAnimation
@@ -691,6 +693,25 @@ class ZoomOutPageTransformer :
     }
 }
 
+private object LayoutAnimationSettings {
+    @Volatile
+    var enabled: Boolean = PrefManager.getVal(PrefName.LayoutAnimations)
+
+    @Volatile
+    var speed: Float = PrefManager.getVal(PrefName.AnimationSpeed)
+
+    private var overshoot: Interpolator? = null
+
+    init {
+        PrefManager.getLiveVal(PrefName.LayoutAnimations, true).observeForever { enabled = it }
+        PrefManager.getLiveVal(PrefName.AnimationSpeed, 1f).observeForever { speed = it }
+    }
+
+    fun overshoot(context: Context): Interpolator = overshoot
+        ?: AnimationUtils.loadInterpolator(context.applicationContext, R.anim.over_shoot)
+            .also { overshoot = it }
+}
+
 fun setAnimation(
     context: Context,
     viewToAnimate: View,
@@ -698,7 +719,7 @@ fun setAnimation(
     list: FloatArray = floatArrayOf(0.0f, 1.0f, 0.0f, 1.0f),
     pivot: Pair<Float, Float> = 0.5f to 0.5f
 ) {
-    if (PrefManager.getVal(PrefName.LayoutAnimations)) {
+    if (LayoutAnimationSettings.enabled) {
         val anim = ScaleAnimation(
             list[0],
             list[1],
@@ -709,8 +730,8 @@ fun setAnimation(
             Animation.RELATIVE_TO_SELF,
             pivot.second
         )
-        anim.duration = (duration * (PrefManager.getVal(PrefName.AnimationSpeed) as Float)).toLong()
-        anim.setInterpolator(context, R.anim.over_shoot)
+        anim.duration = (duration * LayoutAnimationSettings.speed).toLong()
+        anim.interpolator = LayoutAnimationSettings.overshoot(context)
         viewToAnimate.startAnimation(anim)
     }
 }
