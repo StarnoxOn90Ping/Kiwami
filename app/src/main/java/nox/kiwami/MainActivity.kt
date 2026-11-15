@@ -143,7 +143,9 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             TaskScheduler.scheduleSingleWork(this@MainActivity)
         }
-        nox.kiwami.notifications.airing.AiringAlarmScheduler.restoreAll(applicationContext)
+        lifecycleScope.launch(Dispatchers.IO) {
+            nox.kiwami.notifications.airing.AiringAlarmScheduler.restoreAll(applicationContext)
+        }
 
         if (Intent.ACTION_VIEW == intent.action) {
             handleViewIntent(intent)

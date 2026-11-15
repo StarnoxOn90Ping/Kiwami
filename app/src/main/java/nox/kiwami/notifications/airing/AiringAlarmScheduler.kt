@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit
 object AiringAlarmScheduler {
 
     private const val STORE_KEY = "airing_alarms_v1"
+    private const val LAST_SYNC_KEY = "airing_last_sync"
+    private val SYNC_INTERVAL_MS = TimeUnit.HOURS.toMillis(6)
     const val EXTRA_MEDIA_ID = "airing_media_id"
     const val ACTION_AIRING = "nox.kiwami.action.AIRING_ALARM"
 
@@ -156,7 +158,8 @@ object AiringAlarmScheduler {
 
     /**
      * Re-arms every stored alarm (after boot, app update, or when exact alarm permission changes)
-     * and asks AniList for fresh data for every subscribed anime.
+     * and refreshes airing data from AniList at most every 6 hours, or right away when a stored
+     * alarm has already passed.
      */
     fun restoreAll(context: Context) {
         try {
@@ -164,16 +167,20 @@ object AiringAlarmScheduler {
             val now = System.currentTimeMillis()
             val subscribed = SubscriptionHelper.getSubscriptions().filterValues { it.isAnime }
             val stored = load()
-            // drop alarms of media we are no longer subscribed to
             stored.keys.filter { !subscribed.containsKey(it) }.forEach { cancel(context, it) }
+            val lastSync = PrefManager.getCustomVal(LAST_SYNC_KEY, 0L)
+            val syncDue = now - lastSync >= SYNC_INTERVAL_MS
             subscribed.keys.forEach { id ->
-                val alarm = stored[id]
-                if (alarm != null && alarm.airingAtSec * 1000 > now) {
-                    arm(context, id, alarm.airingAtSec * 1000)
+                val airingAtMs = stored[id]?.airingAtSec?.times(1000)
+                val expired = airingAtMs != null && airingAtMs <= now
+                if (airingAtMs != null && !expired) {
+                    arm(context, id, airingAtMs)
                 }
-                // always refresh: airing times shift
-                enqueueSync(context, id, delayMinutes = 0)
+                if (syncDue || expired) {
+                    enqueueSync(context, id, delayMinutes = 0)
+                }
             }
+            if (syncDue) PrefManager.setCustomVal(LAST_SYNC_KEY, now)
         } catch (e: Exception) {
             Logger.log(e)
         }
