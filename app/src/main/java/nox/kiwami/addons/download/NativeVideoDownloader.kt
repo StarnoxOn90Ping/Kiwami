@@ -504,31 +504,38 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
 
                         val subDeferreds = subtitleUrls.mapIndexed { index, sub ->
                             async {
-                                val ext = when {
-                                    sub.first.contains(".ass", ignoreCase = true) || sub.first.contains(".ssa", ignoreCase = true) -> "ass"
-                                    sub.first.contains(".srt", ignoreCase = true) -> "srt"
-                                    else -> "vtt"
-                                }
-                                val subTempFile =
-                                    File(context.cacheDir, "hls_dl_${sessionId}_sub_${index}.$ext")
-                                synchronized(localTempFiles) { localTempFiles.add(subTempFile) }
-                                val subUrl = if (sub.first.startsWith("http://") || sub.first.startsWith("https://")) {
-                                    sub.first
-                                } else {
-                                    nox.kiwami.media.anime.player.PlayerSubtitleManager.resolveSubtitleUrl(sub.first, videoUrl)
-                                }
-                                val req = Request.Builder().url(subUrl).headers(okHeaders).build()
-                                client.newCall(req).execute().use { res ->
-                                    if (!res.isSuccessful) {
-                                        throw IOException(
-                                            "Failed to download subtitle: ${sub.first}, code: ${res.code}"
-                                        )
+                                try {
+                                    val ext = when {
+                                        sub.first.contains(".ass", ignoreCase = true) || sub.first.contains(".ssa", ignoreCase = true) -> "ass"
+                                        sub.first.contains(".srt", ignoreCase = true) -> "srt"
+                                        else -> "vtt"
                                     }
-                                    subTempFile.outputStream().use { out ->
-                                        res.body.byteStream().copyTo(out)
+                                    val subTempFile =
+                                        File(context.cacheDir, "hls_dl_${sessionId}_sub_${index}.$ext")
+                                    synchronized(localTempFiles) { localTempFiles.add(subTempFile) }
+                                    val subUrl = if (sub.first.startsWith("http://") || sub.first.startsWith("https://")) {
+                                        sub.first
+                                    } else {
+                                        nox.kiwami.media.anime.player.PlayerSubtitleManager.resolveSubtitleUrl(sub.first, videoUrl)
                                     }
+                                    val req = Request.Builder().url(subUrl).headers(okHeaders).build()
+                                    client.newCall(req).execute().use { res ->
+                                        if (!res.isSuccessful) {
+                                            throw IOException(
+                                                "Failed to download subtitle: ${sub.first}, code: ${res.code}"
+                                            )
+                                        }
+                                        subTempFile.outputStream().use { out ->
+                                            res.body.byteStream().copyTo(out)
+                                        }
+                                    }
+                                    subTempFile.absolutePath to sub.second
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Logger.log("Built-in: Skipping subtitle ${sub.first}: ${e.message}")
+                                    null
                                 }
-                                subTempFile.absolutePath to sub.second
                             }
                         }
 
@@ -549,7 +556,9 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                             throw CancellationException("Cancelled by user")
                         }
                         session.durationSeconds = hlsResult.durationSeconds
-                        val localSubtitles = subDeferreds.awaitAll()
+                        val localSubtitles = subDeferreds.awaitAll().filterNotNull().filter {
+                            File(it.first).let { file -> file.exists() && file.length() > 0 }
+                        }
                         val localAudio = audioDeferreds.awaitAll()
 
                         remuxMpegTsToMkv(tempVideoFile, downloadPath, localSubtitles, localAudio)
