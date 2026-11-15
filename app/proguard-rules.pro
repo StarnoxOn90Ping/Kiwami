@@ -173,6 +173,16 @@
 -dontwarn ca.mpreg.webgpuviewer.**
 
 #############################################
+# ML Kit / Firebase component registrars
+#############################################
+# ML Kit and Firebase create their components by class name through reflection (ComponentDiscovery).
+# R8 removed the no-argument constructor of CommonComponentRegistrar, so ML Kit failed to start and the
+# release build crashed on launch ("NoSuchMethodException: CommonComponentRegistrar.<init>").
+-keep class * implements com.google.firebase.components.ComponentRegistrar { *; }
+-keep class com.google.mlkit.common.** { *; }
+-dontwarn com.google.mlkit.**
+
+#############################################
 # ML Kit Text Recognition
 #############################################
 -keep class com.google.mlkit.vision.** { *; }
