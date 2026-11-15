@@ -1,5 +1,6 @@
 package nox.kiwami.others
 
+import android.util.LruCache
 import nox.kiwami.currContext
 import nox.kiwami.media.Media
 import nox.kiwami.okHttpClient
@@ -38,16 +39,35 @@ object PinnedImages {
         return File(base, "pinned_images").apply { mkdirs() }
     }
 
-    private fun hash(url: String): String =
-        MessageDigest.getInstance("SHA-1").digest(url.toByteArray())
-            .joinToString("") { "%02x".format(it) }
+    private const val HEX = "0123456789abcdef"
+    private val hashes = LruCache<String, String>(2048)
+    @Volatile private var lookupBase: File? = null
+
+    private fun lookupDir(): File? {
+        lookupBase?.let { return it }
+        val base = currContext()?.cacheDir ?: return null
+        return File(base, "pinned_images").also { lookupBase = it }
+    }
+
+    private fun hash(url: String): String {
+        hashes.get(url)?.let { return it }
+        val bytes = MessageDigest.getInstance("SHA-1").digest(url.toByteArray())
+        val out = StringBuilder(bytes.size * 2)
+        for (b in bytes) {
+            val v = b.toInt() and 0xff
+            out.append(HEX[v shr 4]).append(HEX[v and 0x0f])
+        }
+        return out.toString().also { hashes.put(url, it) }
+    }
 
     /** The pinned copy of [url], if there is one. */
     fun fileFor(url: String): File? {
         if (!SmartCache.isEnabled()) return null
-        val d = dir() ?: return null
+        val d = lookupDir() ?: return null
         val h = hash(url)
-        return listOf(LIB, TREND).map { File(d, it + h) }.firstOrNull { it.exists() && it.length() > 0 }
+        val lib = File(d, LIB + h)
+        if (lib.length() > 0) return lib
+        return File(d, TREND + h).takeIf { it.length() > 0 }
     }
 
     private fun urlsOf(list: Collection<Media>?): Set<String> =

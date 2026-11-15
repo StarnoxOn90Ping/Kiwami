@@ -62,15 +62,15 @@ object CustomMediaImages {
     /** The custom picture that should replace [url], or null. Cheap enough for every image load. */
     fun overrideFor(url: String?): File? {
         if (url.isNullOrEmpty() || !url.startsWith("http")) return null
-        val match = urlRegex.find(url) ?: return null
-        val kind = match.groupValues[1]
-        val id = match.groupValues[2]
         val map = index ?: try {
             buildIndex()
         } catch (_: Exception) {
             return null
         }
         if (map.isEmpty()) return null
+        val match = urlRegex.find(url) ?: return null
+        val kind = match.groupValues[1]
+        val id = match.groupValues[2]
         return map["${id}_$kind"]?.takeIf { it.exists() }
     }
 

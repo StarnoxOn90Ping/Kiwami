@@ -842,8 +842,8 @@ fun ImageView.loadImage(url: String?, size: Int = 0) {
             loadLocalImage(it, size)
             return
         }
-        val localFile = File(url)
-        if (localFile.exists()) {
+        val localFile = if (url.startsWith("http") || url.startsWith("content://")) null else File(url)
+        if (localFile != null && localFile.exists()) {
             loadLocalImage(localFile, size)
         } else {
             loadImage(FileUrl(url), size)
