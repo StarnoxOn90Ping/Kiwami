@@ -134,15 +134,33 @@ class SettingsAboutActivity : AppCompatActivity() {
                                 return@Settings
                             }
                             CoroutineScope(Dispatchers.IO).launch {
-                                // Online copy first, then the policy bundled inside the app
+                                // 1) online copy, 2) last copy saved from a previous online load, 3) copy bundled in the app
+                                val cacheFile = java.io.File(filesDir, "privacy_policy.md")
                                 val online = try {
                                     val out = client.get(pPLink)
                                     val ok = if (out.code == 200) out else client.get(backup)
-                                    if (ok.code == 200) ok.text else null
+                                    if (ok.code == 200 && ok.text.isNotBlank()) ok.text else null
                                 } catch (e: Exception) {
                                     null
                                 }
-                                val res = online ?: try {
+                                if (online != null) {
+                                    // keep the saved copy in step with the repo, so the newest policy is used next time
+                                    try {
+                                        if (!cacheFile.exists() || cacheFile.readText() != online) {
+                                            cacheFile.writeText(online)
+                                        }
+                                    } catch (e: Exception) {
+                                        // saving is best effort, showing the policy is what matters
+                                    }
+                                }
+                                val saved = if (online == null) {
+                                    try {
+                                        if (cacheFile.exists()) cacheFile.readText().takeIf { it.isNotBlank() } else null
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                } else null
+                                val res = online ?: saved ?: try {
                                     assets.open("privacy_policy.md").bufferedReader().use { it.readText() }
                                 } catch (e: Exception) {
                                     getString(R.string.failed_to_load)
