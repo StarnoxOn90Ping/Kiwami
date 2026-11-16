@@ -465,7 +465,7 @@ class EpisodeAdapter(
                 it.scaleY = 0.2f
                 it.visibility = View.VISIBLE
                 it.animate().alpha(base(it)).scaleX(1f).scaleY(1f)
-                    .setStartDelay(stagger + 380).setDuration(520).setInterpolator(pop).start()
+                    .setStartDelay(stagger + EpisodeWatchAnimator.BADGE_DELAY_MS).setDuration(520).setInterpolator(pop).start()
             }
         } else {
             EpisodeWatchAnimator.markUnwatched(card, v.cover)

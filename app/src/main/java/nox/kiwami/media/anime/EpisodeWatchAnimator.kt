@@ -12,22 +12,24 @@ import android.graphics.PathMeasure
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
-import androidx.core.graphics.ColorUtils
-import com.google.android.material.color.MaterialColors
+import java.util.Random
 import java.util.WeakHashMap
+import kotlin.math.sin
 
 internal object EpisodeWatchAnimator {
 
-    private const val WIPE_MS = 560L
-    private const val BURST_MS = 760L
-    private const val BURST_DELAY_MS = 170L
+    const val BADGE_DELAY_MS = 1000L
+
+    private const val WIPE_MS = 900L
+    private const val UNWIPE_MS = 600L
+    private const val BURST_MS = 1300L
+    private const val BURST_DELAY_MS = 260L
     private const val STAGGER_MS = 45L
     private const val MAX_STAGGER_MS = 450L
     private const val BATCH_WINDOW_MS = 150L
@@ -58,16 +60,10 @@ internal object EpisodeWatchAnimator {
 
         val animators = ArrayList<Animator>(3)
         var pending = 0
-        val accent = MaterialColors.getColor(card, androidx.appcompat.R.attr.colorPrimary, Color.CYAN)
-        val onAccent = MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnPrimary, Color.WHITE)
 
-        val edgeWidth = (36 * card.resources.displayMetrics.density).toInt()
-        val edge = GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(Color.TRANSPARENT, ColorUtils.setAlphaComponent(accent, 150), Color.TRANSPARENT)
-        )
-        val burst = if (fancy) CheckBurst(card, anchor, accent, onAccent) else null
-        if (fancy) card.overlay.add(edge)
+        val glitter = if (fancy) GlitterTrail(card, if (index == 0) 14 else 7) else null
+        val burst = if (fancy) CheckBurst(card, anchor) else null
+        glitter?.let { card.overlay.add(it) }
         burst?.let { card.overlay.add(it) }
 
         val cleanup = {
@@ -75,7 +71,7 @@ internal object EpisodeWatchAnimator {
                 it.removeAllListeners()
                 it.cancel()
             }
-            card.overlay.remove(edge)
+            glitter?.let { card.overlay.remove(it) }
             burst?.let { card.overlay.remove(it) }
             cover.scaleX = 1f
             card.animate().cancel()
@@ -102,15 +98,11 @@ internal object EpisodeWatchAnimator {
         track(ValueAnimator.ofFloat(0f, 1f).apply {
             duration = WIPE_MS
             startDelay = stagger
-            interpolator = DecelerateInterpolator(1.6f)
+            interpolator = DecelerateInterpolator(1.4f)
             addUpdateListener {
                 val f = it.animatedValue as Float
                 cover.scaleX = f
-                if (fancy) {
-                    val x = (f * (card.width + edgeWidth) - edgeWidth).toInt()
-                    edge.setBounds(x, 0, x + edgeWidth, card.height)
-                    edge.alpha = (255 * (1f - f * f)).toInt()
-                }
+                glitter?.progress = f
             }
         })
 
@@ -131,9 +123,9 @@ internal object EpisodeWatchAnimator {
         card.animate()
             .setStartDelay(stagger)
             .scaleX(0.97f).scaleY(0.97f)
-            .setDuration(160)
+            .setDuration(220)
             .withEndAction {
-                card.animate().setStartDelay(0).scaleX(1f).scaleY(1f).setDuration(460)
+                card.animate().setStartDelay(0).scaleX(1f).scaleY(1f).setDuration(560)
                     .setInterpolator(OvershootInterpolator(2.6f)).start()
             }
             .start()
@@ -149,8 +141,8 @@ internal object EpisodeWatchAnimator {
         }
         cover.pivotX = cover.width.toFloat()
         val animator = ValueAnimator.ofFloat(1f, 0f).apply {
-            duration = 360
-            interpolator = DecelerateInterpolator(1.6f)
+            duration = UNWIPE_MS
+            interpolator = DecelerateInterpolator(1.4f)
             addUpdateListener { cover.scaleX = it.animatedValue as Float }
         }
         running[card] = {
@@ -168,12 +160,75 @@ internal object EpisodeWatchAnimator {
         animator.start()
     }
 
-    private class CheckBurst(
-        card: ViewGroup,
-        anchor: View?,
-        private val accent: Int,
-        private val onAccent: Int
-    ) : Drawable() {
+    private class GlitterTrail(card: ViewGroup, count: Int) : Drawable() {
+
+        var progress = 0f
+            set(value) {
+                field = value
+                invalidateSelf()
+            }
+
+        private val density = card.resources.displayMetrics.density
+        private val trail = 64 * density
+        private val random = Random(card.hashCode().toLong())
+        private val lag = FloatArray(count) { random.nextFloat() }
+        private val row = FloatArray(count) { random.nextFloat() }
+        private val size = FloatArray(count) { (0.8f + random.nextFloat() * 1.5f) * density }
+        private val phase = FloatArray(count) { random.nextFloat() * TWO_PI }
+        private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+        private val core = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+        private val cross = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = density
+            strokeCap = Paint.Cap.ROUND
+        }
+
+        init {
+            setBounds(0, 0, card.width, card.height)
+        }
+
+        override fun draw(canvas: Canvas) {
+            val width = bounds.width().toFloat()
+            val height = bounds.height().toFloat()
+            val edge = progress * (width + trail)
+            val ending = if (progress > 0.8f) (1f - progress) / 0.2f else 1f
+
+            for (i in lag.indices) {
+                val x = edge - lag[i] * trail
+                if (x < 0f || x > width) continue
+                val twinkle = 0.5f + 0.5f * sin(phase[i] + progress * 24f)
+                val strength = (1f - lag[i]) * twinkle * ending
+                if (strength < 0.03f) continue
+                val y = row[i] * height + sin(phase[i] + progress * 7f) * 2f * density
+
+                glow.alpha = (strength * 70).toInt()
+                canvas.drawCircle(x, y, size[i] * 2.6f, glow)
+                core.alpha = (strength * 255).toInt()
+                canvas.drawCircle(x, y, size[i], core)
+
+                if (size[i] > 1.7f * density) {
+                    val arm = size[i] * 2.4f * (0.6f + 0.4f * twinkle)
+                    cross.alpha = (strength * 200).toInt()
+                    canvas.drawLine(x - arm, y, x + arm, y, cross)
+                    canvas.drawLine(x, y - arm, x, y + arm, cross)
+                }
+            }
+        }
+
+        override fun setAlpha(alpha: Int) = Unit
+
+        override fun setColorFilter(colorFilter: ColorFilter?) = Unit
+
+        @Deprecated("Deprecated in Java")
+        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+
+        private companion object {
+            const val TWO_PI = 6.2831855f
+        }
+    }
+
+    private class CheckBurst(card: ViewGroup, anchor: View?) : Drawable() {
 
         var progress = 0f
             set(value) {
@@ -183,14 +238,19 @@ internal object EpisodeWatchAnimator {
 
         private val density = card.resources.displayMetrics.density
         private val radius = minOf(22 * density, card.height / 3f)
-        private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
-        private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = accent
+        private val disc = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xB3000000.toInt() }
+        private val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
             style = Paint.Style.STROKE
-            strokeWidth = 3 * density
+            strokeWidth = 1.5f * density
+        }
+        private val pulse = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 2f * density
         }
         private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = onAccent
+            color = Color.WHITE
             style = Paint.Style.STROKE
             strokeWidth = 3.2f * density
             strokeCap = Paint.Cap.ROUND
@@ -203,8 +263,8 @@ internal object EpisodeWatchAnimator {
         }
         private val measure = PathMeasure(check, false)
         private val segment = Path()
-        private val pop = OvershootInterpolator(2.2f)
-        private var globalAlpha = 255
+        private val pop = OvershootInterpolator(2f)
+        private val ease = DecelerateInterpolator(1.8f)
 
         init {
             val area = Rect()
@@ -220,22 +280,24 @@ internal object EpisodeWatchAnimator {
 
         override fun draw(canvas: Canvas) {
             val p = progress
-            val fade = if (p > 0.78f) 1f - (p - 0.78f) / 0.22f else 1f
-            val alpha = (globalAlpha * fade).toInt()
+            val fade = if (p > 0.8f) 1f - (p - 0.8f) / 0.2f else 1f
+            val alpha = (255 * fade).toInt()
             val cx = bounds.exactCenterX()
             val cy = bounds.exactCenterY()
 
-            val ringT = ((p - 0.15f) / 0.6f).coerceIn(0f, 1f)
-            if (ringT > 0f) {
-                ring.alpha = (alpha * (1f - ringT)).toInt()
-                canvas.drawCircle(cx, cy, radius * (1f + 0.9f * ringT), ring)
+            val pulseT = ((p - 0.12f) / 0.63f).coerceIn(0f, 1f)
+            if (pulseT > 0f) {
+                pulse.alpha = (alpha * 0.7f * (1f - pulseT)).toInt()
+                canvas.drawCircle(cx, cy, radius * (1f + 0.9f * pulseT), pulse)
             }
 
-            val discT = (p / 0.35f).coerceIn(0f, 1f)
-            fill.alpha = alpha
-            canvas.drawCircle(cx, cy, radius * pop.getInterpolation(discT), fill)
+            val discR = radius * pop.getInterpolation((p / 0.28f).coerceIn(0f, 1f))
+            disc.alpha = (0xB3 * fade).toInt()
+            canvas.drawCircle(cx, cy, discR, disc)
+            rim.alpha = (alpha * 0.9f).toInt()
+            canvas.drawCircle(cx, cy, discR, rim)
 
-            val checkT = ((p - 0.2f) / 0.4f).coerceIn(0f, 1f)
+            val checkT = ease.getInterpolation(((p - 0.22f) / 0.4f).coerceIn(0f, 1f))
             if (checkT > 0f) {
                 segment.rewind()
                 measure.getSegment(0f, measure.length * checkT, segment, true)
@@ -247,9 +309,7 @@ internal object EpisodeWatchAnimator {
             }
         }
 
-        override fun setAlpha(alpha: Int) {
-            globalAlpha = alpha
-        }
+        override fun setAlpha(alpha: Int) = Unit
 
         override fun setColorFilter(colorFilter: ColorFilter?) = Unit
 

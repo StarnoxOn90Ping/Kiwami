@@ -142,7 +142,7 @@ class MangaChapterAdapter(
                 it.scaleY = 0.2f
                 it.visibility = View.VISIBLE
                 it.animate().alpha(1f).scaleX(1f).scaleY(1f)
-                    .setStartDelay(stagger + 380).setDuration(520)
+                    .setStartDelay(stagger + EpisodeWatchAnimator.BADGE_DELAY_MS).setDuration(520)
                     .setInterpolator(OvershootInterpolator(2.4f)).start()
             }
         } else {
