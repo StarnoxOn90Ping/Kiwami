@@ -11,6 +11,7 @@ import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
 import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
+import okhttp3.Dispatcher
 import java.io.InputStream
 
 
@@ -26,11 +27,18 @@ class KiwamiGlideApp : AppGlideModule() {
     }
 
     override fun registerComponents(context: Context, glide: Glide, registry: Registry) {
+        val imageClient = okHttpClient.newBuilder()
+            .dispatcher(Dispatcher().apply { maxRequestsPerHost = IMAGE_REQUESTS_PER_HOST })
+            .build()
         registry.replace(
             GlideUrl::class.java,
             InputStream::class.java,
-            OkHttpUrlLoader.Factory(okHttpClient)
+            OkHttpUrlLoader.Factory(imageClient)
         )
         super.registerComponents(context, glide, registry)
+    }
+
+    private companion object {
+        const val IMAGE_REQUESTS_PER_HOST = 16
     }
 }
