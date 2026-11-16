@@ -31,7 +31,6 @@ class Contributors {
             e.printStackTrace()
         }
 
-        // Always show the owner, even if GitHub can't be reached or the repo is private
         if (developers.none { it.name.equals(OWNER, ignoreCase = true) }) {
             developers.add(
                 0,
@@ -44,7 +43,6 @@ class Contributors {
             )
         }
 
-        // Credit to the project Kiwami is based on
         developers.add(
             Developer(
                 "Dantotsu",

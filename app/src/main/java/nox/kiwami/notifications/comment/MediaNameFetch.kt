@@ -129,7 +129,6 @@ class MediaNameFetch {
                 }
             }
 
-            // Fill any remaining with cache fallback or "Unknown"
             validIds.forEach { id ->
                 mediaMap.putIfAbsent(id, getCachedMedia(id) ?: ReturnedData("Unknown", "", "#222222"))
             }

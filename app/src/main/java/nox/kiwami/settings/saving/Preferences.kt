@@ -9,12 +9,8 @@ import nox.kiwami.settings.saving.internal.Location
 import nox.kiwami.settings.saving.internal.Pref
 
 enum class PrefName(val data: Pref) {
-    //General
-    // Streak data as JSON. Lives in Location.General, which is exportable, so backups include it.
     StreakData(Pref(Location.General, String::class, "")),
-    // Watch / read time per day as JSON (Home info pill). Exportable, so backups include it.
     WatchTimeData(Pref(Location.General, String::class, "")),
-    // Streak settings (Settings > Streak)
     StreakShow(Pref(Location.General, Boolean::class, true)),
     StreakFireAnimated(Pref(Location.General, Boolean::class, true)),
     StreakButtonFire(Pref(Location.General, Boolean::class, true)),
@@ -26,7 +22,6 @@ enum class PrefName(val data: Pref) {
     StreakGraceDay(Pref(Location.General, Boolean::class, true)),
     StreakDayStart(Pref(Location.General, Int::class, 4)),
     StreakThreshold(Pref(Location.General, Int::class, 80)),
-    // Debug tools: never exported, they only change what the Home header shows.
     StreakDebug(Pref(Location.Irrelevant, Boolean::class, false)),
     StreakDebugCount(Pref(Location.Irrelevant, Int::class, 0)),
     StreakDebugStatus(Pref(Location.Irrelevant, Int::class, 0)),
@@ -100,7 +95,6 @@ enum class PrefName(val data: Pref) {
     SmartCacheLimitMb(Pref(Location.General, Int::class, 500)),
     LastAutoBackupTimestamp(Pref(Location.General, Long::class, 0L)),
 
-    //User Interface
     EpisodeMetadataSource(Pref(Location.UI, Int::class, 0)),
     UseOLED(Pref(Location.UI, Boolean::class, true)),
     UseSystemFont(Pref(Location.UI, Boolean::class, false)),
@@ -148,8 +142,6 @@ enum class PrefName(val data: Pref) {
     HideSpoilerTags(Pref(Location.UI, Boolean::class, true)),
 
 
-    //Player
-    // 0 = built in player, otherwise the id of an ExternalPlayer (1 = VLC)
     ExternalPlayer(Pref(Location.Player, Int::class, 0)),
     DefaultSpeed(Pref(Location.Player, Int::class, 5)),
     CursedSpeeds(Pref(Location.Player, Boolean::class, false)),
@@ -198,7 +190,6 @@ enum class PrefName(val data: Pref) {
     UseAdditionalCodec(Pref(Location.Player, Boolean::class, false)),
     AutoSelectServer(Pref(Location.Player, Boolean::class, false)),
 
-    //Reader
     ShowSource(Pref(Location.Reader, Boolean::class, true)),
     ShowSystemBars(Pref(Location.Reader, Boolean::class, false)),
     AutoDetectWebtoon(Pref(Location.Reader, Boolean::class, true)),
@@ -224,25 +215,23 @@ enum class PrefName(val data: Pref) {
     OneHandZoom(Pref(Location.Reader, Boolean::class, true)),
     AutoScroll(Pref(Location.Reader, Boolean::class, false)),
     AutoScrollSpeed(Pref(Location.Reader, Float::class, 3.0f)),
-    ReaderBackgroundColor(Pref(Location.Reader, Int::class, 0)), // 0=Auto, 1=Black, 2=Gray, 3=White
-    DefaultRotation(Pref(Location.Reader, Int::class, 0)), // 0=Free, 1=Portrait, 2=Landscape
-    ContinuousSidePadding(Pref(Location.Reader, Int::class, 0)), // Percentage (0-25%)
+    ReaderBackgroundColor(Pref(Location.Reader, Int::class, 0)),
+    DefaultRotation(Pref(Location.Reader, Int::class, 0)),
+    ContinuousSidePadding(Pref(Location.Reader, Int::class, 0)),
     EInkFlashPageChange(Pref(Location.Reader, Boolean::class, false)),
-    ImageQuality(Pref(Location.Reader, Int::class, 0)), // 0=FAST, 1=BALANCED, 2=LANCZOS
+    ImageQuality(Pref(Location.Reader, Int::class, 0)),
     WebGpuRenderer(Pref(Location.Reader, Boolean::class, false)),
     PagePreloadAmount(Pref(Location.Reader, Int::class, 3)),
     AlwaysShowChapterTransition(Pref(Location.Reader, Boolean::class, false)),
     
-    // Data Saver
-    DataSaverMode(Pref(Location.Reader, Int::class, 0)), // 0=NONE, 1=BANDWIDTH_HERO, 2=WSRV_NL
+    DataSaverMode(Pref(Location.Reader, Int::class, 0)),
     DataSaverImageQuality(Pref(Location.Reader, Int::class, 80)),
-    DataSaverImageFormatJpeg(Pref(Location.Reader, Boolean::class, false)), // false=WebP, true=JPEG
+    DataSaverImageFormatJpeg(Pref(Location.Reader, Boolean::class, false)),
     DataSaverIgnoreJpeg(Pref(Location.Reader, Boolean::class, false)),
     DataSaverIgnoreGif(Pref(Location.Reader, Boolean::class, true)),
-    DataSaverServer(Pref(Location.Reader, String::class, "https://bandwidth-hero-proxy-nu-nine.vercel.app/")), // For Bandwidth Hero server URL
+    DataSaverServer(Pref(Location.Reader, String::class, "https://bandwidth-hero-proxy-nu-nine.vercel.app/")),
     DataSaverColorBW(Pref(Location.Reader, Boolean::class, false)),
 
-    //Novel Reader
     CurrentThemeName(Pref(Location.NovelReader, String::class, "Default")),
     LayoutNovel(Pref(Location.NovelReader, Int::class, 0)),
     DualPageModeNovel(Pref(Location.NovelReader, Int::class, 1)),
@@ -259,7 +248,6 @@ enum class PrefName(val data: Pref) {
     KeepScreenOnNovel(Pref(Location.NovelReader, Boolean::class, false)),
     VolumeButtonsNovel(Pref(Location.NovelReader, Boolean::class, false)),
 
-    //Irrelevant
     Incognito(Pref(Location.Irrelevant, Boolean::class, false)),
     DiscordStatus(Pref(Location.Irrelevant, String::class, "online")),
     DiscordRPCModeAnime(Pref(Location.Irrelevant, String::class, "anilist")),
@@ -300,7 +288,6 @@ enum class PrefName(val data: Pref) {
     RefreshStatus(Pref(Location.Irrelevant, Boolean::class, false)),
     rpcEnabled(Pref(Location.Irrelevant, Boolean::class, true)),
 
-    //Protected
     DiscordToken(Pref(Location.Protected, String::class, "")),
     DiscordId(Pref(Location.Protected, String::class, "")),
     DiscordUserName(Pref(Location.Protected, String::class, "")),
@@ -318,7 +305,6 @@ enum class PrefName(val data: Pref) {
     Socks5ProxyUsername(Pref(Location.Protected, String::class, "")),
     Socks5ProxyPassword(Pref(Location.Protected, String::class, "")),
 
-    // Torrent Settings
     TorrentEncryption(Pref(Location.Player, Boolean::class, false)),
     TorrentWifiOnly(Pref(Location.Player, Boolean::class, false)),
     TorrentDownloadSpeedLimit(Pref(Location.Player, Int::class, 0)),

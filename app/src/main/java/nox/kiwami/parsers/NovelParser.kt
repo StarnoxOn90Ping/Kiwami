@@ -32,8 +32,6 @@ abstract class NovelParser : BaseParser() {
     }
 
     open suspend fun sortedSearch(mediaObj: Media): List<ShowResponse> {
-        //val query = mediaObj.name ?: mediaObj.nameRomaji
-        //return search(query).sortByVolume(query)
         val results: List<ShowResponse>
         return if (mediaObj.name != null) {
             val query = mediaObj.name

@@ -21,9 +21,9 @@ class StringMatcher {
                 for (j in 1..len2) {
                     val cost = if (c1 == s2[j - 1]) 0 else 1
                     curr[j] = minOf(
-                        prev[j] + 1,       // deletion
-                        curr[j - 1] + 1,   // insertion
-                        prev[j - 1] + cost // substitution
+                        prev[j] + 1,
+                        curr[j - 1] + 1,
+                        prev[j - 1] + cost
                     )
                 }
                 val temp = prev

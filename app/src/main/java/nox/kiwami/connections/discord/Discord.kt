@@ -35,7 +35,7 @@ object Discord {
 
     fun saveToken(newToken: String) {
         PrefManager.setVal(PrefName.DiscordToken, newToken)
-        token = newToken  // keep in-memory token in sync
+        token = newToken
     }
 
     fun removeSavedToken(context: Context) {
@@ -46,12 +46,10 @@ object Discord {
         clearProfile()
         RPCManager.reset()
         tryWith(true) {
-            // Clear the actual Discord tokens cached by TokenManager
             val discordDir = File(context.filesDir, "discord")
             if (discordDir.deleteRecursively())
                 toast(context.getString(R.string.discord_logout_success))
                 
-            // Clear WebView cookies and storage on the main thread so auto-login doesn't happen
             Handler(Looper.getMainLooper()).post {
                 CookieManager.getInstance().removeAllCookies(null)
                 CookieManager.getInstance().flush()
@@ -63,14 +61,12 @@ object Discord {
     private var lastProfileRefresh = 0L
     private const val PROFILE_REFRESH_INTERVAL = 10 * 60 * 1000L
 
-    /** Saves the profile fields of a Discord `/users/@me` response. */
     fun saveProfile(json: JSONObject) {
         fun str(key: String) = if (json.isNull(key)) "" else json.optString(key)
         PrefManager.setVal(PrefName.DiscordId, str("id"))
         PrefManager.setVal(PrefName.DiscordUserName, str("username"))
         PrefManager.setVal(PrefName.DiscordAvatar, str("avatar"))
         PrefManager.setVal(PrefName.DiscordBanner, str("banner"))
-        // Users without a banner image (no Nitro) can still have a banner colour
         val color = str("banner_color").ifEmpty {
             if (json.isNull("accent_color")) ""
             else String.format("#%06X", json.optInt("accent_color") and 0xFFFFFF)
@@ -87,11 +83,6 @@ object Discord {
         lastProfileRefresh = 0L
     }
 
-    /**
-     * Re-fetches the logged in user's profile (avatar, banner, username).
-     * Runs at most every 10 minutes, unless the banner was never fetched (older logins).
-     * Returns true when fresh data was saved.
-     */
     suspend fun refreshProfile(force: Boolean = false): Boolean {
         val current = token ?: return false
         val neverFetched = PrefManager.getVal(PrefName.DiscordBanner, null as String?) == null
@@ -117,7 +108,6 @@ object Discord {
         }
     }
 
-    /** Profile picture URL, falling back to one of Discord's default avatars. */
     fun avatarUrl(id: String?, hash: String?): String? {
         if (id.isNullOrBlank()) return null
         if (hash.isNullOrBlank() || hash == "null") {
@@ -126,7 +116,6 @@ object Discord {
         return "https://cdn.discordapp.com/avatars/$id/$hash.png?size=256"
     }
 
-    /** Banner image URL, or null when the user has no banner image. */
     fun bannerUrl(id: String?, hash: String?): String? {
         if (id.isNullOrBlank() || hash.isNullOrBlank() || hash == "null") return null
         return "https://cdn.discordapp.com/banners/$id/$hash.png?size=600"

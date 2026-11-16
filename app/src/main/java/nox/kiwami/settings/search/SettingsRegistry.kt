@@ -28,7 +28,6 @@ object SettingsRegistry {
     fun getAllSettings(context: Context): List<SearchableSetting> {
         val list = mutableListOf<SearchableSetting>()
 
-        // Streak
         listOf(
             R.string.streak_settings to R.string.streak_settings_desc,
             R.string.streak_button_fire to R.string.streak_settings_desc,
@@ -48,7 +47,6 @@ object SettingsRegistry {
             )
         }
 
-        // 1. Theme Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.oled_theme_variant),
@@ -118,7 +116,6 @@ object SettingsRegistry {
             )
         }
 
-        // 2. Common Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.ui_settings),
@@ -242,7 +239,6 @@ object SettingsRegistry {
             )
         )
 
-        // 3. User Interface Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.immersive_mode),
@@ -333,7 +329,6 @@ object SettingsRegistry {
             )
         )
 
-        // 4. Anime Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.player_settings),
@@ -390,7 +385,6 @@ object SettingsRegistry {
             )
         )
 
-        // 5. Player Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.default_speed),
@@ -414,7 +408,6 @@ object SettingsRegistry {
             )
         )
 
-        // 6. Manga & Reader Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.reader_settings),
@@ -449,7 +442,6 @@ object SettingsRegistry {
             )
         )
 
-        // 7. Extensions Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.anime_add_repository),
@@ -495,7 +487,6 @@ object SettingsRegistry {
             )
         )
 
-        // 8. Addons & Torrent Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.torrent_settings),
@@ -530,7 +521,6 @@ object SettingsRegistry {
             )
         )
 
-        // 9. Notifications Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.subscriptions_checking_time),
@@ -554,7 +544,6 @@ object SettingsRegistry {
             )
         )
 
-        // 10. Accounts & Anilist Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.discord_settings),
@@ -622,7 +611,6 @@ object SettingsRegistry {
             )
         )
 
-        // 11. About Settings
         list.add(
             SearchableSetting(
                 title = context.getString(R.string.faq),

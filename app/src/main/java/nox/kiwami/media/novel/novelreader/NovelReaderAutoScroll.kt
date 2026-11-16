@@ -20,7 +20,6 @@ class NovelReaderAutoScroll {
 
             if (lastFrameTimeNanos != 0L) {
                 val dt = ((frameTimeNanos - lastFrameTimeNanos).coerceAtMost(50_000_000L)) / 1_000_000_000f
-                // Standardize speed relative to 60fps base:
                 accumulatedScroll += speed * 60f * dt
                 val pixelsToScroll = accumulatedScroll.toInt()
 

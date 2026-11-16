@@ -210,7 +210,6 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
 
             if (res.isEmpty()) return@withContext emptyList()
 
-            // Pre-process episodes: extract folder hierarchy for scanlator/season chips and detect true episode numbers
             res.forEach { ep ->
                 val normalizedName = ep.name.replace('\\', '/')
                 if (normalizedName.contains('/')) {
@@ -460,18 +459,15 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
 
     private fun convertAnimesPageToShowResponse(animesPage: AnimesPage): List<ShowResponse> {
         return animesPage.animes.map { sAnime ->
-            // Extract required fields from sAnime
             val name = sAnime.title
             val link = sAnime.url
             val coverUrl = sAnime.thumbnail_url ?: ""
 
-            // Create a new ShowResponse
             ShowResponse(name, link, coverUrl, sAnime)
         }
     }
 
     private fun sEpisodeToEpisode(sEpisode: SEpisode): Episode {
-        //if the float episode number is a whole number, convert it to an int
         val episodeNumberInt =
             if (sEpisode.episode_number % 1 == 0f) {
                 sEpisode.episode_number.toInt()
@@ -690,12 +686,10 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
 
     private fun convertMangasPageToShowResponse(mangasPage: MangasPage): List<ShowResponse> {
         return mangasPage.mangas.map { sManga ->
-            // Extract required fields from sManga
             val name = sManga.title
             val link = sManga.url
             val coverUrl = sManga.thumbnail_url ?: ""
 
-            // Create a new ShowResponse
             ShowResponse(name, link, coverUrl, sManga)
         }
     }
@@ -764,10 +758,8 @@ class VideoServerPassthrough(private val videoServer: VideoServer) : VideoExtrac
     }
 
     private fun aniVideoToSaiVideo(aniVideo: Video): nox.kiwami.parsers.Video {
-        // Find the number value from the .quality string
         val number = Regex("""\d+""").find(aniVideo.quality)?.value?.toInt() ?: 0
 
-        // Check for null video URL 
         val videoUrl = aniVideo.videoUrl.takeIf { it.isNotBlank() && it != "null" }
             ?: aniVideo.url.takeIf { it.isNotBlank() && it != "null" }
             ?: throw Exception("Video URL is null")
@@ -829,7 +821,6 @@ class VideoServerPassthrough(private val videoServer: VideoServer) : VideoExtrac
                 }
             }
 
-            // If the format is still undetermined, log an error
             if (format == null) {
                 Logger.log("Unknown video format: $videoUrl")
                 format = VideoType.CONTAINER
@@ -855,20 +846,6 @@ class VideoServerPassthrough(private val videoServer: VideoServer) : VideoExtrac
         )
     }
 
-    /**
-     * Extract DRM parameters an extension passed through [Video.internalData].
-     *
-     * Expected shape (all fields optional except licenseUrl):
-     * ```json
-     * {
-     *   "drmScheme": "widevine",
-     *   "licenseUrl": "https://example.com/license",
-     *   "licenseHeaders": { "Authorization": "Bearer ..." }
-     * }
-     * ```
-     * Returns null for anything absent or malformed, so a clear stream - or an
-     * extension using internalData for its own unrelated purposes - is unaffected.
-     */
     private fun parseDrmInfo(internalData: String): DrmInfo? {
         if (internalData.isBlank()) return null
         return runCatching {

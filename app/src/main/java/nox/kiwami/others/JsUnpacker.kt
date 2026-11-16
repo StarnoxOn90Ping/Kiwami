@@ -10,11 +10,6 @@ import kotlin.math.pow
 class JsUnpacker(packedJS: String?) {
     private var packedJS: String? = null
 
-    /**
-     * Detects whether the javascript is P.A.C.K.E.R. coded.
-     *
-     * @return true if it's P.A.C.K.E.R. coded.
-     */
     fun detect(): Boolean {
         val js = packedJS!!.replace(" ", "")
         val p = Pattern.compile("eval\\(function\\(p,a,c,k,e,[rd]")
@@ -22,11 +17,6 @@ class JsUnpacker(packedJS: String?) {
         return m.find()
     }
 
-    /**
-     * Unpack the javascript
-     *
-     * @return the javascript unpacked or null.
-     */
     fun unpack(): String? {
         val js = packedJS ?: return null
         try {

@@ -130,7 +130,6 @@ class NovelReaderActivity : AppCompatActivity() {
     private var epubNavigator: EpubNavigatorFragment? = null
     private var pdfNavigator: PdfiumNavigatorFragment? = null
 
-    // TTS
     private var ttsNavigator: AndroidTtsNavigator? = null
     private var ttsLocationJob: Job? = null
     private var ttsPlaybackJob: Job? = null
@@ -241,7 +240,6 @@ class NovelReaderActivity : AppCompatActivity() {
             }
         }
 
-        // Floating TTS Controls
         binding.novelReaderTtsPlayPause.setOnClickListener {
             toggleTts()
         }
@@ -368,7 +366,6 @@ class NovelReaderActivity : AppCompatActivity() {
                         }
                     } finally {
                         isSliderDragging = false
-                        // Safety timeout: if locator observer has not reset navigating flag within 1200ms, reset it
                         scope.launch {
                             kotlinx.coroutines.delay(1200)
                             if (isNavigatingFromSlider) {
@@ -828,7 +825,6 @@ class NovelReaderActivity : AppCompatActivity() {
         })
     }
 
-    // region Text Selection & Actions
     private val selectionActionModeCallback = object : ActionMode.Callback {
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             menu.add(Menu.NONE, 1001, Menu.NONE, "Dictionary")
@@ -894,9 +890,7 @@ class NovelReaderActivity : AppCompatActivity() {
 
         override fun onDestroyActionMode(mode: ActionMode) {}
     }
-    // endregion
 
-    // region Text-To-Speech (TTS)
     private fun speakSelectedText(text: String) {
         stopTts()
         if (snippetTts == null) {
@@ -978,7 +972,6 @@ class NovelReaderActivity : AppCompatActivity() {
                 (visualNavigator as? DecorableNavigator)?.applyDecorations(listOf(decoration), "tts")
             }.launchIn(scope)
 
-            // Throttle auto-advance so it doesn't jump aggressively
             tts.location
                 .map { it.tokenLocator ?: it.utteranceLocator }
                 .distinctUntilChanged()
@@ -1002,9 +995,7 @@ class NovelReaderActivity : AppCompatActivity() {
         binding.novelReaderTtsCard.visibility = View.GONE
         binding.novelReaderTtsPlayPause.setImageResource(R.drawable.ic_round_play_arrow_24)
     }
-    // endregion
 
-    // region Settings & Appearance
     fun applySettings() {
         applySettingsJob?.cancel()
         applySettingsJob = scope.launch(Dispatchers.Main) {
@@ -1347,7 +1338,6 @@ class NovelReaderActivity : AppCompatActivity() {
             if (wv != null) {
                 attachAutoScroll(wv)
             }
-            // Always start paused when reader is opened (matches MangaReader behavior)
             autoScroll.stop()
             binding.novelReaderAutoScrollPlayBar.visibility = View.VISIBLE
             binding.autoScrollPlayPause.setImageResource(R.drawable.ic_round_play_arrow_24)
@@ -1463,7 +1453,6 @@ class NovelReaderActivity : AppCompatActivity() {
 
         readerOverlay.progressFraction = overallProgression.toFloat()
 
-        // Also update the slider and page number text during auto-scroll
         if (!isSliderDragging && !isNavigatingFromSlider) {
             binding.novelReaderSlider.value = overallProgression.toFloat().coerceIn(0f, 1f)
             val total = totalPositionsCount
@@ -1480,9 +1469,7 @@ class NovelReaderActivity : AppCompatActivity() {
             binding.novelReaderPageNumber.text = text
         }
     }
-    // endregion
 
-    // region Handle Controls & Overlay
     private var isContVisible = false
     private var isAnimating = false
     private val goneHandler = Handler(Looper.getMainLooper())

@@ -29,10 +29,8 @@ class NovelResponseAdapter(
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val list: MutableList<ShowResponse> = mutableListOf()
 
-    // 0 = List, 1 = Compact, 2 = Cover (default)
     private var type: Int = 2
 
-    /** Novels picked in multi-select mode, keyed by link. */
     val selectedLinks = LinkedHashSet<String>()
     var onSelectionChanged: ((Int) -> Unit)? = null
 
@@ -64,7 +62,6 @@ class NovelResponseAdapter(
     fun selectedNovelsInOrder(): List<ShowResponse> =
         list.filter { selectedLinks.contains(it.link) }
 
-    /** Starts downloading every selected novel that isn't already downloaded or downloading. */
     fun downloadSelected(): Int {
         var started = 0
         selectedNovelsInOrder().forEach { novel ->
@@ -78,7 +75,6 @@ class NovelResponseAdapter(
         return started
     }
 
-    /** Deletes every selected novel that is downloaded (active downloads are left alone). */
     fun deleteSelected(): Int {
         var deleted = 0
         selectedNovelsInOrder().forEach { novel ->
@@ -113,7 +109,6 @@ class NovelResponseAdapter(
     }
 
     companion object {
-        /** Partial bind: only refresh the selected/unselected look of a card. */
         private const val PAYLOAD_SELECTION = "selection"
     }
 
@@ -149,8 +144,6 @@ class NovelResponseAdapter(
             val desc = novel.extra?.get("2")
             binding.itemEpisodeDesc.isVisible = !desc.isNullOrBlank()
             binding.itemEpisodeDesc.text = desc ?: ""
-            // When a status line (e.g. "Downloaded") is showing, pull the description up
-            // closer to it instead of leaving a two-line gap.
             val density = binding.itemEpisodeDesc.resources.displayMetrics.density
             val descTop = if (binding.itemEpisodeFiller.text.isNotBlank()) (4 * density).toInt()
             else (16 * density).toInt()
@@ -433,7 +426,6 @@ class NovelResponseAdapter(
             if (position + i < list.size) {
                 val novel = list[position + i]
                 if (activeDownloads.contains(novel.link)) {
-                    // Ignore active downloads
                 } else if (downloadedCheckCallback.downloadedCheck(novel) || downloadedChapters.contains(novel.link)) {
                     fragment.deleteDownload(novel)
                     deleteDownload(novel.link)

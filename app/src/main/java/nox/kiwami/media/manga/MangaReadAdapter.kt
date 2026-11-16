@@ -96,20 +96,17 @@ class MangaReadAdapter(
         _binding = binding
         binding.sourceTitle.setText(R.string.chaps)
 
-        // Fuck u launch
         binding.faqbutton.setOnClickListener {
             val intent = Intent(fragment.requireContext(), FAQActivity::class.java)
             startActivity(fragment.requireContext(), intent, null)
         }
 
-        // Wrong Title
         binding.mediaSourceSearch.setOnClickListener {
             SourceSearchDialogFragment().show(
                 fragment.requireActivity().supportFragmentManager,
                 null
             )
         }
-        //for removing saved progress
         binding.sourceTitle.setOnLongClickListener {
             fragment.requireContext().customAlertDialog().apply {
                 setTitle(" Delete Progress for all chapters of ${media.nameRomaji}")
@@ -125,7 +122,6 @@ class MangaReadAdapter(
             true
         }
 
-        // Source Selection
         var source =
             media.selected!!.sourceIndex.let { if (it >= mangaReadSources.names.size) 0 else it }
         setLanguageList(media.selected!!.langIndex, source)
@@ -158,13 +154,11 @@ class MangaReadAdapter(
                 source = actualIndex
                 setLanguageList(0, actualIndex)
             }
-            // Invalidate if it's the last source
             val invalidate = actualIndex == mangaReadSources.names.size - 1
             fragment.loadChapters(actualIndex, invalidate)
         }
 
         binding.mediaSourceLanguage.setOnItemClickListener { _, _, i, _ ->
-            // Check if 'extension' and 'selected' properties exist and are accessible
             (mangaReadSources[source] as? DynamicMangaParser)?.let { ext ->
                 ext.sourceLanguage = i
                 fragment.onLangChange(i, ext.saveName)
@@ -179,14 +173,11 @@ class MangaReadAdapter(
             }
         }
 
-        // Settings
         binding.mediaSourceSettings.setOnClickListener {
             (mangaReadSources[source] as? DynamicMangaParser)?.let { ext ->
                 fragment.openSettings(ext.extension)
             }
         }
-
-        // Grids
 
         binding.mediaTorrentButton.visibility = View.GONE
 
@@ -207,7 +198,6 @@ class MangaReadAdapter(
                     run = true
                 }
 
-                // Grids
                 mediaSourceGrid.visibility = View.GONE
                 var selected = when (style) {
                     0 -> mediaSourceList
@@ -241,7 +231,6 @@ class MangaReadAdapter(
                     if (!WebViewUtil.supportsWebView(fragment.requireContext())) {
                         toast(R.string.webview_not_installed)
                     }
-                    // Start CookieCatcher activity
                     if (mangaReadSources.names.isNotEmpty() && source in 0 until mangaReadSources.names.size) {
                         val sourceAHH = mangaReadSources[source] as? DynamicMangaParser
                         val sourceHttp = sourceAHH?.extension?.sources?.firstOrNull() as? HttpSource
@@ -263,8 +252,6 @@ class MangaReadAdapter(
                     }
                 }
 
-                // Multi download
-                //downloadNo.text = "0"
                 if (media.format == "LOCAL") {
                     animeDownloadContainer.visibility = View.GONE
                     mediaWebviewContainer.visibility = View.GONE
@@ -296,7 +283,6 @@ class MangaReadAdapter(
                         setTitle(" Delete Progress for all chapters of ${media.nameRomaji}")
                         setMessage("This will delete all the locally stored progress for chapters")
                         setPosButton(R.string.ok) {
-// Usage
                             clearCustomValsForMedia("${media.id}", "_Chapter")
                             clearCustomValsForMedia("${media.id}", "_Vol")
 
@@ -326,11 +312,9 @@ class MangaReadAdapter(
                 }
             }
         }
-        // Chapter Handling
         handleChapters()
     }
 
-    // Chips
     fun updateChips(limit: Int, names: Array<String>, arr: Array<Int>, selected: Int = 0) {
         val binding = _binding
         if (binding != null) {
@@ -378,7 +362,6 @@ class MangaReadAdapter(
                     MediaNameAdapter.findChapterNumber(it.number) ?: 0f
                 } ?: filteredChapters.size.toFloat()
 
-                // If user progress already completed all available chapters, hide continue button
                 if (media.userProgress != null && media.userProgress!!.toFloat() >= maxAvailableChapter && (media.userProgress ?: 0) >= appEp) {
                     binding.sourceContinue.visibility = View.GONE
                     binding.sourceProgressBar.visibility = View.GONE
@@ -477,7 +460,6 @@ class MangaReadAdapter(
                                 { MainScope().launch { binding.mediaSourceTitle.text = it } }
                             setLanguageList(0, nextIndex)
                         }
-                        // Invalidate if it's the last source
                         val invalidate = nextIndex == mangaReadSources.names.size - 1
                         fragment.loadChapters(nextIndex, invalidate)
                     }

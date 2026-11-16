@@ -7,28 +7,17 @@ import nox.kiwami.util.Logger
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Small on-device caches for the Home pill, so it keeps working in Pre-cached / offline mode:
- *
- *  - the airing times of the anime on the user's list (fetched when online),
- *  - the update times of the planned list (for the backlog card).
- *
- * The existing airing alarms ([AiringAlarmScheduler]) are merged in as a second source of airing
- * times, since they are always stored locally.
- */
 object InfoPillStore {
 
     data class AiringItem(
         val mediaId: Int,
         val name: String,
         val episode: Int,
-        /** epoch seconds */
         val airingAtSec: Long
     )
 
     data class AiringCache(val fetchedAtMs: Long, val idsKey: Int, val items: List<AiringItem>)
 
-    /** Per planned entry: when it was last changed on AniList, in epoch seconds (0 = unknown). */
     data class PlannedSnapshot(
         val savedAtMs: Long,
         val anime: List<Long>,
@@ -37,8 +26,6 @@ object InfoPillStore {
 
     private const val AIRING_KEY = "pill_airing_v1"
     private const val PLANNED_KEY = "pill_planned_v1"
-
-    // ---- airing -------------------------------------------------------------------------------
 
     @Synchronized
     fun loadAiring(): AiringCache? {
@@ -78,7 +65,6 @@ object InfoPillStore {
         }
     }
 
-    /** Next-episode alarms of subscribed anime. Always local, works offline. */
     fun alarmItems(): List<AiringItem> = try {
         SubscriptionHelper.getSubscriptions().filterValues { it.isAnime }.keys.mapNotNull { id ->
             AiringAlarmScheduler.getAlarm(id)?.let {
@@ -90,11 +76,8 @@ object InfoPillStore {
         emptyList()
     }
 
-    /** Cache + alarms, one entry per (anime, episode). */
     fun allAiring(cached: List<AiringItem>): List<AiringItem> =
         (cached + alarmItems()).distinctBy { it.mediaId to it.episode }
-
-    // ---- planned ------------------------------------------------------------------------------
 
     @Synchronized
     fun loadPlanned(): PlannedSnapshot? {

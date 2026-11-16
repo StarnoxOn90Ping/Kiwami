@@ -1,8 +1,5 @@
 ﻿package nox.kiwami.connections.discord
 
-/**
- * Shared Rich Presence data types used by [RPCManager] and calling screens.
- */
 @Suppress("MemberVisibilityCanBePrivate")
 class RPC {
 

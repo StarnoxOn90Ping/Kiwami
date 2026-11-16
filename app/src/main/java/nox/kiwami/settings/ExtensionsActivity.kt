@@ -136,7 +136,6 @@ class ExtensionsActivity : AppCompatActivity() {
                     viewPager.updateLayoutParams<ViewGroup.LayoutParams> {
                         height = ViewGroup.LayoutParams.MATCH_PARENT
                     }
-                    // Do nothing
                 }
             }
         )

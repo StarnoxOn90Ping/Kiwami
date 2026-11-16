@@ -39,7 +39,6 @@ class WrappedDrmCallback(private val delegate: HttpMediaDrmCallback) : MediaDrmC
     }
 
     private fun unwrap(raw: ByteArray): ByteArray {
-        // A Widevine SignedMessage is a protobuf, so it starts with 0x08.
         if (raw.isEmpty() || raw[0] == 0x08.toByte()) return raw
 
         if (raw[0] == '{'.code.toByte()) {
@@ -65,7 +64,6 @@ class WrappedDrmCallback(private val delegate: HttpMediaDrmCallback) : MediaDrmC
     }.getOrNull()?.takeIf { it.isNotEmpty() && it[0] == 0x08.toByte() }
 
     companion object {
-        /** Session managers that route license responses through [WrappedDrmCallback]. */
         fun providerFor(dataSourceFactory: DataSource.Factory) =
             DrmSessionManagerProvider { mediaItem: MediaItem ->
                 val config = mediaItem.localConfiguration?.drmConfiguration
@@ -82,8 +80,6 @@ class WrappedDrmCallback(private val delegate: HttpMediaDrmCallback) : MediaDrmC
                         .setMultiSession(config.multiSession)
                         .setPlayClearSamplesWithoutKeys(config.playClearContentWithoutKey)
                         .build(WrappedDrmCallback(http))
-                        // A downloaded item carries the id of a license the CDM already
-                        // holds, so restoring it needs no network.
                         .also { it.setMode(DefaultDrmSessionManager.MODE_PLAYBACK, config.keySetId) }
                 }
             }

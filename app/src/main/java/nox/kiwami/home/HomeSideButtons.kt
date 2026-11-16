@@ -19,23 +19,17 @@ import nox.kiwami.util.setPressBounce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Drives the two circles that flank the bottom navigation pill:
- *  - the calendar button (left)
- *  - the downloads button (right), which animates + shows a badge while anything is downloading
- */
 class HomeSideButtons(
     private val activity: AppCompatActivity,
     private val nav: ItemNavbarBinding
 ) {
     private val density = activity.resources.displayMetrics.density
 
-    private val arrow = DownloadArrowAnimator(nav.downloadsIcon, 32f * density) // (40dp clip box + 24dp arrow) / 2
+    private val arrow = DownloadArrowAnimator(nav.downloadsIcon, 32f * density)
     private var wasActive = false
     private var started = false
 
     fun attach() {
-        // springy press feedback on both circles
         nav.calendarButton.setPressBounce(0.82f)
         nav.downloadsButton.setPressBounce(0.82f)
         nav.calendarButton.setOnClickListener { openCalendar() }
@@ -43,7 +37,6 @@ class HomeSideButtons(
             activity.startActivity(Intent(activity, DownloadsActivity::class.java))
         }
         adaptToScreenWidth()
-        // poll the downloader singletons – cheap, and only does real work while the screen is visible
         activity.lifecycleScope.launch {
             activity.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
@@ -58,7 +51,6 @@ class HomeSideButtons(
         activity.startActivity(Intent(activity, AiringCalendarActivity::class.java))
     }
 
-    /** Shrinks the circles a little on very narrow phones so the gaps never get cramped. */
     private fun adaptToScreenWidth() {
         val widthDp = activity.resources.configuration.screenWidthDp
         val size = ((if (widthDp in 1..399) 48 else 56) * density).toInt()
@@ -67,7 +59,6 @@ class HomeSideButtons(
         }
     }
 
-    /** Pops both circles in – called when the pill itself becomes visible. */
     fun reveal() {
         if (started) return
         started = true
@@ -86,7 +77,6 @@ class HomeSideButtons(
         }
     }
 
-    /** Keeps the circles on the same baseline as the pill when its bottom margin changes. */
     fun syncBottomMargin(bottomPx: Int) {
         listOf(nav.calendarButton, nav.downloadsButton).forEach {
             val lp = it.layoutParams as ViewGroup.MarginLayoutParams
@@ -111,7 +101,6 @@ class HomeSideButtons(
         nav.downloadsProgress.animate().alpha(1f).setDuration(250).start()
         arrow.start()
 
-        // the red dot just appears and then stays put
         val badge = nav.downloadsBadge
         badge.visibility = View.VISIBLE
         badge.animate().setListener(null).cancel()
@@ -130,7 +119,6 @@ class HomeSideButtons(
             .withEndAction { badge.visibility = View.GONE }
             .start()
 
-        // little "all done" bounce on the whole circle
         if (wasActive) {
             nav.downloadsButton.animate().setStartDelay(0).scaleX(1.14f).scaleY(1.14f).setDuration(140)
                 .withEndAction {

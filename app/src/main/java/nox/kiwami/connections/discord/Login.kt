@@ -60,7 +60,6 @@ class Login : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-                // Extract token only once when Discord app/channels page loads
                 if (!tokenExtracted && url != null && discordAppPattern.containsMatchIn(url)) {
                     tokenExtracted = true
                     view?.evaluateJavascript(
@@ -81,7 +80,7 @@ class Login : AppCompatActivity() {
                         if (token != null) {
                             login(token)
                         } else {
-                            tokenExtracted = false // retry on next page
+                            tokenExtracted = false
                         }
                     }
                 }
@@ -96,7 +95,6 @@ class Login : AppCompatActivity() {
             var loginSuccessful = false
 
             try {
-                // 1. Fetch user details FIRST (fast, validates the token)
                 val client = DiscordHttpClient.instance
                 val request = Request.Builder()
                     .url("https://discord.com/api/v9/users/@me")
@@ -112,13 +110,11 @@ class Login : AppCompatActivity() {
 
                 Discord.saveProfile(JSONObject(jsonString))
 
-                // 2. Pre-fetch OAuth2 Bearer token (can take 3-5s for PKCE)
                 TokenManager(
                     authToken = token,
                     filesDir = File(filesDir, "discord")
                 ).getToken()
 
-                // 3. Both succeeded
                 loginSuccessful = true
 
             } catch (e: Exception) {

@@ -19,7 +19,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED ||
             intent?.action == Intent.ACTION_MY_PACKAGE_REPLACED
         ) {
-            // alarms are wiped on reboot / app update, re-arm the episode alerts
             AiringAlarmScheduler.restoreAll(context)
         }
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {

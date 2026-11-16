@@ -35,7 +35,6 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 object AppUpdater {
-    // Updates come from the latest GitHub release of Kiwami, with multi-ABI APK selection
     private const val UPDATER_REPO = "StarnoxOn90Ping/Kiwami"
 
     private suspend fun fetchFromCustomUpdater(repo: String = UPDATER_REPO): Pair<String, String>? {

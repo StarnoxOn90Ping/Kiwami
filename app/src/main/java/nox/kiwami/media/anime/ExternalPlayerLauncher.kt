@@ -43,7 +43,6 @@ enum class ExternalPlayer(
 
 object ExternalPlayerLauncher {
 
-    /** The player picked in Settings > Anime > External player, or null when the built in player is used. */
     fun selected(): ExternalPlayer? =
         ExternalPlayer.fromId(PrefManager.getVal(PrefName.ExternalPlayer))
 
@@ -54,14 +53,6 @@ object ExternalPlayerLauncher {
         false
     }
 
-    /**
-     * Opens [video] (or, for a downloaded episode, the downloaded file) in the selected external player.
-     *
-     * Returns true when the external player was started, so the caller must not start the built in
-     * player. Returns false when nothing was launched (no external player selected, an encrypted
-     * download the other app cannot decrypt, or the player is not installed), in which case the
-     * caller carries on with the built in player.
-     */
     fun launch(
         context: Context,
         media: Media,
@@ -72,7 +63,6 @@ object ExternalPlayerLauncher {
     ): Boolean {
         val player = selected() ?: return false
 
-        // Where the video comes from: a stream url, or a downloaded file in the downloads folder
         val videoUri: Uri
         var subtitleUri: String? = null
         var headers: Map<String, String> = emptyMap()
@@ -103,7 +93,6 @@ object ExternalPlayerLauncher {
             setDataAndType(videoUri, "video/*")
             putExtra("title", "${media.userPreferredName} - $episodeName")
             if (headers.isNotEmpty()) {
-                // Alternating key, value pairs
                 putExtra("headers", headers.flatMap { listOf(it.key, it.value) }.toTypedArray())
             }
             subtitleUri?.let { putExtra("subtitles_location", it) }
@@ -112,7 +101,6 @@ object ExternalPlayerLauncher {
         }
 
         if (server.offline) {
-            // The downloads folder belongs to Kiwami, so give the player read access to the files
             runCatching {
                 context.grantUriPermission(player.packageName, videoUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 subtitleUri?.let {
@@ -135,11 +123,6 @@ object ExternalPlayerLauncher {
         }
     }
 
-    /**
-     * The video file (and subtitle file, if there is one) of a downloaded episode, found the same
-     * way the built in player finds them. Null when the files are missing or the download is
-     * encrypted (DRM), which only the built in player can play.
-     */
     private fun findDownloadedFiles(context: Context, server: VideoServer): Pair<DocumentFile, DocumentFile?>? {
         val parts = server.name.split("/")
         val directory = DownloadsManager.findSubDirectory(

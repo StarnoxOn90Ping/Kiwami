@@ -37,11 +37,6 @@ import kotlinx.coroutines.launch
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-/**
- * Downloads hub – everything the offline mode shows (downloaded anime + manga) behind a
- * swipeable Anime | Manga switch, plus a live banner while something is downloading.
- * The grid/list view options and search live in the embedded pages themselves.
- */
 class DownloadsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDownloadsBinding
     private val downloadsManager = Injekt.get<DownloadsManager>()
@@ -62,12 +57,10 @@ class DownloadsActivity : AppCompatActivity() {
         binding.downloadsRoot.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
         }
-        // the embedded lists scroll behind the system navigation bar otherwise
         binding.downloadsPager.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
 
-        // fancy heading: gradient text that drops in, plus springy buttons
         binding.downloadsTitle.setGradientText(
             getThemeColor(androidx.appcompat.R.attr.colorPrimary),
             getThemeColor(com.google.android.material.R.attr.colorTertiary)
@@ -87,20 +80,17 @@ class DownloadsActivity : AppCompatActivity() {
 
         bannerArrow = DownloadArrowAnimator(
             binding.downloadsBannerIcon,
-            33f * resources.displayMetrics.density // (42dp clip box + 24dp arrow) / 2
+            33f * resources.displayMetrics.density
         )
         setupPager()
         refreshCounts()
         startLiveUpdates()
     }
 
-    // region pager + segmented switch
-
     private fun setupPager() {
         val pager = binding.downloadsPager
         pager.adapter = HubAdapter()
         pager.offscreenPageLimit = 1
-        // pages fade and shrink slightly as they slide, so the switch feels like depth rather than a slide
         pager.setPageTransformer { page, position ->
             val d = abs(position).coerceAtMost(1f)
             page.alpha = 1f - 0.65f * d
@@ -126,12 +116,10 @@ class DownloadsActivity : AppCompatActivity() {
             val w = thumbWidth()
             if (w <= 0f) return
             thumb.translationX = (position + offset) * w
-            // liquid feel: the thumb stretches while travelling and squashes back into place
             val travel = (position + offset)
             val bump = sin(PI * (travel - floor(travel))).toFloat().coerceAtLeast(0f)
             thumb.scaleX = 1f + 0.22f * bump
             thumb.scaleY = 1f - 0.12f * bump
-            // text colours follow the thumb so they cross-fade while swiping
             val progress = (position + offset).coerceIn(0f, 1f)
             tint(progress)
         }
@@ -153,13 +141,11 @@ class DownloadsActivity : AppCompatActivity() {
         })
     }
 
-    /** progress 0 = anime selected, 1 = manga selected */
     private fun tint(progress: Float) {
         val on = getThemeColor(com.google.android.material.R.attr.colorOnPrimary)
         val off = getThemeColor(com.google.android.material.R.attr.colorOutline)
         binding.downloadsTabAnime.setTextColor(blend(on, off, progress))
         binding.downloadsTabManga.setTextColor(blend(off, on, progress))
-        // the active label grows a little
         val a = 1f + 0.1f * (1f - progress)
         val m = 1f + 0.1f * progress
         binding.downloadsTabAnime.scaleX = a
@@ -183,10 +169,6 @@ class DownloadsActivity : AppCompatActivity() {
             return fragment
         }
     }
-
-    // endregion
-
-    // region live state
 
     override fun onResume() {
         super.onResume()
@@ -251,8 +233,6 @@ class DownloadsActivity : AppCompatActivity() {
             }
         }
     }
-
-    // endregion
 
     override fun onDestroy() {
         if (::bannerArrow.isInitialized) bannerArrow.stop()

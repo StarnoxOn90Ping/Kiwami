@@ -53,7 +53,6 @@ object DrmDownloader {
 
     private const val TAG = "DrmDownloader"
 
-    // Logger writes to a file, which is awkward to reach over adb.
     private fun log(message: String) {
         Log.d(TAG, message)
         Logger.log(message)
@@ -65,7 +64,6 @@ object DrmDownloader {
 
     class Result(val keySetId: ByteArray, val licenseSeconds: Long, val playbackSeconds: Long)
 
-    /** [onProgress] reports 0..100 across every segment of every track. */
     suspend fun download(
         context: Context,
         drm: OfflineDrmInfo,
@@ -83,7 +81,6 @@ object DrmDownloader {
             ?: throw IllegalStateException("manifest has no video track")
         val audio = bestRepresentation(period, C.TRACK_TYPE_AUDIO)
 
-        // Most likely step to fail; no point writing a gigabyte we cannot play.
         val result = acquireLicense(factory, period, drm, scheme)
         log(
             "DRM download: license acquired, valid ${result.licenseSeconds}s " +
@@ -124,13 +121,6 @@ object DrmDownloader {
         }
     }
 
-    /**
-     * Tops up the persistent license of an existing download, leaving the media files
-     * untouched. Needs a live token, so it only does anything when the episode is
-     * opened with a connection.
-     *
-     * @return true when a new license was stored.
-     */
     suspend fun refreshIfStale(
         context: Context,
         drm: OfflineDrmInfo,
@@ -198,7 +188,6 @@ object DrmDownloader {
 
     private fun dataSourceFactory(extra: Map<String, String>): DataSource.Factory {
         val client = Injekt.get<NetworkHelper>().client
-        // The source's own headers win: a manifest behind auth 401s without them.
         val merged = defaultHeaders + extra
         // DRM license fetches intentionally stay on OkHttp — they need the existing
         // cookie jar and CloudFlare interceptor chain; QUIC is not required here.
@@ -247,7 +236,6 @@ object DrmDownloader {
         }
     }
 
-    /** Concatenates the init segment and every media segment into one fragmented MP4. */
     private suspend fun writeTrack(
         context: Context,
         factory: DataSource.Factory,
@@ -326,11 +314,6 @@ object DrmDownloader {
         }
     }
 
-    /**
-     * Builds the [MediaItem] for a downloaded encrypted episode, paired with the separate
-     * audio file when one was written. The stored keySetId lets the CDM restore the
-     * license with no network. Null when this is an ordinary download.
-     */
     fun offlineMediaItem(context: Context, directory: DocumentFile): Pair<MediaItem, Uri?>? {
         val sidecar = readSidecar(context, directory) ?: return null
         val video = directory.findFile(sidecar.optString("video", VIDEO_FILE)) ?: return null
@@ -361,7 +344,6 @@ object DrmDownloader {
         return item to audio
     }
 
-    /** Null when this is not a DRM download. */
     fun readSidecar(context: Context, directory: DocumentFile): JSONObject? {
         val file = directory.findFile(DRM_SIDECAR) ?: return null
         return runCatching {

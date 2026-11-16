@@ -75,11 +75,8 @@ data class CurrentReaderSettings(
     }
 
     enum class ImageQuality {
-        /** Android bilinear (hardware-accelerated, fastest). */
         FAST,
-        /** Two-pass box filter — noticeably sharper on large downscales. */
         BALANCED,
-        /** Lanczos-3 sinc-windowed resampling — highest quality, best for line art. */
         LANCZOS;
 
         companion object {

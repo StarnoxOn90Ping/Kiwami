@@ -25,10 +25,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * Fired by [android.app.AlarmManager] the moment the countdown of a subscribed anime hits zero.
- * Works while the app is closed: the manifest-registered receiver wakes the process up.
- */
 class AiringAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -61,7 +57,6 @@ class AiringAlarmReceiver : BroadcastReceiver() {
 
         val text = context.getString(R.string.airing_notification_text, alarm.episode)
 
-        // keep it in the in-app subscription feed as well
         val store = PrefManager.getNullableVal<List<SubscriptionStore>>(
             PrefName.SubscriptionNotificationStore, null
         )?.toMutableList() ?: mutableListOf()
@@ -100,7 +95,6 @@ class AiringAlarmReceiver : BroadcastReceiver() {
             Logger.log("AiringAlarmReceiver: notification permission missing")
         }
 
-        // Line up the following episode (AniList needs a moment to roll over, the worker retries).
         AiringAlarmScheduler.enqueueSync(context, mediaId, delayMinutes = 2)
     }
 

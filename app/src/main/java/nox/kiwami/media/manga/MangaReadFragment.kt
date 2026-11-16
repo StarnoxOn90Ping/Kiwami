@@ -222,7 +222,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 binding.mediaInfoProgressBar.visibility = progress
 
                 if (media.format in setOf("MANGA", "ONE SHOT", "MANHWA", "MANHUA", "ONE_SHOT", "DOUJINSHI") || (media.format == "LOCAL" && media.manga != null)) {
-                    // For LOCAL
                     if (media.format != "LOCAL" || media.selected == null) {
                         media.selected = model.loadSelected(media)
                     }
@@ -274,7 +273,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         updateChapters()
     }
 
-    // ---------------- Multi-select (long-press a chapter) ----------------
     private var selectionBar: EpisodeSelectionBar? = null
     private val selectionBackCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -313,7 +311,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
     }
 
-    /** Leaves room under the list (and lifts the scroll-to-top button) while the bar is showing. */
     private fun applySelectionInsets(show: Boolean) {
         val b = _binding ?: return
         val bar = selectionBar ?: return
@@ -336,7 +333,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     private fun isChapterDownloading(chapter: MangaChapter): Boolean =
         chapterAdapter.isDownloading(chapter.uniqueNumber()) || chapterAdapter.isDownloading(chapter.number)
 
-    /** Chapter details: title, scanlator group, upload date, download state, description. */
     private fun showSelectedChapterInfo() {
         val chapters = selectedChaptersInOrder()
         if (chapters.isEmpty()) return
@@ -451,7 +447,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         toDownload.forEach { onMangaChapterDownloadClick(it) }
     }
 
-    /** Deletes finished downloads and cancels any that are still in progress. */
     private fun deleteSelectedChapters() {
         val affected = selectedChaptersInOrder().filter {
             isChapterDownloading(it) || chapterAdapter.isDownloaded(it)
@@ -477,20 +472,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
     fun multiDownload(n: Int) {
         lifecycleScope.launch {
-            // Get the last viewed chapter
             val selected = media.userProgress ?: 0
             val chapters = media.manga?.chapters?.values?.toList()
-            // Ensure chapters are available in the extensions
             if (chapters.isNullOrEmpty() || n < 1) return@launch
-            // Find the index of the last viewed chapter
             val progressChapterIndex = (chapters.indexOfFirst {
                 MediaNameAdapter.findChapterNumber(it.number)?.toInt() == selected
             } + 1).coerceAtLeast(0)
-            // Calculate the end value for the range of chapters to download
             val endIndex = (progressChapterIndex + n).coerceAtMost(chapters.size)
-            // Get the list of chapters to download
             val chaptersToDownload = chapters.subList(progressChapterIndex, endIndex)
-            // Trigger the download for each chapter sequentially
             for (chapter in chaptersToDownload) {
                 try {
                     downloadChapterSequentially(chapter)
@@ -504,7 +493,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     private suspend fun downloadChapterSequentially(chapter: MangaChapter) {
         withContext(Dispatchers.IO) {
             onMangaChapterDownloadClick(chapter)
-            delay(2000) // A 2-second download
+            delay(2000)
         }
     }
 
@@ -526,7 +515,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
                 media.manga?.chapters = filteredChapters.toMutableMap()
 
-                //CHIP GROUP
                 val total = filteredChapters.size
                 val divisions = total.toDouble() / 10
                 start = 0
@@ -687,7 +675,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
                 }
             } else {
-                // If there's only one setting, proceed with the fragment transaction
                 val fragment = MangaSourcePreferencesFragment().getInstance(selectedSetting.id) {
                     changeUIVisibility(true)
                     loadChapters(media.selected!!.sourceIndex, true)
@@ -746,7 +733,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                             try {
                                 val images = parser.imageList(chapter.sChapter)
 
-                                // Create a download task
                                 val downloadTask = MangaDownloaderService.DownloadTask(
                                     title = media.mainName(),
                                     chapter = chapter.number,
@@ -827,7 +813,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
         requireContext().sendBroadcast(cancelIntent)
 
-        // Remove the download from the manager and update the UI
         downloadManager.removeDownload(
             DownloadedType(
                 media.mainName(),
@@ -885,7 +870,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     private fun reload() {
         val selected = model.loadSelected(media)
 
-        // Find latest chapter for subscription
         selected.latest =
             media.manga?.chapters?.values?.maxOfOrNull {
                 MediaNameAdapter.findChapterNumber(it.number) ?: 0f
@@ -911,7 +895,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         chapterAdapter.arr = arr
         chapterAdapter.updateType(style ?: PrefManager.getVal(PrefName.MangaDefaultView))
 
-        // Synchronize downloaded chapters for the current media
         for (download in downloadManager.mangaDownloadedTypes) {
             if (media.compareName(download.titleName)) {
                 chapterAdapter.stopDownload(download.uniqueName)

@@ -68,7 +68,6 @@ class MediaDetailsViewModel : ViewModel() {
     }
 
 
-    /** Index (in the source list) of the extension chosen as default in settings, or null if none/not installed. */
     private fun defaultSourceIndex(media: Media): Int? {
         val (pref, list) = when {
             media.anime != null -> PrefName.DefaultAnimeSource to AnimeSources.list
@@ -93,7 +92,6 @@ class MediaDetailsViewModel : ViewModel() {
                     it
                 }
         if (!isDownload && !data.sourceChosen) {
-            // no source picked by hand for this title: use the default extension from settings
             defaultSourceIndex(media)?.let { idx ->
                 if (data.sourceIndex != idx) {
                     data.sourceIndex = idx
@@ -164,7 +162,6 @@ class MediaDetailsViewModel : ViewModel() {
                         val fetchedMedia = Anilist.query.mediaDetails(newMedia)
                         fetchedMedia?.format = m.format 
                         
-                        // Cache
                         fetchedMedia?.cover?.let { nox.kiwami.settings.saving.PrefManager.setCustomVal("local_cover_$mapKeyStr", it) }
                         fetchedMedia?.banner?.let { nox.kiwami.settings.saving.PrefManager.setCustomVal("local_banner_$mapKeyStr", it) }
 
@@ -179,7 +176,6 @@ class MediaDetailsViewModel : ViewModel() {
                     val servedFromCache = nox.kiwami.connections.anilist.MediaDetailsCache.has(m.id)
                     media.postValue(Anilist.query.mediaDetails(m))
                     if (servedFromCache) {
-                        // Check quietly in the background whether AniList has newer info.
                         viewModelScope.launch(Dispatchers.IO) {
                             val changed = runCatching { Anilist.query.detailsChangedSinceCache(m.id) }
                                 .getOrDefault(false)
@@ -219,7 +215,6 @@ class MediaDetailsViewModel : ViewModel() {
     val responses = MutableLiveData<List<ShowResponse>?>(null)
 
 
-    //Anime
     private val kitsuEpisodes: MutableLiveData<Map<String, Episode>> =
         MutableLiveData<Map<String, Episode>>(null)
 
@@ -264,7 +259,6 @@ class MediaDetailsViewModel : ViewModel() {
         MutableLiveData<Map<String, Episode>>(null)
 
     fun getFillerEpisodes(): LiveData<Map<String, Episode>> = fillerEpisodes
-    // Jikan (MyAnimeList) was the only filler-flag source and was removed with MAL.
     @Suppress("UNUSED_PARAMETER")
     suspend fun loadFillerEpisodes(s: Media, force: Boolean = false) {
     }
@@ -341,7 +335,6 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 }
                 ep.extractorCallback = null
-                // streams arrive in whatever order the servers answer; put them in the user's priority order
                 synchronized(list) {
                     val sorted = nox.kiwami.media.anime.ResolutionPriority.sort(list, name)
                     list.clear()
@@ -378,23 +371,19 @@ class MediaDetailsViewModel : ViewModel() {
         }
         if (duration <= 0 && extensionTimestamps.isEmpty()) return
 
-        // Extension timestamps take priority; fall back to AniSkip when the extension has none
         val result: List<AniSkip.Stamp>? = if (extensionTimestamps.isNotEmpty()) {
             extensionTimestamps.map { it.toAniSkipStamp() }
         } else {
             var stamps: List<AniSkip.Stamp>? = null
-            // 1. Try Live AniSkip API
             if (malId != null) {
                 stamps = AniSkip.getResult(malId, episodeNum, duration, useProxyForTimeStamps)
             }
-            // 2. Try Offline AniSkip CSV Dump DB
             if (stamps.isNullOrEmpty() && malId != null) {
                 val ctx = currContext()
                 if (ctx != null) {
                     stamps = AniskipCsvFallback.getInstance(ctx).lookup(malId, episodeNum)
                 }
             }
-            // 3. Try IntroDB API Fallback
             if (stamps.isNullOrEmpty()) {
                 val mediaVal = media.value
                 val imdbId = mediaVal?.idIMDB ?: mediaVal?.id?.let { runCatching { IdMappers.getImdbId(it) }.getOrNull() }
@@ -466,7 +455,6 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 } ?: return false)
             }
-            //ep.extractors?.forEach { Log.d("AnimeDownloader", "Extractor episode ${ep.number}: ${it.server.name}") }
             ep.allStreams = false
         }
         if (post) {
@@ -494,7 +482,7 @@ class MediaDetailsViewModel : ViewModel() {
         launch: Boolean = true,
         prevEp: String? = null,
         isDownload: Boolean = false,
-        episodes: ArrayList<String> = arrayListOf() // used for handling an array of episodes to download or to view a single episode
+        episodes: ArrayList<String> = arrayListOf()
     ) {
         Handler(Looper.getMainLooper()).post {
             if (manager.findFragmentByTag("dialog") == null && !manager.isDestroyed && !manager.isStateSaved) {
@@ -527,7 +515,6 @@ class MediaDetailsViewModel : ViewModel() {
         }
     }
 
-    //Manga
     var mangaReadSources: MangaReadSources? = null
 
     private val mangaChapters =
@@ -587,7 +574,6 @@ class MediaDetailsViewModel : ViewModel() {
         return tryWithSuspend(true) {
             val parser = mangaReadSources?.get(selected.sourceIndex) ?: return@tryWithSuspend false
 
-            // Downloaded chapters always win over the online source.
             val downloaded = if (parser !is OfflineMangaParser) findDownloadedMangaChapter(chapter) else null
             if (downloaded != null) {
                 val offlineImages = OfflineMangaParser().loadImages(
@@ -602,7 +588,6 @@ class MediaDetailsViewModel : ViewModel() {
                     return@tryWithSuspend true
                 }
             }
-            // The download may have been deleted since the images were cached.
             if (chapter.loadedFromDownload && parser !is OfflineMangaParser) {
                 chapter.resetImages()
                 chapter.loadedFromDownload = false
@@ -841,7 +826,6 @@ class MediaDetailsViewModel : ViewModel() {
         }
     }
 
-    // Watch Order and News integration
     data class WatchOrderItem(
         val id: String,
         val anilistId: String,
@@ -895,7 +879,6 @@ class MediaDetailsViewModel : ViewModel() {
             val rows = doc.select("tr[data-id]")
             val relationsMap = media.relations?.associateBy { it.id.toString() } ?: emptyMap()
 
-            // Parse relations relative to targetId from data-related JSON attribute
             val targetRow = rows.find { it.attr("data-id") == targetId }
             val targetRelatedJson = targetRow?.attr("data-related") ?: "{}"
             val relatedMap = try {
@@ -917,7 +900,6 @@ class MediaDetailsViewModel : ViewModel() {
                 val id = row.attr("data-id").ifEmpty { targetId }
                 val anilistId = row.attr("data-anilist-id")
 
-                // 1. Cover image from style background-image
                 val style = row.select("div.wo_avatar_big").attr("style")
                 val imgMatch = Regex("""url\(['"]?([^'")]+)['"]?\)""").find(style)
                 var imageUrl = imgMatch?.groupValues?.get(1)?.let { path ->
@@ -936,7 +918,6 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 }
 
-                // 2. Metadata text: Air Date | Media Type | Episodes | Rating
                 val metaText = row.select("span.uk-text-muted.uk-text-small").text().trim()
                     .ifEmpty { row.select(".wo_meta").text().trim() }
                 val parts = metaText.split('|').map { it.trim() }
@@ -945,7 +926,6 @@ class MediaDetailsViewModel : ViewModel() {
                 val eps = if (parts.size > 2) parts[2].substringBefore("★").substringBefore("(").trim() else ""
                 val rating = ""
 
-                // 3. Is current anime
                 val cleanId = id.trim()
                 val cleanAnilistId = anilistId.trim()
                 val currentMalId = media.idMAL ?: malId
@@ -957,7 +937,6 @@ class MediaDetailsViewModel : ViewModel() {
                                 title.equals(media.name, ignoreCase = true) ||
                                 title.equals(media.nameRomaji, ignoreCase = true)))
 
-                // 4. Relation type
                 val relationType = when {
                     isCurrent -> "Selected"
                     relatedMap.containsKey(id) -> relatedMap[id]!!

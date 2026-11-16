@@ -11,10 +11,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
-/**
- * Looks up the next airing episode of one anime on AniList and arms the alarm for it.
- * Retries (WorkManager backoff) while AniList still reports the episode that just aired.
- */
 class AiringSyncWorker(appContext: Context, params: WorkerParameters) :
     CoroutineWorker(appContext, params) {
 
@@ -34,13 +30,11 @@ class AiringSyncWorker(appContext: Context, params: WorkerParameters) :
             val nowSec = System.currentTimeMillis() / 1000
             when {
                 next == null -> {
-                    // finished airing / nothing announced
                     AiringAlarmScheduler.removeFromStore(mediaId)
                     Result.success()
                 }
 
                 next.second <= nowSec + 30 -> {
-                    // AniList has not rolled over to the next episode yet
                     if (runAttemptCount < 6) Result.retry() else Result.success()
                 }
 
@@ -65,7 +59,6 @@ class AiringSyncWorker(appContext: Context, params: WorkerParameters) :
         }
     }
 
-    /** @return (episode, airingAt seconds) or null when nothing is scheduled */
     private suspend fun fetchNextAiring(mediaId: Int): Pair<Int, Long>? {
         val query = "query(\$id:Int){Media(id:\$id,type:ANIME){nextAiringEpisode{episode airingAt}}}"
         val payload = JSONObject()

@@ -155,7 +155,7 @@ class NotificationFragment : Fragment() {
 
         return list
             .sortedByDescending { (it.time / 1000L).toInt() }
-            .filter { it.image != null } // to remove old data
+            .filter { it.image != null }
             .map {
                 Notification(
                     it.type,

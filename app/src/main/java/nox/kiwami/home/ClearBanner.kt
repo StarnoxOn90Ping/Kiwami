@@ -13,11 +13,6 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.model.GlideUrl
 import java.io.File
 
-/**
- * The Home banner exactly as it is: no blur, no 400px downscale, no Ken Burns movement.
- * Same sources as the old blurred banner (custom picture override, custom image url,
- * content:// uris, local files), just untouched.
- */
 fun loadClearBanner(imageView: ImageView, originalBanner: String?) {
     val banner = CustomMediaImages.overrideFor(originalBanner)?.absolutePath ?: originalBanner
     if (banner == null) {

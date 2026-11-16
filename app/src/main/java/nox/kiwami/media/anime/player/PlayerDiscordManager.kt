@@ -46,7 +46,7 @@ class PlayerDiscordManager(
                 val safeDurationMs = if (player.duration > 0 && player.duration != C.TIME_UNSET) {
                     player.duration
                 } else {
-                    1440000L // default 24 mins
+                    1440000L
                 }
 
                 val isPaused = !isPlaying

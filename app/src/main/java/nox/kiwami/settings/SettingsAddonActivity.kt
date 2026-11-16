@@ -71,36 +71,6 @@ class SettingsAddonActivity : AppCompatActivity() {
                 isVisible = PrefManager.getVal(PrefName.TorrentEnabled)
             )
 
-            /*
-            settingsList.add(
-                Settings(
-                    type = 2,
-                    name = getString(R.string.enable_torrent),
-                    desc = getString(R.string.enable_torrent_desc),
-                    icon = R.drawable.ic_round_dns_24,
-                    isChecked = PrefManager.getVal(PrefName.TorrentEnabled),
-                    switch = { isChecked, _ ->
-                        PrefManager.setVal(PrefName.TorrentEnabled, isChecked)
-                        if (isChecked) {
-                            lifecycleScope.launchIO {
-                                if (!TorrentServerService.isRunning()) {
-                                    TorrentServerService.start()
-                                }
-                            }
-                        } else {
-                            lifecycleScope.launchIO {
-                                if (TorrentServerService.isRunning()) {
-                                    TorrentServerService.stop()
-                                }
-                            }
-                        }
-                        torrentSettingsItem.isVisible = isChecked
-                        settingsRecyclerView.adapter?.notifyItemChanged(1)
-                    },
-                    isVisible = true
-                )
-            )
-            */
             torrentSettingsItem.isVisible = true
             settingsList.add(torrentSettingsItem)
 

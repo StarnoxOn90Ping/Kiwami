@@ -19,10 +19,6 @@ import ca.mpreg.webgpuviewer.transition.TransitionStackUp
 
 object WebGpuManager {
 
-    /**
-     * Checks if the current device and Android OS version support WebGPU hardware acceleration
-     * (requires Vulkan 1.1+ on Android 10+).
-     */
     fun isSupported(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
@@ -33,9 +29,6 @@ object WebGpuManager {
         }
     }
 
-    /**
-     * Checks if WebGPU renderer is supported by hardware/OS AND enabled in user settings.
-     */
     fun isEnabled(context: Context): Boolean {
         if (!isSupported(context)) return false
         return try {
@@ -45,10 +38,6 @@ object WebGpuManager {
         }
     }
 
-    /**
-     * Safely creates an [ImageView] instance for paged reading mode.
-     * Returns null if device or runtime does not support WebGPU.
-     */
     fun createPagedViewer(context: Context, isVertical: Boolean = false, isReversed: Boolean = false): ImageView? {
         if (!isSupported(context)) return null
         return try {
@@ -58,10 +47,6 @@ object WebGpuManager {
         }
     }
 
-    /**
-     * Safely creates an [ImageViewContinuous] instance for continuous reading mode.
-     * Returns null if device or runtime does not support WebGPU.
-     */
     fun createContinuousViewer(context: Context): ImageViewContinuous? {
         if (!isSupported(context)) return null
         return try {
@@ -71,9 +56,6 @@ object WebGpuManager {
         }
     }
 
-    /**
-     * Returns the appropriate transition animation based on preference or mode.
-     */
     fun getTransition(name: String, isVertical: Boolean = false): Transition {
         return when (name.lowercase()) {
             "cube" -> TransitionCube

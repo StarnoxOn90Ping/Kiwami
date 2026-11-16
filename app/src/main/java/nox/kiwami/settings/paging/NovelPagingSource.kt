@@ -245,7 +245,7 @@ class NovelExtensionAdapter(private val clickListener: OnNovelInstallClickListen
         }
 
         fun clear() {
-            job.cancel() // Cancel the coroutine when the view is recycled
+            job.cancel()
         }
     }
 

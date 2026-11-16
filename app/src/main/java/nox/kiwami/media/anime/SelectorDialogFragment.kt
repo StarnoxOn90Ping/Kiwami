@@ -16,15 +16,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-//import androidx.compose.ui.test.performClick
-//import androidx.compose.ui.geometry.isEmpty
-//import androidx.compose.ui.semantics.text
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
-//import androidx.glance.visibility
-//import androidx.glance.visibility
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withCreated
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -438,7 +433,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                                 torrentManager.activeTorrentHash =
                                                     currentTorrent.hash
 
-                                                // Pre-buffer the first piece
                                                 torrentManager.prebuffer(currentTorrent.hash!!, index)
 
                                                 selectedVideo.file.url =
@@ -518,8 +512,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     media?.anime?.selectedEpisode = actualKey
                     episode = ep
                     if (ep != null) {
-                        // A stale "downloaded" extractor must not leak into the online list
-                        // once the episode has been deleted.
                         if (ep.extractors?.any { it?.server?.offline == true } == true) {
                             ep.extractors = null
                             ep.allStreams = false
@@ -704,11 +696,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
 
     @OptIn(DelicateCoroutinesApi::class)
     @SuppressLint("UnsafeOptInUsageError")
-    /**
-     * The downloaded copy of this episode for the current media, if there is one. Matches the same
-     * way the episode list decides to show the "downloaded" badge (episode number == saved name),
-     * with a few forgiving fallbacks for keys/names that differ in case or formatting.
-     */
     private fun findDownloadedEpisode(ep: Episode, episodeKey: String?): DownloadedType? {
         val m = media ?: return null
         val names = listOfNotNull(ep.number, episodeKey, ep.title).distinct()
@@ -722,14 +709,12 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                         n.findValidName().equals(d.chapterName, ignoreCase = true)
             }
         }?.let { return it }
-        // Last resort: same episode number, e.g. "Episode 5" vs "5".
         return titleMatches.firstOrNull { d ->
             val num = nox.kiwami.media.MediaNameAdapter.findEpisodeNumber(d.chapterName)
             num != null && wantedNumbers.any { it == num }
         }
     }
 
-    /** Skips the quality/server list and plays the downloaded file straight away. */
     private fun playDownloadedEpisode(ep: Episode, downloaded: DownloadedType) {
         binding.selectorListContainer.visibility = View.GONE
         binding.selectorAutoListContainer.visibility = View.GONE
@@ -876,10 +861,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
         }
     }
 
-    /**
-     * Hands the chosen video to the external player picked in Settings > Anime > External player.
-     * Returns true when it was opened there, false when the built in player should be used.
-     */
     private fun openInExternalPlayer(context: Context?, currentMedia: Media, ep: Episode, video: Video): Boolean {
         val ctx = context ?: return false
         val extractor = ep.extractors?.find { it.server.name == ep.selectedExtractor } ?: return false
@@ -909,7 +890,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
 
         override fun onBindViewHolder(holder: StreamViewHolder, position: Int) {
             val extractor = links.getOrNull(position) ?: return
-            holder.binding.streamName.text = ""//extractor.server.name
+            holder.binding.streamName.text = ""
             holder.binding.streamName.visibility = View.GONE
 
             holder.binding.streamRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -930,7 +911,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     links.removeAt(existingIndex)
                     notifyItemRemoved(existingIndex)
                 }
-                // keep the list in the user's resolution priority order
                 val comparator = ResolutionPriority.comparator(sourceName())
                 val index = links.indexOfFirst { comparator.compare(videoExtractor, it) < 0 }
                     .let { if (it < 0) links.size else it }
@@ -1100,7 +1080,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             val audioNamesArray = audioTracks.toTypedArray()
                             val checkedItems = BooleanArray(audioNamesArray.size) { false }
 
-                            currContext.customAlertDialog().apply { // ToTest
+                            currContext.customAlertDialog().apply {
                                 setTitle(R.string.download_audio_tracks)
                                 multiChoiceItems(audioNamesArray, checkedItems) {
                                     it.forEachIndexed { index, isChecked ->
@@ -1128,7 +1108,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             go()
                         }
                     }
-                    if (subtitles.isNotEmpty()) { // ToTest
+                    if (subtitles.isNotEmpty()) {
                         val subtitleNamesArray = subtitleNames.toTypedArray()
                         val subLanguages = arrayOf(
                             "Albanian", "Arabic", "Bosnian", "Bulgarian", "Chinese", "Croatian", "Czech", "Danish", "Dutch", "English",
@@ -1186,7 +1166,6 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
             }
             if (video.format == VideoType.CONTAINER) {
                 binding.urlSize.isVisible = video.size != null
-                // if video size is null or 0, show "Unknown Size" else show the size in MB
                 val sizeText = getString(
                     R.string.mb_size, "${if (video.extraNote != null) " : " else ""}${
                         if (video.size == 0.0) getString(R.string.size_unknown) else DecimalFormat("#.##").format(

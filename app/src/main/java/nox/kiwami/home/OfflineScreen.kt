@@ -21,21 +21,14 @@ import nox.kiwami.R
 import nox.kiwami.databinding.ViewOfflineScreenBinding
 import java.util.Calendar
 
-/**
- * What "Offline mode" shows instead of the cached Home: an empty, atmospheric screen with a big
- * icon, a shimmering title and a witty line. The line changes when the user comes back to the
- * screen after using something else (see [nextLine]). When the connection returns everything
- * morphs to green ("Back online") with cross-fades instead of snapping.
- */
 class OfflineScreen(private val b: ViewOfflineScreenBinding) {
     private val ctx = b.root.context
     private val density = ctx.resources.displayMetrics.density
     private val offlineColor = ContextCompat.getColor(ctx, R.color.offline_accent)
     private val onlineColor = ContextCompat.getColor(ctx, R.color.online_accent)
 
-    /** The accent currently on screen. It is animated between offline/online amber and green. */
     private var accent = offlineColor
-    private var sweep = 0f // 0..1 position of the light sweeping across the title
+    private var sweep = 0f
     private var colorAnimator: ValueAnimator? = null
     private val loops = mutableListOf<Animator>()
     private var recovered = false
@@ -48,7 +41,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         b.offlineScreenKicker.text = kickerForNow()
         b.offlineScreenLine.text = lines.first()
 
-        // Text: staggered fade-up.
         listOf(
             b.offlineScreenKicker, b.offlineScreenTitle, b.offlineScreenLine, b.offlineScreenHint
         ).forEachIndexed { i, v ->
@@ -74,7 +66,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         startLoops()
     }
 
-    /** Called when the user returns to this screen (e.g. back from Downloads): a fresh line. */
     fun nextLine() {
         if (released || recovered) return
         lineIndex = (lineIndex + 1) % lines.size
@@ -85,7 +76,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         if (released || value == recovered) return
         recovered = value
 
-        // 1. colours glide from amber to green (or back) – title, kicker, icon tint, shimmer
         colorAnimator?.cancel()
         colorAnimator = ValueAnimator.ofObject(
             ArgbEvaluator(), accent, if (value) onlineColor else offlineColor
@@ -99,13 +89,11 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
             start()
         }
 
-        // 2. glow, rings and disc cross-fade into their green versions
         crossfade(b.offlineScreenGlow, R.drawable.bg_offline_glow, R.drawable.bg_online_glow, value)
         crossfade(b.offlineScreenRingOne, R.drawable.bg_offline_pulse, R.drawable.bg_online_pulse, value)
         crossfade(b.offlineScreenRingTwo, R.drawable.bg_offline_pulse, R.drawable.bg_online_pulse, value)
         crossfade(b.offlineScreenDisc, R.drawable.bg_offline_icon_disc, R.drawable.bg_online_icon_disc, value)
 
-        // 3. icon: shrinks + spins away, swaps, then springs back
         val icon = b.offlineScreenIcon
         icon.animate().cancel()
         icon.animate().scaleX(0.3f).scaleY(0.3f).rotation(-120f)
@@ -119,7 +107,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
                     .start()
             }.start()
 
-        // 4. texts slide/fade out, swap, slide/fade back in – staggered
         swapText(b.offlineScreenKicker, 0.85f, 0L) {
             text = if (value) ctx.getString(R.string.offline_screen_back_kicker) else kickerForNow()
         }
@@ -143,9 +130,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         b.offlineScreenTitle.paint.shader = null
     }
 
-    // ---- helpers ------------------------------------------------------------------------------
-
-    /** Fades [v] out, swaps its content via [apply], then fades/slides it back in. */
     private fun swapText(v: TextView, targetAlpha: Float, delay: Long, apply: TextView.() -> Unit) {
         v.animate().cancel()
         v.animate().alpha(0f).translationY(-10f * density)
@@ -170,7 +154,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         td.startTransition(800)
     }
 
-    /** Pushes the current [accent] into every tinted element, including the title's shimmer. */
     private fun applyAccent() {
         b.offlineScreenKicker.setTextColor(accent)
         b.offlineScreenTitle.setTextColor(accent)
@@ -197,10 +180,7 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         t.invalidate()
     }
 
-    // ---- looping animation --------------------------------------------------------------------
-
     private fun startLoops() {
-        // rings: 120dp -> 1.45x = 174dp, inside the 190dp box, fading out before the edge
         listOf(b.offlineScreenRingOne to 0L, b.offlineScreenRingTwo to 1000L).forEach { (ring, delay) ->
             ring.alpha = 0f
             loops += ObjectAnimator.ofPropertyValuesHolder(
@@ -235,7 +215,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
             start()
         }
 
-        // glow: fades in on its own first, then starts its slow pulse
         b.offlineScreenGlow.alpha = 0f
         loops += ObjectAnimator.ofFloat(b.offlineScreenGlow, View.ALPHA, 0f, 1f).apply {
             duration = 800L
@@ -257,7 +236,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
             start()
         }
 
-        // light sweeping across the title
         b.offlineScreenTitle.post {
             if (released) return@post
             rebuildShader()
@@ -275,8 +253,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         }
     }
 
-    // ---- text ---------------------------------------------------------------------------------
-
     private fun hour() = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
     private fun kickerForNow(): String = when (hour()) {
@@ -286,7 +262,6 @@ class OfflineScreen(private val b: ViewOfflineScreenBinding) {
         else -> "NIGHT OWL MODE"
     }
 
-    /** Time-of-day lines mixed into the general pool; shuffled once per launch. */
     private fun buildLines(): List<String> {
         val res = ctx.resources
         val timed = res.getStringArray(

@@ -57,7 +57,6 @@ class MediaContentBottomSheet : BottomSheetDialogFragment() {
 
         binding.repliesRecyclerView.layoutManager = LinearLayoutManager(context)
 
-        // If items were already provided, display immediately
         val passedWatchOrderItems: ArrayList<MediaDetailsViewModel.WatchOrderItem>? =
             arguments?.getSerialized(ARG_ITEMS)
         val passedNewsItems: ArrayList<MediaDetailsViewModel.NewsItem>? =
@@ -71,7 +70,6 @@ class MediaContentBottomSheet : BottomSheetDialogFragment() {
             return
         }
 
-        // Show loading spinner and fetch in background
         binding.repliesRefresh.visibility = View.VISIBLE
         binding.repliesRecyclerView.visibility = View.GONE
         binding.repliesEmpty.visibility = View.GONE
@@ -173,17 +171,13 @@ class MediaContentBottomSheet : BottomSheetDialogFragment() {
             val item = items[position]
             val context = holder.binding.root.context
 
-            // Title
             holder.binding.watchOrderTitle.text = item.name
 
-            // Cover Image
             val imageUrl = if (item.image.isNotEmpty()) item.image else currentMedia?.cover
             holder.binding.watchOrderImage.loadImage(imageUrl)
 
-            // Relation Badge
             holder.binding.watchOrderRelation.text = item.relationType.ifEmpty { "Entry" }
 
-            // Current Highlight & Badge
             if (item.isCurrent) {
                 holder.binding.watchOrderCurrentBadge.visibility = View.VISIBLE
                 val density = context.resources.displayMetrics.density
@@ -204,11 +198,9 @@ class MediaContentBottomSheet : BottomSheetDialogFragment() {
                 )
             }
 
-            // Metadata: Format
             val format = item.mediaType.ifEmpty { "Anime" }
             holder.binding.watchOrderFormat.text = format
 
-            // Metadata: Air Date / Year
             if (item.airDate.isNotEmpty()) {
                 holder.binding.watchOrderAirDate.visibility = View.VISIBLE
                 holder.binding.watchOrderDot1.visibility = View.VISIBLE
@@ -218,7 +210,6 @@ class MediaContentBottomSheet : BottomSheetDialogFragment() {
                 holder.binding.watchOrderDot1.visibility = View.GONE
             }
 
-            // Metadata: Episodes
             if (item.episodes.isNotEmpty()) {
                 holder.binding.watchOrderEpisodes.visibility = View.VISIBLE
                 holder.binding.watchOrderDot2.visibility = View.VISIBLE
@@ -230,7 +221,6 @@ class MediaContentBottomSheet : BottomSheetDialogFragment() {
 
 
 
-            // Click listener
             holder.binding.watchOrderCard.setOnClickListener {
                 if (item.isCurrent) {
                     dismissAllowingStateLoss()

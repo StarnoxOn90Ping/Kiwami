@@ -482,7 +482,6 @@ class StatsFragment :
                     valuesMap[name] ?: 0
                 }
 
-                // Create a new ChartPacket with standardized names and values.
                 ChartPacket(packet.username, referenceNames, standardizedValues)
             }.toMutableList()
             chartPackets.clear()
@@ -537,7 +536,6 @@ class StatsFragment :
                     valuesMap[name] ?: 0
                 }
 
-                // Create a new ChartPacket with standardized names and values.
                 ChartPacket(packet.username, referenceNames, standardizedValues)
             }.toMutableList()
             chartPackets.clear()
@@ -592,7 +590,6 @@ class StatsFragment :
                     valuesMap[name] ?: 0
                 }
 
-                // Create a new ChartPacket with standardized names and values.
                 ChartPacket(packet.username, referenceNames, standardizedValues)
             }.toMutableList()
             chartPackets.clear()
@@ -649,7 +646,6 @@ class StatsFragment :
                     valuesMap[name] ?: 0
                 }
 
-                // Create a new ChartPacket with standardized names and values.
                 ChartPacket(packet.username, referenceNames, standardizedValues)
             }.toMutableList()
             chartPackets.clear()
@@ -704,7 +700,6 @@ class StatsFragment :
                     valuesMap[name] ?: 0
                 }
 
-                // Create a new ChartPacket with standardized names and values.
                 ChartPacket(packet.username, referenceNames, standardizedValues)
             }.toMutableList()
             chartPackets.clear()
@@ -762,7 +757,6 @@ class StatsFragment :
                     valuesMap[name] ?: 0
                 }
 
-                // Create a new ChartPacket with standardized names and values.
                 ChartPacket(packet.username, referenceNames, standardizedValues)
             }.toMutableList()
             chartPackets.clear()

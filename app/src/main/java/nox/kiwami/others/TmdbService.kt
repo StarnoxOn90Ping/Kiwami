@@ -29,7 +29,6 @@ object TmdbService {
             val root = json.parseToJsonElement(text).jsonObject
             val logos = root["logos"]?.jsonArray ?: return@withContext null
 
-            // Prioritize English logo, otherwise first available
             var bestLogoPath: String? = null
             for (item in logos) {
                 val obj = item.jsonObject

@@ -19,12 +19,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/**
- * Schedules a precise alarm for the moment the next episode of a subscribed anime airs.
- * Alarms are plain [AlarmManager] alarms, so they fire even when the app is closed / in Doze.
- *
- * The alarm data is mirrored into preferences so it can be restored after a reboot or an app update.
- */
 object AiringAlarmScheduler {
 
     private const val STORE_KEY = "airing_alarms_v1"
@@ -38,13 +32,9 @@ object AiringAlarmScheduler {
         val name: String,
         val image: String?,
         val banner: String?,
-        /** The episode that is about to air */
         val episode: Int,
-        /** Epoch seconds at which [episode] airs */
         val airingAtSec: Long
     )
-
-    // region store
 
     @Synchronized
     private fun load(): MutableMap<Int, Alarm> {
@@ -95,8 +85,6 @@ object AiringAlarmScheduler {
         if (map.remove(mediaId) != null) save(map)
     }
 
-    // endregion
-
     private fun pendingIntent(context: Context, mediaId: Int): PendingIntent {
         val intent = Intent(context, AiringAlarmReceiver::class.java).apply {
             action = ACTION_AIRING
@@ -117,9 +105,6 @@ object AiringAlarmScheduler {
         return am.canScheduleExactAlarms()
     }
 
-    /**
-     * Stores and arms the alarm. Returns false when the airing time already passed.
-     */
     fun schedule(context: Context, alarm: Alarm): Boolean {
         val triggerAt = alarm.airingAtSec * 1000
         if (triggerAt <= System.currentTimeMillis()) {
@@ -140,7 +125,6 @@ object AiringAlarmScheduler {
             if (canScheduleExact(context)) {
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
             } else {
-                // Still fires while the device is idle, just not to the second.
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
             }
         } catch (e: SecurityException) {
@@ -156,11 +140,6 @@ object AiringAlarmScheduler {
         WorkManager.getInstance(context).cancelUniqueWork(AiringSyncWorker.workName(mediaId))
     }
 
-    /**
-     * Re-arms every stored alarm (after boot, app update, or when exact alarm permission changes)
-     * and refreshes airing data from AniList at most every 6 hours, or right away when a stored
-     * alarm has already passed.
-     */
     fun restoreAll(context: Context) {
         try {
             PrefManager.init(context)
@@ -186,7 +165,6 @@ object AiringAlarmScheduler {
         }
     }
 
-    /** Fetches the next airing time from AniList and arms the alarm. */
     fun enqueueSync(context: Context, mediaId: Int, delayMinutes: Long = 0) {
         val request = OneTimeWorkRequestBuilder<AiringSyncWorker>()
             .setInputData(workDataOf(EXTRA_MEDIA_ID to mediaId))

@@ -27,7 +27,6 @@ import nox.kiwami.others.ThemeSong
 import nox.kiwami.themes.ThemeManager
 import java.util.Locale
 
-/** Plays the video of one opening / ending (from AnimeThemes) full screen. */
 class ThemeVideoActivity : AppCompatActivity() {
 
     companion object {
@@ -37,7 +36,6 @@ class ThemeVideoActivity : AppCompatActivity() {
         private const val EXTRA_YT_ID = "ytId"
         private const val EXTRA_SEARCH = "search"
 
-        /** Plays a YouTube video inside the app (used when AnimeThemes has no video). */
         fun openYoutube(
             context: Context,
             videoId: String,
@@ -111,7 +109,6 @@ class ThemeVideoActivity : AppCompatActivity() {
         binding.themeVideoTitle.text = intent.getStringExtra(EXTRA_TITLE)
         binding.themeVideoSubtitle.text = intent.getStringExtra(EXTRA_SUBTITLE)
 
-        // keep the bars clear of the status / navigation bars and cutouts
         val d = resources.displayMetrics.density
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val bars = insets.getInsets(
@@ -170,7 +167,6 @@ class ThemeVideoActivity : AppCompatActivity() {
         if (webMode) setupWeb(ytId!!) else setupPlayer()
     }
 
-    // YouTube inside the app: same embed approach the trailer uses
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWeb(id: String) {
         val web = binding.themeVideoWeb
@@ -183,7 +179,6 @@ class ThemeVideoActivity : AppCompatActivity() {
         web.settings.mediaPlaybackRequiresUserGesture = false
         web.setBackgroundColor(0xFF000000.toInt())
         web.webChromeClient = android.webkit.WebChromeClient()
-        // keep the video below the title bar, which stays visible in this mode
         binding.themeVideoTop.post {
             val d = resources.displayMetrics.density
             val lp = web.layoutParams as FrameLayout.LayoutParams

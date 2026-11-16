@@ -25,7 +25,7 @@ class KiwamiSearchParser(private val tokens: List<KiwamiToken>) {
         nodes.add(parseTerm())
 
         while (index < tokens.size && peek() !is KiwamiToken.RParen && peek() !is KiwamiToken.Or) {
-            match(KiwamiToken.And) // Optional explicit &&
+            match(KiwamiToken.And)
             nodes.add(parseTerm())
         }
 

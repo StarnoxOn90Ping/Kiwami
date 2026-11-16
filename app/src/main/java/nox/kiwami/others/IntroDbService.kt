@@ -22,13 +22,11 @@ object IntroDbService {
     ): List<AniSkip.Stamp>? = withContext(Dispatchers.IO) {
         val epInt = episode.toIntOrNull() ?: return@withContext null
 
-        // 1. Try IntroDB App API via IMDB ID
         if (!imdbId.isNullOrBlank()) {
             val fromImdb = fetchFromIntroDbApp(imdbId, season, episode, epInt)
             if (!fromImdb.isNullOrEmpty()) return@withContext fromImdb
         }
 
-        // 2. Try TheIntroDb API (TVDB ID preferred, TMDB ID fallback)
         if (tvdbId != null && tvdbId > 0) {
             val fromTvdb = fetchFromTheIntroDb(tvdbId = tvdbId, season = season, episode = episode, episodeInt = epInt)
             if (!fromTvdb.isNullOrEmpty()) return@withContext fromTvdb

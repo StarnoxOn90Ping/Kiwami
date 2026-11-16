@@ -88,8 +88,6 @@ class PlayerSettingsActivity :
             onBackPressedDispatcher.onBackPressed()
         }
 
-        // Video
-
         val speeds =
             arrayOf(
                 0.25f,
@@ -143,7 +141,6 @@ class PlayerSettingsActivity :
                 )
         }
 
-        // Time Stamp
         binding.playerSettingsTimeStamps.isChecked = PrefManager.getVal(PrefName.TimeStampsEnabled)
         binding.playerSettingsTimeStamps.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.TimeStampsEnabled, isChecked)
@@ -171,7 +168,6 @@ class PlayerSettingsActivity :
             PrefManager.setVal(PrefName.AutoHideTimeStamps, isChecked)
         }
 
-        // Auto
         binding.playerSettingsAutoSkipOpEd.isChecked = PrefManager.getVal(PrefName.AutoSkipOPED)
         binding.playerSettingsAutoSkipOpEd.isEnabled = binding.playerSettingsTimeStamps.isChecked
         binding.playerSettingsAutoSkipOpEd.setOnCheckedChangeListener { _, isChecked ->
@@ -194,7 +190,6 @@ class PlayerSettingsActivity :
             PrefManager.setVal(PrefName.AutoSkipFiller, isChecked)
         }
 
-        // Update Progress
         binding.playerSettingsAskUpdateProgress.isChecked =
             PrefManager.getVal(PrefName.AskIndividualPlayer)
         binding.playerSettingsAskUpdateProgress.setOnCheckedChangeListener { _, isChecked ->
@@ -218,7 +213,6 @@ class PlayerSettingsActivity :
             PrefManager.setVal(PrefName.WatchPercentage, value / 100)
         }
 
-        // Behaviour
         binding.playerSettingsAlwaysContinue.isChecked = PrefManager.getVal(PrefName.AlwaysContinue)
         binding.playerSettingsAlwaysContinue.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.AlwaysContinue, isChecked)
@@ -264,7 +258,6 @@ class PlayerSettingsActivity :
             }
         }
 
-        // Other
         binding.playerSettingsPiP.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 visibility = View.VISIBLE
@@ -312,7 +305,6 @@ class PlayerSettingsActivity :
             }
         }
 
-        // Online Subtitles
         binding.playerSettingsOnlineSubtitles.isChecked = PrefManager.getVal(PrefName.OnlineSubtitlesEnabled)
         binding.playerSettingsOnlineSubtitles.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.OnlineSubtitlesEnabled, isChecked)

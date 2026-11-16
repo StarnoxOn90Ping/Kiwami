@@ -21,43 +21,24 @@ import android.content.Intent
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/**
- * Headless Rich Presence facade.
- *
- * Uses the Discord Headless Sessions API (pure HTTP, no foreground service).
- * Requires an OAuth2 Bearer token with `activities.write` scope (managed by [TokenManager]).
- */
 object RPCManager {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    /** Lazily created HeadlessRPC instance; reset on user logout. */
     private var headlessRpc: HeadlessRPC? = null
 
-    /** Debounce job — only the last setPresence within 500ms fires. */
     private var debounceJob: Job? = null
     private const val DEBOUNCE_MS = 500L
 
-    /** Heartbeat job to keep headless sessions alive (e.g. during 20+ min watch). */
     private var heartbeatJob: Job? = null
     private const val HEARTBEAT_INTERVAL_MS = 9 * 60 * 1000L
 
-    /** Auto-clear job — clears the RPC if the video is left paused for too long. */
     private var autoClearJob: Job? = null
     private const val AUTO_CLEAR_INTERVAL_MS = 5 * 60 * 1000L
 
-    /** Tracks whether the DiscordService has already been started to avoid redundant calls */
     private var serviceStarted = false
 
 
-    // ─── Public API ──────────────────────────────────────────────────────────────────
-
-    /**
-     * Set / update Discord Rich Presence.
-     *
-     * @param context Android context (used to locate the token cache directory)
-     * @param data    The presence data built by the calling screen
-     */
     fun setPresence(context: Context, data: RPC.Companion.RPCData) {
         val appContext = context.applicationContext
         if (!serviceStarted) {
@@ -68,9 +49,7 @@ object RPCManager {
                 Logger.log("RPCManager: Failed to start DiscordService (missing manifest entry?): ${e.message}")
             }
         }
-        // Cancel any pending auto-clear since we're updating presence
 
-        // Debounce: only the last call within 500ms actually fires
         debounceJob?.cancel()
         debounceJob = scope.launch {
             delay(DEBOUNCE_MS)
@@ -85,19 +64,16 @@ object RPCManager {
                 handleRpcFailure(appContext, e)
             }
 
-            // Schedule heartbeat or auto-clear based on playback state
             heartbeatJob?.cancel()
             autoClearJob?.cancel()
 
             if (isPaused) {
-                // If paused, schedule an auto-cleanup after 5 minutes
                 autoClearJob = scope.launch {
                     delay(AUTO_CLEAR_INTERVAL_MS)
                     Logger.log("RPCManager: Auto-clearing Headless RPC due to pause timeout.")
                     clearPresence(appContext)
                 }
             } else {
-                // If playing continuously, schedule heartbeat
                 heartbeatJob = scope.launch {
                     while (true) {
                         delay(HEARTBEAT_INTERVAL_MS)
@@ -113,9 +89,6 @@ object RPCManager {
         }
     }
 
-    /**
-     * Clear / stop Discord Rich Presence.
-     */
     fun clearPresence(context: Context) {
         val appContext = context.applicationContext
         Logger.log("RPCManager: Clearing presence...")
@@ -163,7 +136,6 @@ object RPCManager {
         var sessionToken = rpc?.activityToken
 
         if (accessToken == null || sessionToken == null) {
-            // App was resurrected specifically for onTaskRemoved! Reconstruct from cache.
             val discordDir = File(context.filesDir, "discord")
             accessToken = runCatching { discordDir.resolve("discord_access.txt").readText() }.getOrNull()
             sessionToken = PrefManager.getNullableCustomVal("discord_activity_token", null, String::class.java)
@@ -179,7 +151,6 @@ object RPCManager {
                 Logger.log("RPCManager: App kill emergency raw cleanup starting...")
                 val client = DiscordHttpClient.instance
 
-                // 2. Delete session
                 val deletePayload = "{\"token\":\"$sessionToken\"}"
                 val delReq = okhttp3.Request.Builder()
                     .url("https://discord.com/api/v10/users/@me/headless-sessions/delete")
@@ -209,13 +180,9 @@ object RPCManager {
         try {
             thread.join(2000) 
         } catch (e: InterruptedException) {
-            // Ignore
         }
     }
 
-    /**
-     * Call this when the user logs out of Discord to release all resources.
-     */
     fun reset() {
         debounceJob?.cancel()
         heartbeatJob?.cancel()
@@ -225,9 +192,6 @@ object RPCManager {
         headlessRpc = null
     }
 
-    /**
-     * Returns the token expiry timestamp in millis, or 0 if unknown/not logged in.
-     */
     fun getTokenExpiresAt(): Long {
         return headlessRpc?.tokenManager?.getTokenExpiresAt() ?: 0L
     }
@@ -249,8 +213,6 @@ object RPCManager {
         }
     }
 
-    // ─── Private helpers ──────────────────────────────────────────────────────────────────
-
     private fun ensureHeadlessRpc(context: Context): HeadlessRPC? {
         val token = Discord.token ?: return null
         if (headlessRpc == null || headlessRpc?.authToken != token) {
@@ -263,12 +225,6 @@ object RPCManager {
         return headlessRpc
     }
 
-    /**
-     * Convert [RPC.Companion.RPCData] to a [DiscordActivity] for the headless API.
-     *
-     * Discord resolves external image URLs server-side, so we pass URLs directly
-     * (no need to proxy through /external-assets).
-     */
     private suspend fun buildDiscordActivity(data: RPC.Companion.RPCData): DiscordActivity {
         val isManga = data.type == RPC.Type.WATCHING &&
                 (data.state?.contains("Reading", ignoreCase = true) == true ||
@@ -281,17 +237,14 @@ object RPCManager {
                             data.largeImage?.url != null && 
                             data.largeImage.url != Discord.small_Image
 
-        // Select Small Icon based on mode
         val (smallIconUrl, smallIconText) = if (showSmallIcon) {
             Discord.small_Image_AniList to "AniList"
         } else {
             null to null
         }
 
-        // Build Buttons based on mode
         val buttons = mutableListOf<DiscordActivity.Button>()
         if (mode != "nothing") {
-            // Button 1: Media Link (Primary Tracker)
             val trackers = runCatching { data.buttons.filter { it.url.contains("anilist.co") } }.getOrDefault(emptyList())
             val primaryTracker = trackers.firstOrNull()
             
@@ -301,7 +254,6 @@ object RPCManager {
                 }
             }
 
-            // Button 2: User Profile Link
             val anilistUser = PrefManager.getVal(PrefName.AnilistUserName, "")
             
             val userProfileUrl = if (anilistUser.isNotEmpty()) "https://anilist.co/user/$anilistUser/" else null
@@ -317,7 +269,7 @@ object RPCManager {
         return DiscordActivity(
             applicationId = data.applicationId,
             name = data.activityName?.takeIf { it.isNotBlank() } ?: "Kiwami",
-            platform = "android", // Required by Discord
+            platform = "android",
             type = data.type?.ordinal,
             statusDisplayType = 0,
             details = data.details,
@@ -340,7 +292,6 @@ object RPCManager {
         )
     }
 
-    /** Validate that a URL is a proper http/https link. */
     private fun String?.isValidUrl(): Boolean {
         return this != null && isNotEmpty() &&
                 (startsWith("http://") || startsWith("https://"))

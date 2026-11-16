@@ -19,10 +19,6 @@ import nox.kiwami.navBarHeight
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 
-/**
- * Floating action bar shown at the bottom of the episode list while one or more
- * episodes are selected (long-press an episode to start selecting).
- */
 class EpisodeSelectionBar(
     private val context: Context,
     onClose: () -> Unit,
@@ -39,8 +35,6 @@ class EpisodeSelectionBar(
     private val countText = TextView(context)
     private var shown = false
 
-    // Extra body below the bar. It sits behind the Info/Watch/Comments bar, and only shows
-    // when the pop-up bounce overshoots, so the list never peeks through underneath.
     private val skirt: Int get() = dp(32)
 
     val view: View get() = card
@@ -68,12 +62,11 @@ class EpisodeSelectionBar(
         )
 
         card.apply {
-            // Flat, full-width bar in the same surface colour as the Info/Watch/Comments bar
             radius = 0f
             cardElevation = 0f
             strokeWidth = 0
             setCardBackgroundColor(surface)
-            isClickable = true // swallow touches so they don't reach the list behind the bar
+            isClickable = true
             visibility = View.GONE
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -87,7 +80,6 @@ class EpisodeSelectionBar(
             setPadding(dp(8), dp(8), dp(8), dp(6))
         }
 
-        // Header: close button, "N selected", select all
         val header = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -119,7 +111,6 @@ class EpisodeSelectionBar(
         header.addView(countText)
         header.addView(selectAll)
 
-        // Action buttons
         val actions = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         fun action(icon: Int, label: String, click: () -> Unit): View =
             LinearLayout(context).apply {
@@ -146,7 +137,6 @@ class EpisodeSelectionBar(
                 })
             }
         actions.addView(action(R.drawable.ic_round_info_24, "Info") { onInfo() })
-        // Read / watched actions are optional (novels have no per-item progress)
         if (onWatched != null) {
             actions.addView(action(R.drawable.ic_check, watchedLabel) { onWatched() })
         }
@@ -158,7 +148,6 @@ class EpisodeSelectionBar(
 
         column.addView(header)
         column.addView(actions)
-        // Thin divider on top, like a separator between the list and the bar
         val divider = View(context).apply {
             setBackgroundColor(androidx.core.graphics.ColorUtils.setAlphaComponent(onSurface, 40))
             layoutParams = LinearLayout.LayoutParams(
@@ -175,7 +164,6 @@ class EpisodeSelectionBar(
         card.addView(wrapper)
     }
 
-    /** Height the bar takes up, so the list can leave room for it. */
     fun measuredHeightPx(): Int {
         val w = View.MeasureSpec.makeMeasureSpec(
             context.resources.displayMetrics.widthPixels, View.MeasureSpec.EXACTLY
@@ -185,7 +173,6 @@ class EpisodeSelectionBar(
         return card.measuredHeight - skirt
     }
 
-    /** Called with the current number of selected episodes. */
     fun update(count: Int) {
         if (count > 0) {
             countText.text = "$count selected"
@@ -199,7 +186,6 @@ class EpisodeSelectionBar(
         if (shown) return
         shown = true
         (card.layoutParams as? FrameLayout.LayoutParams)?.let {
-            // sit directly on top of the Info / Watch / Comments tab bar (64dp + system nav bar)
             it.bottomMargin = dp(64) + navBarHeight - skirt
             card.layoutParams = it
         }
@@ -207,7 +193,6 @@ class EpisodeSelectionBar(
         card.visibility = View.VISIBLE
         card.alpha = 0f
         card.translationY = dp(56).toFloat()
-        // Springy pop-up: overshoots a little, then settles
         card.animate().alpha(1f).translationY(0f)
             .setDuration(450)
             .setInterpolator(OvershootInterpolator(2.2f))
@@ -218,7 +203,6 @@ class EpisodeSelectionBar(
         if (!shown) return
         shown = false
         card.animate().cancel()
-        // Pulls back slightly before dropping away
         card.animate().alpha(0f).translationY(dp(56).toFloat())
             .setDuration(260)
             .setInterpolator(AnticipateInterpolator(1.6f))

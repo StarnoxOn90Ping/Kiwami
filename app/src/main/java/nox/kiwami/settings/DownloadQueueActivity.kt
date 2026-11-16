@@ -54,7 +54,7 @@ class DownloadQueueActivity : AppCompatActivity() {
     private val downloadsManager by lazy { Injekt.get<DownloadsManager>() }
     private var mediaItemsKey: Pair<MediaType, Int>? = null
     private var mediaItemsCache: List<DownloadsListItem.DownloadedMediaItem> = emptyList()
-    private var selectedTabPosition = 0 // 0: Anime, 1: Manga, 2: Novel
+    private var selectedTabPosition = 0
     private val folderSizeCache = mutableMapOf<String, Long>()
     private val coverPathCache = mutableMapOf<String, String?>()
 
@@ -151,7 +151,6 @@ class DownloadQueueActivity : AppCompatActivity() {
             while (isActive) {
                 refreshUI()
 
-                // Update tab titles with active queue count and prevent flickering
                 val tabLayout = binding.downloadQueueTabLayout
                 val animeCount = AnimeServiceDataSingleton.currentTasks.size + AnimeServiceDataSingleton.downloadQueue.size
                 val mangaCount = MangaServiceDataSingleton.currentTasks.size + MangaServiceDataSingleton.downloadQueue.size
@@ -169,7 +168,6 @@ class DownloadQueueActivity : AppCompatActivity() {
                 val text2 = if (novelCount > 0) "Novel ($novelCount)" else "Novel"
                 if (tab2?.text != text2) tab2?.text = text2
 
-                // Update status text
                 val currentType = getSelectedMediaType()
                 val currentTypeActiveList = getActiveQueueTasks(currentType)
                 val activeCount = currentTypeActiveList.count { it.isActive }
@@ -224,7 +222,6 @@ class DownloadQueueActivity : AppCompatActivity() {
     private fun getDownloadsListItems(type: MediaType): List<DownloadsListItem> {
         val listItems = mutableListOf<DownloadsListItem>()
 
-        // 1. Active Queue Tasks
         val queueItems = getActiveQueueTasks(type)
         if (queueItems.isNotEmpty()) {
             listItems.add(DownloadsListItem.Header(getString(R.string.download_queue_header)))
@@ -238,7 +235,6 @@ class DownloadQueueActivity : AppCompatActivity() {
             })
         }
 
-        // 2. Downloaded Media Items (CRUD & Insights)
         val mediaItems = getDownloadedMediaItems(type)
 
         if (mediaItems.isNotEmpty()) {
@@ -298,7 +294,6 @@ class DownloadQueueActivity : AppCompatActivity() {
                 coverPathCache[title] = coverPath
             }
 
-            // Also cache covers for active queue items
             val activeQueue = getActiveQueueTasks(type)
             for (item in activeQueue) {
                 val itemType = item.mediaType
@@ -378,12 +373,10 @@ class DownloadQueueActivity : AppCompatActivity() {
     }
 
     private fun clearAllQueues() {
-        // Clear Queues
         AnimeServiceDataSingleton.downloadQueue.clear()
         MangaServiceDataSingleton.downloadQueue.clear()
         NovelServiceDataSingleton.downloadQueue.clear()
 
-        // Cancel running tasks
         val animeActive = AnimeServiceDataSingleton.currentTasks.toList()
         for (task in animeActive) {
             val intent = Intent(AnimeDownloaderService.ACTION_CANCEL_DOWNLOAD).apply {
@@ -526,7 +519,6 @@ class DownloadsAdapter(
 
                 val progress = wrapper.progress
 
-                // Load cover image
                 val coverPath = coverPathCache[queueItem.title]
                 if (coverPath != null) {
                     holder.binding.itemDownloadImage.loadImage(coverPath)
@@ -567,7 +559,6 @@ class DownloadsAdapter(
                 val sizeStr = SizeFormatter.formatBytes(media.sizeBytes)
                 holder.binding.itemDownloadSubtitle.text = "$countText • $sizeStr"
 
-                // Load cover image
                 val coverPath = coverPathCache[media.title]
                 if (coverPath != null) {
                     holder.binding.itemDownloadImage.loadImage(coverPath)

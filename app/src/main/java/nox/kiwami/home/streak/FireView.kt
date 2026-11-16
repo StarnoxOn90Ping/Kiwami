@@ -18,32 +18,6 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
-/**
- * A procedurally animated fire, drawn with canvas paths (no assets).
- *
- *  - [Mode.ICON]: a little campfire (two logs, flames, glow, sparks). This is the streak icon.
- *  - [Mode.EDGE]: a row of tongues along the bottom edge that fades out upwards, laid over the
- *    Anime / Manga list cards.
- *  - [Mode.AURA]: a wall of flames burning along the TOP edge of a card, with a heat glow and a
- *    hot edge line. The view has the exact size of the card and draws ABOVE its own bounds (its
- *    parents must have clipChildren=false). Upwards it never goes further than [setHeadroom],
- *    so it can't touch anything above the card. Nothing is drawn at the sides or the bottom.
- *
- * What it looks like is set by [setStage] (0..5, see [StreakManager.stageOf]):
- *
- *   stage 0   no fire. Just the logs and a few cold, faintly pulsing coals
- *   stage 1   one small flame with two little ones next to it
- *   stage 2   five flames
- *   stage 3   bigger, five flames, more sparks
- *   stage 4   seven flames, taller, hotter, bigger glow
- *   stage 5   the same shape at full strength. Last stage
- *
- * The flames are teardrops whose tips lead and whose bodies lag behind, which is what makes them
- * lick and flicker rather than just wobble. Three layers (red, orange, white-hot yellow) sit on
- * top of each other, with a soft glow behind and sparks drifting up.
- *
- * [setDim] shows the "not done yet today" look. [flare] gives a short burst on streak growth.
- */
 class FireView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -55,13 +29,13 @@ class FireView @JvmOverloads constructor(
     private var mode = Mode.ICON
     private var stage = 3
     private var intensity = ICON_INTENSITY[3]
-    private var boost = 1f // fixed at 1 (100%)
-    private var dim = 0f // 0 = fully lit, 1 = out (grey)
+    private var boost = 1f
+    private var dim = 0f
     private var flareUntil = 0L
     private var running = false
     private var animated = true
     private var sparksOn = true
-    private var active = activeTongues(3) // indices into TONGUES, small flames first
+    private var active = activeTongues(3)
 
     private val outer = Paint(Paint.ANTI_ALIAS_FLAG)
     private val mid = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -85,10 +59,7 @@ class FireView @JvmOverloads constructor(
     private var lastNanos = 0L
     private var spawnDebt = 0f
 
-    /** One flame of the icon: x offset (fraction of width), height, width, lean. */
     private class Tongue(val dx: Float, val h: Float, val w: Float, val lean: Float, val minStage: Int)
-
-    // ---- configuration -----------------------------------------------------------------------
 
     fun setMode(m: Mode) {
         if (m == mode) return
@@ -98,11 +69,6 @@ class FireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /**
-     * @param value 0..5
-     * @param intensityOverride 0..1, only when this view should burn differently from the default
-     * for its [Mode] (the flames behind the number use this).
-     */
     fun setStage(value: Int, intensityOverride: Float? = null) {
         stage = value.coerceIn(0, StreakManager.MAX_STAGE)
         active = activeTongues(stage)
@@ -114,7 +80,6 @@ class FireView @JvmOverloads constructor(
     private fun defaultIntensity() =
         if (mode == Mode.ICON) ICON_INTENSITY[stage] else EDGE_INTENSITY[stage]
 
-    /** @param value 0f = burning, 1f = grey and nearly out */
     fun setDim(value: Float) {
         dim = value.coerceIn(0f, 1f)
         val sat = 1f - dim * 0.9f
@@ -124,13 +89,11 @@ class FireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** 1 = normal. (The Streak settings no longer expose this: it is always 1.) */
     fun setBoost(value: Float) {
         boost = value.coerceIn(0.5f, 1.5f)
         invalidate()
     }
 
-    /** false = a still picture of the fire, no flicker, no sparks. */
     fun setAnimated(value: Boolean) {
         if (animated == value) return
         animated = value
@@ -145,13 +108,11 @@ class FireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** [Mode.AURA]: how far above the view the flames may reach, in px. */
     fun setHeadroom(px: Float) {
         headroom = px.coerceIn(0f, 80f * d)
         invalidate()
     }
 
-    /** [Mode.AURA]: only draw while [card] is visible (it starts invisible and fades in). */
     fun setFollow(card: View?) {
         follow = card
     }
@@ -160,8 +121,6 @@ class FireView @JvmOverloads constructor(
         flareUntil = System.currentTimeMillis() + durationMs
         invalidate()
     }
-
-    // ---- lifecycle ---------------------------------------------------------------------------
 
     private fun updateRunning() {
         val shouldRun = animated && isShown && isAttachedToWindow
@@ -194,11 +153,8 @@ class FireView @JvmOverloads constructor(
         buildShaders()
     }
 
-    // ---- geometry ----------------------------------------------------------------------------
-
     private val baseY get() = height * 0.86f
 
-    /** Tallest a flame of the icon can get at intensity [i]. */
     private fun iconMaxH(i: Float) = height * (0.30f + 0.52f * i.coerceAtMost(1f))
 
     private fun buildShaders() {
@@ -207,8 +163,6 @@ class FireView @JvmOverloads constructor(
         if (h <= 0f || w <= 0f) return
 
         if (mode == Mode.ICON) {
-            // Colours run base (hot) -> tip (cool, see-through). The gradient spans exactly the
-            // tallest flame of this stage, so small fires fade at their own tips.
             val bottom = baseY + h * 0.01f
             val top = (baseY - iconMaxH(intensity)).coerceAtLeast(0f)
             val pos = floatArrayOf(0f, 0.45f, 1f)
@@ -218,19 +172,15 @@ class FireView @JvmOverloads constructor(
             mid.shader = grad(0xBFFF6D00.toInt(), 0xF2FF9100.toInt(), 0xFFFFC107.toInt())
             inner.shader = grad(0xBFFFEB3B.toInt(), 0xF2FFE082.toInt(), 0xFFFFFDE7.toInt())
 
-            // soft halo behind the flames; kept inside the view so it never shows a hard edge
             val r = min(w * 0.47f, h * 0.43f)
             glow.shader = RadialGradient(
                 w / 2f, baseY - h * 0.28f, r,
                 intArrayOf(0xFFFF7A00.toInt(), 0x00FF5500), null, Shader.TileMode.CLAMP
             )
         } else if (mode == Mode.AURA) {
-            // Flame-local gradient: y = 0 is the root, y = -100 the tip. Every flame scales it to
-            // its own height (see [rooted]), so tips always fade out completely.
             val pos = floatArrayOf(0f, 0.55f, 1f)
             fun grad(c0: Int, c1: Int, c2: Int) =
                 LinearGradient(0f, 0f, 0f, -100f, intArrayOf(c0, c1, c2), pos, Shader.TileMode.CLAMP)
-            // heat glow: an ellipse sitting on the top edge, squashed to the headroom when drawn
             glow.shader = RadialGradient(
                 w / 2f, 5f * d, w / 2f,
                 intArrayOf(0xFFFF7A00.toInt(), 0x80FF5500.toInt(), 0x00FF5500),
@@ -240,7 +190,6 @@ class FireView @JvmOverloads constructor(
             mid.shader = grad(0xFFFFC107.toInt(), 0xE6FF9100.toInt(), 0x00FF9100)
             inner.shader = grad(0xFFFFFDE7.toInt(), 0xE6FFE082.toInt(), 0x00FFE082)
         } else {
-            // tips fade to transparent so the fire melts into the card instead of ending in a shape
             val pos = floatArrayOf(0f, 0.4f, 1f)
             fun grad(c0: Int, c1: Int, c2: Int) =
                 LinearGradient(0f, 0f, 0f, h, intArrayOf(c0, c1, c2), pos, Shader.TileMode.CLAMP)
@@ -248,16 +197,12 @@ class FireView @JvmOverloads constructor(
             mid.shader = grad(0x00FF9100, 0xE6FF9100.toInt(), 0xFFFFC107.toInt())
             inner.shader = grad(0x00FFE082, 0xE6FFE082.toInt(), 0xFFFFFDE7.toInt())
 
-            // warm light spilling up from the bottom edge
             glow.shader = LinearGradient(
                 0f, 0f, 0f, h, 0x00FF5500, 0xFFFF6D00.toInt(), Shader.TileMode.CLAMP
             )
         }
     }
 
-    // ---- drawing -----------------------------------------------------------------------------
-
-    /** Smooth pseudo-noise in -1..1. */
     private fun noise(t: Float, phase: Float): Float =
         (sin(t * 2.3f + phase) + 0.6f * sin(t * 3.9f + phase * 1.7f) + 0.35f * sin(t * 6.1f + phase * 0.6f)) / 1.95f
 
@@ -270,15 +215,12 @@ class FireView @JvmOverloads constructor(
         val now = System.nanoTime()
         val dt = if (!animated || lastNanos == 0L) 0.016f else ((now - lastNanos) / 1e9f).coerceAtMost(0.05f)
         lastNanos = now
-        // a still picture uses a fixed moment that looks good
         val time = if (animated) (now - startNanos) / 1e9f else 2.6f
 
         val flaring = animated && System.currentTimeMillis() < flareUntil
-        // the intensity that is actually drawn: user setting, a lit/dim flame, a short burst
         val i = (intensity * boost * (1f - 0.45f * dim) * (if (flaring) 1.18f else 1f)).coerceIn(0f, 1.2f)
         val t = time * (1f - 0.4f * dim)
 
-        // the AURA of a card that is not showing (yet) draws nothing but keeps ticking
         if (mode == Mode.AURA && follow != null && follow?.visibility != VISIBLE) {
             if (running) postInvalidateOnAnimation()
             return
@@ -286,7 +228,6 @@ class FireView @JvmOverloads constructor(
 
         if (mode == Mode.AURA) {
             canvas.save()
-            // only the top edge: up to the headroom, a hair past the corners, barely into the card
             canvas.clipRect(-4f * d, -headroom, w + 4f * d, 10f * d)
         }
         when (mode) {
@@ -300,7 +241,6 @@ class FireView @JvmOverloads constructor(
         if (running) postInvalidateOnAnimation()
     }
 
-    /** A teardrop whose tip leads and whose body lags, so it licks instead of just swaying. */
     private fun flame(canvas: Canvas, cx: Float, base: Float, w: Float, h: Float, t: Float, ph: Float, lean: Float, paint: Paint) {
         val s1 = noise(t * 1.5f, ph) * w * 0.14f
         val s2 = noise(t * 1.5f - 0.45f, ph + 1.3f) * w * 0.55f
@@ -329,7 +269,6 @@ class FireView @JvmOverloads constructor(
             logPaint.color = 0xFF6D4C41.toInt()
             rect.set(-lw / 2f, -lh / 2f, lw / 2f, -lh / 2f + lh * 0.45f)
             canvas.drawRoundRect(rect, lh / 2f, lh / 2f, logPaint)
-            // the cut ends glow when there is a fire
             logPaint.color = ((glowAlpha * 255f).toInt().coerceIn(0, 255) shl 24) or 0xFF6D00
             canvas.drawCircle(-lw / 2f + lh * 0.5f, 0f, lh * 0.32f, logPaint)
             canvas.drawCircle(lw / 2f - lh * 0.5f, 0f, lh * 0.32f, logPaint)
@@ -349,7 +288,6 @@ class FireView @JvmOverloads constructor(
         drawLogs(canvas, w, h, if (stage > 0) i else 0f)
 
         if (stage == 0) {
-            // cold coals: a few dull red dots that breathe very slowly
             for (k in 0 until 5) {
                 val x = w / 2f + (k - 2) * w * 0.11f
                 val y = base - h * 0.02f - (k % 2) * h * 0.03f
@@ -395,7 +333,6 @@ class FireView @JvmOverloads constructor(
         }
     }
 
-    /** One flame rooted at ([x], [y]) pointing [angle] degrees away from straight up. */
     private fun rooted(
         canvas: Canvas, x: Float, y: Float, angle: Float, w: Float, h: Float,
         t: Float, ph: Float, lean: Float, paint: Paint
@@ -412,12 +349,11 @@ class FireView @JvmOverloads constructor(
     private fun drawAura(canvas: Canvas, w: Float, h: Float, t: Float, i: Float) {
         if (i <= 0f) return
         val ii = min(i, 1f)
-        val inset = 5f * d // flames start a little inside the card, so they grow out of its edge
+        val inset = 5f * d
         val strength = 0.6f + 0.4f * ii
         val pulse = 0.85f + 0.15f * sin(t * 4.2f) + 0.05f * sin(t * 9.1f)
         val reach = headroom + inset
 
-        // 1. heat glow above the edge, wider and brighter than the flames themselves
         if (reach > 0f) {
             shaderM.setScale(1f, reach / (w / 2f), w / 2f, inset)
             glow.shader?.setLocalMatrix(shaderM)
@@ -425,7 +361,6 @@ class FireView @JvmOverloads constructor(
             canvas.drawRect(-4f * d, -headroom, w + 4f * d, inset + 2f * d, glow)
         }
 
-        // 2. the hot edge: a thin glowing line along the top of the card
         aura.strokeCap = Paint.Cap.ROUND
         for ((sw, a) in listOf(7f to 0.16f, 3.5f to 0.32f, 1.6f to 0.7f)) {
             aura.strokeWidth = sw * d
@@ -434,7 +369,6 @@ class FireView @JvmOverloads constructor(
             canvas.drawLine(14f * d, inset * 0.5f, w - 14f * d, inset * 0.5f, aura)
         }
 
-        // 3. the flames: three layers (red, orange, white-hot), dense and uneven so they lick
         val topMax = reach * strength
         val count = max(7, (w / (9f * d)).toInt())
         for (layer in 0 until 3) {
@@ -444,7 +378,6 @@ class FireView @JvmOverloads constructor(
             for (k in 0 until count) {
                 val cx = (k + 0.5f) * (w / count)
                 val n01 = 0.5f + 0.5f * noise(t * 1.3f, k * 2.37f)
-                // slow waves of taller flames travelling along the edge
                 val wave = 0.82f + 0.18f * sin(t * 1.7f - k * 0.55f)
                 val fh = topMax * (0.35f + 0.65f * n01) * wave * grow
                 val lean = noise(t * 0.5f, k.toFloat()) * 0.7f
@@ -452,8 +385,6 @@ class FireView @JvmOverloads constructor(
             }
         }
     }
-
-    // ---- sparks ------------------------------------------------------------------------------
 
     private fun updateSparks(canvas: Canvas, w: Float, h: Float, dt: Float, i: Float) {
         val rate = when {
@@ -495,14 +426,11 @@ class FireView @JvmOverloads constructor(
         fun activeTongues(stage: Int): IntArray =
             TONGUES.indices.filter { stage >= TONGUES[it].minStage }.sortedBy { TONGUES[it].h }.toIntArray()
 
-        /** How fierce the icon fire is per stage (0..1). Stage 5 is the maximum. */
         val ICON_INTENSITY = floatArrayOf(0f, 0.2f, 0.42f, 0.6f, 0.8f, 1f)
 
-        /** The same for the list buttons: they only burn from stage 3 on. */
         val EDGE_INTENSITY = floatArrayOf(0f, 0f, 0f, 0.45f, 0.72f, 1f)
 
 
-        /** Flames of the icon, tallest first. Side flames lean outwards. */
         val TONGUES = listOf(
             Tongue(0f, 1f, 0.46f, 0f, 1),
             Tongue(-0.17f, 0.55f, 0.26f, -0.5f, 1),

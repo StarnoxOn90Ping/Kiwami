@@ -4,7 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 
 class WidgetSizeProvider(
-    private val context: Context // Do not pass Application context
+    private val context: Context
 ) {
 
     private val appWidgetManager = AppWidgetManager.getInstance(context)

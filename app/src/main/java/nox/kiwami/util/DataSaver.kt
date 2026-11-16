@@ -16,9 +16,9 @@ interface DataSaver {
 fun createDataSaver(): DataSaver {
     val dataSaverMode: Int = PrefManager.getVal<Int>(PrefName.DataSaverMode)
     return when (dataSaverMode) {
-        0 -> DataSaver.NoOp  // NONE
-        1 -> BandwidthHeroDataSaver()  // BANDWIDTH_HERO
-        2 -> WsrvNlDataSaver()  // WSRV_NL
+        0 -> DataSaver.NoOp
+        1 -> BandwidthHeroDataSaver()
+        2 -> WsrvNlDataSaver()
         else -> DataSaver.NoOp
     }
 }
@@ -82,10 +82,8 @@ private class WsrvNlDataSaver : DataSaver {
         return "https://wsrv.nl/?url=$encoded" +
             if (imageUrl.contains(".webp", true) || imageUrl.contains(".gif", true)) {
                 if (!format) {
-                    // Preserve output image extension for animated images(.webp and .gif)
                     "&q=$quality&n=-1"
                 } else {
-                    // Do not preserve output Extension if User asked to convert into Jpeg
                     "&output=jpg&q=$quality&n=-1"
                 }
             } else {

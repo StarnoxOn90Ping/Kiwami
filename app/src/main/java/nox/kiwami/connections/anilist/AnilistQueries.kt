@@ -86,7 +86,6 @@ class AnilistQueries {
         PrefManager.setCustomVal("home_page_cache", null)
     }
 
-    /** Re-fetches only the watched-episodes / read-chapters totals shown on the home header. */
     suspend fun refreshUserStats(): Boolean {
         val response: Query.Viewer? = executeQuery(
             """{Viewer{id name statistics{anime{episodesWatched} manga{chaptersRead}}}}""",
@@ -188,10 +187,6 @@ class AnilistQueries {
         }
     }
 
-    /**
-     * Fetches the title's details again and compares them with the cached copy. If something that
-     * matters changed, the cache is updated and true is returned so the page can offer a refresh.
-     */
     suspend fun detailsChangedSinceCache(id: Int): Boolean {
         val cached = MediaDetailsCache.get(id) ?: return false
         val fresh = executeQuery<Query.Media>(fullMediaInformation(id), force = true) ?: return false
@@ -543,9 +538,6 @@ class AnilistQueries {
         return media
     }
 
-    /**
-     * People you follow who have this title on their list (fresh from AniList every call).
-     */
     suspend fun getMediaFollowers(media: Media): ArrayList<User> {
         if (media.id == 0 || Anilist.token == null) return arrayListOf()
         val res = executeQuery<Query.Page>(
@@ -1762,10 +1754,6 @@ Page(page:$page,perPage:50) {
         return list.reversed().toMutableList()
     }
 
-    /**
-     * Airing schedule of a specific set of anime (e.g. the user's list) inside a time window.
-     * @return (media, episode, airingAt in epoch seconds), oldest first
-     */
     suspend fun airingScheduleFor(
         mediaIds: List<Int>,
         greater: Long,
@@ -2130,7 +2118,7 @@ Page(page:$pageNumber,perPage:50) {
     suspend fun isUserFav(
         favType: AnilistMutations.FavType,
         id: Int
-    ): Boolean {   //anilist isFavourite is broken, so we need to check it manually
+    ): Boolean {
         val res = getUserProfile(Anilist.userid ?: return false)
         return when (favType) {
             AnilistMutations.FavType.ANIME -> res?.data?.user?.favourites?.anime?.nodes?.any { it.id == id }

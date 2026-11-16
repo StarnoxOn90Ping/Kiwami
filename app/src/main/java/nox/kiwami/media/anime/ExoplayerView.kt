@@ -309,7 +309,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         super.onAttachedToWindow()
     }
 
-    /** Closes the player and tells the user (and the log) why, instead of exiting silently. */
     private fun exitWithReason(reason: String) {
         Logger.log("ExoplayerView exiting: $reason")
         runCatching { toast("Player closed: $reason") }
@@ -337,7 +336,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         playerView = binding.playerView
         hideSystemBarsExtendView()
 
-        // Bind Views
         exoPlay = playerView.findViewById(androidx.media3.ui.R.id.exo_play)
         exoSource = playerView.findViewById(R.id.exo_source)
         exoSettings = playerView.findViewById(R.id.exo_settings)
@@ -367,7 +365,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         playerView.controllerShowTimeoutMs = 5000
         exoSource.setOnClickListener { sourceClick() }
 
-        // Initialize Managers
         subtitleManager = PlayerSubtitleManager(this, playerView, customSubtitleView, model) {
             playerManager.exoPlayer
         }
@@ -482,7 +479,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             }
         }
 
-        // Sensor & Orientation
         if (System.getInt(contentResolver, System.ACCELEROMETER_ROTATION, 0) != 1) {
             if (PrefManager.getVal(PrefName.RotationPlayer)) {
                 orientationListener = object : OrientationEventListener(this, SensorManager.SENSOR_DELAY_UI) {
@@ -525,14 +521,12 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             isPlayerPlaying = savedInstanceState.getBoolean(playerOnPlay)
         }
 
-        // UI Controls
         playerView.findViewById<ImageButton>(R.id.exo_back).setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
 
         aniSkipManager.init()
 
-        // Play/Pause
         exoPlay.setOnClickListener {
             if (playerManager.isInitialized) {
                 val player = playerManager.exoPlayer
@@ -553,7 +547,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
                 }
             }
         }
-        // Cast
         if (PrefManager.getVal(PrefName.Cast)) {
             castManager.setupCastButton(
                 customCastButton,
@@ -565,7 +558,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             )
         }
 
-        // PiP
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             pipEnabled = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
                     PrefManager.getVal(PrefName.Pip)
@@ -577,7 +569,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             }
         }
 
-        // Lock button
         val container = playerView.findViewById<View>(R.id.exo_controller_cont)
         val screen = playerView.findViewById<View>(R.id.exo_black_screen)
         val lockButton = playerView.findViewById<ImageButton>(R.id.exo_unlock)
@@ -597,7 +588,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             timeline.setForceDisabled(false)
         }
 
-        // Skip Time
         var skipTime = PrefManager.getVal<Int>(PrefName.SkipTime)
         if (skipTime > 0) {
             exoSkip.findViewById<TextView>(R.id.exo_skip_time).text = skipTime.toString()
@@ -640,10 +630,8 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             exoSkip.visibility = View.GONE
         }
 
-        // Initialize Gestures
         gestureManager.initGestures()
 
-        // Handle Media
         if (!initialized) return startMainActivity(this)
         model.setMedia(media)
         title = media.userPreferredName
@@ -683,7 +671,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         progressManager.episodeTitleArr = episodeTitleArr
         progressManager.currentEpisodeIndex = currentEpisodeIndex
 
-        // Episode Spinner
         episodeTitle.adapter = NoPaddingArrayAdapter(this, R.layout.item_dropdown, episodeTitleArr)
         episodeTitle.setSelection(currentEpisodeIndex)
         episodeTitle.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -695,7 +682,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
-        // Prev / Next Episode Buttons
         exoNext = playerView.findViewById(R.id.exo_next_ep)
         exoNext.setOnClickListener {
             if (playerManager.isInitialized) {
@@ -715,7 +701,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             }
         }
 
-        // Episode Observer
         model.getEpisode().observe(this) { ep ->
             hideSystemBarsExtendView()
             if (ep != null && (!epChanging || ep.extractors?.isNotEmpty() == true)) {
@@ -763,7 +748,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             }
         }
 
-        // FullScreen / Aspect Ratio
         val defaultResize = PrefManager.getVal<Int>(PrefName.Resize)
         isFullscreen = PrefManager.getCustomVal("${media.id}_fullscreenInt", defaultResize)
         playerView.resizeMode = when (isFullscreen) {
@@ -790,7 +774,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             PrefManager.setCustomVal("${media.id}_fullscreenInt", isFullscreen)
         }
 
-        // Settings Button
         exoSettings.setOnClickListener {
             playerManager.exoPlayer?.let { p ->
                 val selEp = media.anime?.selectedEpisode
@@ -811,7 +794,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             onChangeSettings.launch(intent)
         }
 
-        // Speed Dialog
         val speeds = if (PrefManager.getVal(PrefName.CursedSpeeds)) {
             arrayOf(1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f, 4f, 5f, 10f, 25f, 50f)
         } else {
@@ -836,7 +818,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             }
         }
 
-        // AutoPlay Interacted Tracking
         if (PrefManager.getVal(PrefName.AutoPlay)) {
             val touchHandler = Handler(Looper.getMainLooper())
             val touchResetRunnable = Runnable { interacted = false }
@@ -851,7 +832,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             }
         }
 
-        // Progress Dialog & Initial Episode
         val incognito = PrefManager.getVal<Boolean>(PrefName.Incognito)
         val showProgressDialog = if (PrefManager.getVal(PrefName.AskIndividualPlayer)) {
             PrefManager.getCustomVal("${media.id}_progressDialog", true)
@@ -936,7 +916,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         lifecycleScope.launch(Dispatchers.IO) { extractor?.onVideoStopped(video) }
 
         episode.dropNullExtractors()
-        // extractors are already sorted by the user's resolution priority, so the first one is the best match
         val ext = episode.extractors?.find { it.server.name == episode.selectedExtractor }
             ?: episode.extractors?.firstOrNull() ?: return
         extractor = ext
@@ -1057,7 +1036,7 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
                         else -> androidx.media3.common.MimeTypes.APPLICATION_MP4
                     }
                 } else {
-                    null // ExoPlayer auto-detect for non-local containers
+                    null
                 }
             }
             else -> null
@@ -1068,8 +1047,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             val titleName = ext.server.name.split("/").first()
             val episodeName = ext.server.name.split("/").last()
             val directory = nox.kiwami.download.DownloadsManager.getSubDirectory(this, nox.kiwami.media.MediaType.ANIME, false, titleName, episodeName)
-            // An encrypted download plays from its own item, keyed by the license
-            // the CDM kept when it was downloaded.
             val encrypted = directory?.let {
                 nox.kiwami.download.video.DrmDownloader.offlineMediaItem(this, it)
             }
@@ -1367,7 +1344,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         dialog.show(supportFragmentManager, "dialog")
     }
 
-    // Public contract methods
     fun requestLocalSubtitle() {
         getContent.launch(arrayOf("*/*"))
     }
@@ -1404,7 +1380,6 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         subtitleManager.onSetTrackGroupOverride(trackGroup, type, index)
     }
 
-    // Player.Listener implementation
     override fun onCues(cueGroup: CueGroup) {
         subtitleManager.handleCues(cueGroup, subtitle)
     }
@@ -1741,10 +1716,7 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
             3
         }
 
-        // Android phones enforce a hard limit of 3 PiP actions (maxNumPictureInPictureActions == 3).
-        // On phones (maxActions < 5), prioritize [Rewind 10s] [Play/Pause] [Skip 10s].
-        // (To switch back to Prev/Next on phones: return listOf(prevEpAction, playPauseAction, nextEpAction))
-        // On devices supporting 5+ actions (tablets/foldables), all 5 are displayed.
+        // Phones allow at most 3 PiP actions, so with fewer than 5 available prioritize Rewind / Play-Pause / Skip
         return if (maxActions >= 5) {
             listOf(prevEpAction, rewindAction, playPauseAction, skipAction, nextEpAction)
         } else {

@@ -6,7 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import nox.kiwami.others.ThemeSong
 
-/** Plays one opening / ending at a time, straight from its stream. */
 class ThemeSongPlayer(
     private val onChange: (ThemeSong?, State, Float) -> Unit,
     private val onFail: () -> Unit

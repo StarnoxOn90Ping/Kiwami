@@ -72,7 +72,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
     private var searchJob: Job? = null
     var onTorrentSelected: ((String) -> Unit)? = null
 
-    // Activity launcher for local .torrent file picking
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -84,7 +83,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
         super.onCreate(savedInstanceState)
         initialUrl = arguments?.getString(ARG_URL)
 
-        // Restore pre-linked Media if passed
         val mId = arguments?.getInt(ARG_MEDIA_ID, -1) ?: -1
         if (mId != -1) {
             val title = arguments?.getString(ARG_MEDIA_TITLE) ?: ""
@@ -119,17 +117,14 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Setup File RecyclerView
         torrentAdapter = TorrentFileAdapter(currentFileList) { clickedStat ->
             onFileClicked(clickedStat)
         }
         binding.torrentFilesRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.torrentFilesRecyclerView.adapter = torrentAdapter
 
-        // Setup Linked Media UI
         updateLinkedMediaUi()
 
-        // Link AniList Anime button (supports global or per-season linking)
         binding.torrentLinkAnilistButton.setOnClickListener {
             val selectedFolder = currentSelectedFolderKey
             val isSpecificFolder = selectedFolder != "__ALL__" && selectedFolder.isNotBlank()
@@ -154,7 +149,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        // Load Button
         binding.torrentLoadButton.setOnClickListener {
             val text = binding.torrentInputEditText.text?.toString()?.trim() ?: ""
             if (text.isNotBlank()) {
@@ -169,7 +163,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        // File Picker Button
         binding.torrentFilePickerButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
@@ -182,7 +175,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             filePickerLauncher.launch(intent)
         }
 
-        // IME Done
         binding.torrentInputEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 binding.torrentLoadButton.performClick()
@@ -190,7 +182,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             } else false
         }
 
-        // Auto-load if initial URL was supplied, otherwise check clipboard
         if (!initialUrl.isNullOrBlank()) {
             binding.torrentInputEditText.setText(initialUrl)
             loadTorrent(initialUrl!!)
@@ -198,8 +189,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             checkClipboardForTorrent()
         }
     }
-
-    // ── Clipboard Detection ────────────────────────────────────────────────
 
     private fun checkClipboardForTorrent() {
         val clipboard = context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -215,8 +204,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             }
         }
     }
-
-    // ── AniList Link Header UI ─────────────────────────────────────────────
 
     private fun updateLinkedMediaUi() {
         val b = _binding ?: return
@@ -249,7 +236,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
                 b.torrentLinkAnilistButton.text = getString(R.string.torrent_link_season_button)
             }
         } else {
-            // __ALL__ selected
             if (defaultLinkedMedia != null) {
                 b.torrentLinkedMediaCover.isVisible = true
                 b.torrentLinkedMediaCover.loadImage(defaultLinkedMedia!!.cover ?: defaultLinkedMedia!!.banner ?: "")
@@ -274,8 +260,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             }
         }
     }
-
-    // ── Search & Link AniList Dialog ───────────────────────────────────────
 
     private fun showAniListSearchDialog(targetFolder: String = "__ALL__") {
         val ctx = requireContext()
@@ -391,8 +375,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
         return container
     }
 
-    // ── .torrent File Handling ────────────────────────────────────────────
-
     private fun handleTorrentFileUri(uri: Uri) {
         val ctx = context ?: return
         try {
@@ -413,8 +395,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             toast("Could not read .torrent file: ${e.message}")
         }
     }
-
-    // ── Torrent Loading ────────────────────────────────────────────────────
 
     private fun loadTorrent(url: String) {
         val torrentManager = Injekt.get<TorrentServerManager>()
@@ -501,7 +481,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             val dropdownLabels = mutableListOf<String>()
             val dropdownKeys = mutableListOf<String>()
 
-            // Option 0: All Folders / All Seasons
             val totalCount = folderFilesMap.values.sumOf { it.size }
             dropdownLabels.add("$allText ($totalCount files)")
             dropdownKeys.add("__ALL__")
@@ -528,7 +507,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
                 updateLinkedMediaUi()
             }
 
-            // Default display: first option (All files or First season)
             currentSelectedFolderKey = "__ALL__"
             displayFilesForFolder("__ALL__")
             updateLinkedMediaUi()
@@ -552,8 +530,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
         }
         torrentAdapter?.notifyDataSetChanged()
     }
-
-    // ── File Clicked: build episode map and launch ExoPlayer ───────────────
 
     @SuppressLint("UnsafeOptInUsageError")
     private fun onFileClicked(clickedFileStat: FileStat) {
@@ -586,7 +562,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
                 val norm = clickedRelPath.replace('\\', '/')
                 val clickedFolder = if (norm.contains('/')) norm.substringBeforeLast('/') else ""
 
-                // Scoped files: if clicked inside a multi-season folder, scope the episode playlist to that season
                 val scopedFiles = if (clickedFolder.isNotBlank() && folderFilesMap.containsKey(clickedFolder)) {
                     folderFilesMap[clickedFolder] ?: videoFilesList
                 } else {
@@ -651,7 +626,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
                         )
                     ).also { it.selected = Selected(server = "Torrent") }
                 } else {
-                    // No link — synthetic ID. AniList/MAL tracking is a no-op.
                     val seasonTitle = if (clickedFolder.isNotBlank()) "${torrent.name ?: torrent.title ?: cleanTitle} - $clickedFolder" else (torrent.name ?: torrent.title ?: cleanTitle)
                     Media(
                         id = kotlin.math.abs((torrent.hash ?: cleanTitle).hashCode() + clickedFolder.hashCode()),
@@ -705,7 +679,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
         private const val ARG_MEDIA_FORMAT  = "arg_media_format"
         private const val ARG_MEDIA_EPISODES= "arg_media_episodes"
 
-        /** Open with just a URL (Settings / deep link). No pre-linked media. */
         fun newInstance(url: String? = null): DirectTorrentBottomSheet =
             DirectTorrentBottomSheet().apply {
                 arguments = Bundle().apply {
@@ -713,10 +686,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
                 }
             }
 
-        /**
-         * Open pre-linked to a real AniList anime.
-         * Progress will sync to AniList + MAL automatically when an episode finishes.
-         */
         fun newInstanceLinked(media: Media, url: String? = null): DirectTorrentBottomSheet =
             DirectTorrentBottomSheet().apply {
                 arguments = Bundle().apply {
@@ -742,8 +711,6 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
             )
         }
     }
-
-    // ── RecyclerView Adapter with Episode Cards ────────────────────────────
 
     class TorrentFileAdapter(
         private val files: List<FileStat>,

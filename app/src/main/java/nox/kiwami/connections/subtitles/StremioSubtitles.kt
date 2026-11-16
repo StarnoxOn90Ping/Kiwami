@@ -13,11 +13,9 @@ import nox.kiwami.util.Logger
 
 object StremioSubtitles {
 
-    // The free Stremio OpenSubtitles v3 endpoint
     private const val BASE_URL = "https://opensubtitles-v3.strem.io/subtitles"
 
     suspend fun getSubtitles(media: Media, season: Int, episode: Int): List<StremioSub> {
-        // Check if Online Subtitles are enabled
         val enabled = PrefManager.getVal<Boolean>(PrefName.OnlineSubtitlesEnabled)
         if (!enabled) return emptyList()
 
@@ -25,7 +23,6 @@ object StremioSubtitles {
         val allSubs = mutableListOf<StremioSub>()
 
         return withContext(Dispatchers.IO) {
-            // 1. Try Wyzie if enabled
             if (providers.contains("Wyzie")) {
                 try {
                     val imdbId = media.idIMDB
@@ -37,7 +34,7 @@ object StremioSubtitles {
                                 StremioSub(
                                     id = it.id,
                                     url = it.url,
-                                    lang = it.displayLabel // Use display label for nicer UI
+                                    lang = it.displayLabel
                                 )
                             }
                             allSubs.addAll(mapped)
@@ -48,7 +45,6 @@ object StremioSubtitles {
                 }
             }
 
-            // 2. Try OpenSubtitles (Stremio) if enabled
             if (providers.contains("Stremio")) {
                 Logger.log("StremioSubtitles: Fetching OpenSubtitles for S${season}:E${episode}...")
                 try {

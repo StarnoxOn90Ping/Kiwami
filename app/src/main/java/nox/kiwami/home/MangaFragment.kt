@@ -301,7 +301,6 @@ class MangaFragment : Fragment() {
 
     override fun onResume() {
         if (!model.loaded) Refresh.activity[this.hashCode()]!!.postValue(true)
-        //make sure mangaPageAdapter is initialized
         if (mangaPageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()

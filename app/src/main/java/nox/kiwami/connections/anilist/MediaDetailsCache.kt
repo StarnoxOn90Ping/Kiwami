@@ -7,17 +7,8 @@ import nox.kiwami.others.SmartCache
 import kotlinx.serialization.encodeToString
 import java.io.File
 
-/**
- * (Only active while Smart cache is turned on in Settings → Data and Storage.)
- * On-disk cache for the AniList "full details" response of an anime/manga page.
- *
- * - Entries are kept for 30 days and at most [MAX_FILES] titles are stored.
- * - Titles in your library (watching/reading + planned) are the last to be thrown out.
- * - Lives in the app's cache folder, so Android can still reclaim it if storage runs very low.
- * - A title's entry is removed when you edit that title in your list or favourites.
- */
 object MediaDetailsCache {
-    private const val TTL_MS = 30L * 24 * 60 * 60 * 1000 // 30 days
+    private const val TTL_MS = 30L * 24 * 60 * 60 * 1000
     private const val MAX_FILES = 200
     private const val LIBRARY_FILE = "_library.txt"
 
@@ -40,7 +31,6 @@ object MediaDetailsCache {
         return loaded
     }
 
-    /** Remember which titles are in the library so they are pruned last. */
     fun setLibrary(ids: Collection<Int>) {
         if (!SmartCache.isEnabled()) return
         runCatching {
@@ -70,7 +60,6 @@ object MediaDetailsCache {
         }
     }
 
-    /** Throws out the oldest non-library titles first, library titles only as a last resort. */
     private fun prune(d: File) {
         val files = d.listFiles { f -> f.name.endsWith(".json") } ?: return
         val excess = files.size - MAX_FILES

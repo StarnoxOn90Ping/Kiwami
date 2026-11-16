@@ -134,7 +134,6 @@ class PlayerSubtitleManager(
         activeSubtitleDisplayName = "${sub.language} [Server]"
         activeSubtitleId = sub.language
 
-        // Fetch and cache server subtitle text in background so delay/sync works for server subtitles
         serverSubJob?.cancel()
         val rawUrl = sub.file.url
         val resolvedUrl = resolveSubtitleUrl(rawUrl, "", "")
@@ -202,7 +201,6 @@ class PlayerSubtitleManager(
         if (rawContent != null && file != null) {
             activity.lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    // Clean up previous shifted files on background thread
                     activity.cacheDir.listFiles()?.filter {
                         it.isFile && it.name.startsWith("shifted_${file.nameWithoutExtension}_")
                     }?.forEach { it.delete() }

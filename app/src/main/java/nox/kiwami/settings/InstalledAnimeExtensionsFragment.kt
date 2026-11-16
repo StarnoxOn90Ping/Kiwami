@@ -246,7 +246,7 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
         )
     }
 
-    override fun notifyDataChanged() { // Do nothing
+    override fun notifyDataChanged() {
     }
 
     private class AnimeExtensionsAdapter(

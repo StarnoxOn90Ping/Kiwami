@@ -239,7 +239,6 @@ class KiwamiPlayerManager(
 
         val extractorsFactory = subtitleManager.createExtractorsFactory()
         val assParserFactory = subtitleManager.createSubtitleParserFactory()
-        // Some providers wrap the license response; normalise it before the CDM sees it.
         val drmProvider = WrappedDrmCallback.providerFor(httpDataSourceFactory)
         val assMediaSourceFactory = DefaultMediaSourceFactory(cacheFactory, extractorsFactory)
             .setSubtitleParserFactory(assParserFactory)
@@ -257,8 +256,6 @@ class KiwamiPlayerManager(
                 if (subConfigs.isNotEmpty()) setSubtitleConfigurations(subConfigs)
                 if (mediaMetadata != null) setMediaMetadata(mediaMetadata)
                 video.drm?.let { drm ->
-                    // The device CDM does the decryption; this only says where the
-                    // license server is.
                     val uuid = when (drm.scheme.lowercase()) {
                         "playready" -> C.PLAYREADY_UUID
                         "clearkey" -> C.CLEARKEY_UUID
@@ -268,7 +265,6 @@ class KiwamiPlayerManager(
                         MediaItem.DrmConfiguration.Builder(uuid)
                             .setLicenseUri(drm.licenseUrl)
                             .setLicenseRequestHeaders(drm.licenseHeaders)
-                            // Video and audio can carry separate keys.
                             .setMultiSession(true)
                             .build()
                     )
@@ -336,7 +332,6 @@ class KiwamiPlayerManager(
         val player = exoPlayer ?: return
         val currentItem = currentMediaItem ?: return
 
-        // Snapshot current track parameters so audio selection survives the media-source rebuild.
         val savedTrackParams = player.trackSelectionParameters
 
         val newMediaItem = currentItem.buildUpon()
@@ -353,7 +348,6 @@ class KiwamiPlayerManager(
             player.setMediaItem(newMediaItem, position)
         }
         player.prepare()
-        // Restore track selection so the audio track (and any disabled text tracks) are not reset.
         player.trackSelectionParameters = savedTrackParams
         player.play()
     }

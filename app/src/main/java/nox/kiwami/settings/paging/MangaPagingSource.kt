@@ -216,7 +216,7 @@ class MangaExtensionAdapter(private val clickListener: OnMangaInstallClickListen
         }
 
         fun clear() {
-            job.cancel() // Cancel the coroutine when the view is recycled
+            job.cancel()
         }
     }
 

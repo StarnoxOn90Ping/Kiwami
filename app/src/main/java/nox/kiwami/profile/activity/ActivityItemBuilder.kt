@@ -104,7 +104,7 @@ class ActivityItemBuilder {
 
             val targetDate = Date(timestamp * 1000L)
 
-            if (targetDate < Date(946684800000L)) { // January 1, 2000 (who want dates before that?)
+            if (targetDate < Date(946684800000L)) {
                 return ""
             }
 

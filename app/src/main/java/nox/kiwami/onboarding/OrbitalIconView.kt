@@ -15,11 +15,6 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/**
- * The animated halo behind every onboarding icon: expanding ripples, a rotating dotted ring,
- * counter-rotating arcs, orbiting glow dots and a glassy core. Everything is drawn inside a
- * circle that fits the view, so nothing is ever clipped into a square.
- */
 class OrbitalIconView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -48,7 +43,6 @@ class OrbitalIconView @JvmOverloads constructor(
     }
     private val arcRect = RectF()
 
-    /** 0..1, one full loop = 9 seconds */
     private var t = 0f
     private var animator: ValueAnimator? = null
 
@@ -92,20 +86,17 @@ class OrbitalIconView @JvmOverloads constructor(
 
         canvas.drawCircle(cx, cy, r, glowPaint)
 
-        // three expanding ripples, 3s each, evenly phased
         for (k in 0 until 3) {
             val phase = (t * 3f + k / 3f) % 1f
             ripplePaint.alpha = ((1f - phase) * (1f - phase) * 150).toInt()
             canvas.drawCircle(cx, cy, r * (0.5f + 0.5f * phase), ripplePaint)
         }
 
-        // dotted ring, slow clockwise
         canvas.save()
         canvas.rotate(t * 360f, cx, cy)
         canvas.drawCircle(cx, cy, r * 0.74f, dottedPaint)
         canvas.restore()
 
-        // two arcs spinning the other way
         val arcR = r * 0.62f
         arcRect.set(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
         canvas.save()
@@ -116,7 +107,6 @@ class OrbitalIconView @JvmOverloads constructor(
         canvas.drawArc(arcRect, 180f, 34f, false, arcPaint)
         canvas.restore()
 
-        // three glowing dots orbiting on the outer lane
         val orbit = r * 0.88f
         for (k in 0 until 3) {
             val angle = Math.toRadians((t * 720f + k * 120f).toDouble())
@@ -129,7 +119,6 @@ class OrbitalIconView @JvmOverloads constructor(
             canvas.drawCircle(x, y, size, dotPaint)
         }
 
-        // glass core
         val coreR = r * 0.46f
         canvas.drawCircle(cx, cy, coreR, corePaint)
         canvas.drawCircle(cx, cy, coreR, coreStroke)

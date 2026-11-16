@@ -34,11 +34,9 @@ class OfflineAnimeParser : AnimeParser() {
         sAnime: SAnime
     ): List<Episode> {
         val directory = getSubDirectory(context, MediaType.ANIME, false, animeLink)
-        //get all of the folder names and add them to the list
         val episodes = mutableListOf<Episode>()
         if (directory?.exists() == true) {
             directory.listFiles().forEach {
-                //put the title and episdode number in the extra data
                 val extraData = mutableMapOf<String, String>()
                 extraData["title"] = animeLink
                 extraData["episode"] = it.name!!
@@ -57,7 +55,6 @@ class OfflineAnimeParser : AnimeParser() {
             }
         }
         episodes.addAll(loadEpisodesCompat(animeLink, extra, sAnime))
-        //filter those with the same name
         return episodes.distinctBy { it.number }
             .sortedBy { MediaNameAdapter.findEpisodeNumber(it.number) }
     }

@@ -30,7 +30,7 @@ class CalcStack {
                         i++
                     }
                     values.push(value)
-                    i-- // to compensate the additional i++ in the loop
+                    i--
                 }
 
                 else -> {

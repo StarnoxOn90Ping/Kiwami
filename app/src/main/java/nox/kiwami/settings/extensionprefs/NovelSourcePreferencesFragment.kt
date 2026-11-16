@@ -76,7 +76,6 @@ class NovelSourcePreferencesFragment : PreferenceFragmentCompat() {
         if (source is ConfigurableNovelSource) {
             source.setupPreferenceScreen(sourceScreen)
         } else {
-            // Reflection fallback if loaded from separate classloader
             val setupMethod = source.javaClass.methods.firstOrNull { it.name == "setupPreferenceScreen" }
             setupMethod?.invoke(source, sourceScreen)
         }

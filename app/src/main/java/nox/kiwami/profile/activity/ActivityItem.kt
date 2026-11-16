@@ -42,7 +42,6 @@ class ActivityItem(
 
     override fun bind(viewBinding: ItemActivityBinding, position: Int) {
         binding = viewBinding
-        // Cancel any in-flight preview fetch from a previous bind (recycled view)
         previewJob?.cancel()
         previewJob = null
         binding.activityLinkPreviewContainer.removeAllViews()
@@ -275,10 +274,8 @@ class ActivityItem(
             val mediaList = withContext(Dispatchers.IO) {
                 Anilist.query.getMediaList(mediaIds)
             }
-            // Check that the view hasn't been recycled since we started
             if (!fragmentActivity.isDestroyed) {
                 val mediaMap = mediaList?.associateBy { it.id } ?: emptyMap()
-                // Re-render the text view: replace AniList URLs with media titles
                 if (mediaMap.isNotEmpty()) {
                     val titleMap = mediaMap.mapValues { (_, media) -> media.userPreferredName }
                     val htmlWithTitles = AnilistLinkParser.replaceAnilistUrlsInHtml(
@@ -287,7 +284,6 @@ class ActivityItem(
                     val markwon = buildMarkwon(fragmentActivity, false)
                     markwon.setMarkdown(binding.activityContent, htmlWithTitles)
                 }
-                // Add preview cards
                 binding.activityLinkPreviewContainer.removeAllViews()
                 links.forEach { link ->
                     val media = mediaMap[link.id]

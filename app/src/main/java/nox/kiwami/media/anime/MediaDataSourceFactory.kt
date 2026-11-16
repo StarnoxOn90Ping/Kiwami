@@ -10,35 +10,9 @@ import okhttp3.OkHttpClient
 import org.chromium.net.CronetProvider
 import java.util.concurrent.Executors
 
-/**
- * Multi-tier HTTP DataSource resolver for Media3 / ExoPlayer.
- *
- *   Tier 1 (GMS devices) — [CronetDataSource] via Google Play Services [CronetProvider].
- *                          Provides HTTP/3 (QUIC) + HTTP/2. ~90 KB APK footprint (glue only;
- *                          the actual Chromium engine is already on the device via Play Services).
- *                          On F-Droid builds [CronetProvider] class is absent at runtime
- *                          → caught via [runCatching] → falls through cleanly.
- *
- *   Tier 2 (fallback)    — [OkHttpDataSource] (existing HTTP/2 baseline). Always available.
- *
- * Localhost/loopback streams always use the OkHttp factory (Tier 2) so that the
- * existing gzip-decompression and Accept-Encoding interceptors remain active for
- * the NanoHTTPD torrent proxy.
- */
 @UnstableApi
 object MediaDataSourceFactory {
 
-    /**
-     * Resolves and returns the best available [HttpDataSource.Factory] for the
-     * given [context] and request [headers].
-     *
-     * @param context      Android context (used for Cronet provider lookup).
-     * @param headers      Default request headers to set on the factory.
-     * @param okHttpClient The OkHttpClient used as the Tier 2 fallback.
-     * @param isLocalhost  When true, skips QUIC tiers and returns OkHttp directly.
-     *                     QUIC over loopback is undefined and the NanoHTTPD proxy
-     *                     requires the OkHttp interceptor chain.
-     */
     fun resolveHttpFactory(
         context: Context,
         headers: Map<String, String>,
@@ -50,17 +24,11 @@ object MediaDataSourceFactory {
             return buildOkHttpFactory(okHttpClient, headers)
         }
 
-        // Tier 1 — GMS Cronet (absent on F-Droid; caught safely)
         tryCronetProvider(context, headers)?.let { return it }
 
-        // Tier 2 — OkHttp (HTTP/2, always available)
         Logger.log("DataSource: using OkHttp (HTTP/2)")
         return buildOkHttpFactory(okHttpClient, headers)
     }
-
-    // -------------------------------------------------------------------------
-    // Tier 1 — GMS CronetProvider
-    // -------------------------------------------------------------------------
 
     /**
      * Attempts to build a [CronetDataSource.Factory] via the GMS Cronet provider.
@@ -92,15 +60,6 @@ object MediaDataSourceFactory {
         null
     }
 
-    // -------------------------------------------------------------------------
-    // Tier 2 (also used directly by DrmDownloader for license requests)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Builds an [OkHttpDataSource.Factory] with the supplied [headers].
-     * DRM license fetches always use this path (they need the OkHttp cookie /
-     * CloudFlare interceptor chain and are not latency-critical).
-     */
     fun buildOkHttpFactory(
         okHttpClient: OkHttpClient,
         headers: Map<String, String>,

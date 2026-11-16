@@ -41,10 +41,8 @@ class ImageViewDialog : BottomSheetDialogFragment() {
 
     var onReloadPressed: ((ImageViewDialog) -> Unit)? = null
 
-    /** When set, a "Change image" button is shown. */
     var onChangeImage: ((ImageViewDialog) -> Unit)? = null
 
-    /** When set, a "Reset" button is shown next to "Change image". */
     var onResetImage: ((ImageViewDialog) -> Unit)? = null
     var trans1: List<BitmapTransformation>? = null
     var trans2: List<BitmapTransformation>? = null
@@ -90,7 +88,6 @@ class ImageViewDialog : BottomSheetDialogFragment() {
                 binding.bottomImageResetCustom.visibility = View.VISIBLE
                 binding.bottomImageResetCustom.setSafeOnClickListener { reset(this) }
             }
-            // The extra button row needs room under the picture too.
             (binding.bottomImageContent.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin =
                 (144 * resources.displayMetrics.density).toInt()
         }
@@ -145,8 +142,6 @@ class ImageViewDialog : BottomSheetDialogFragment() {
                     shareImage(title, bitmap, requireContext())
                 }
 
-                // Tall pictures (covers) used to push the buttons below the screen. Size the
-                // picture to the space that is actually left so nothing needs scrolling.
                 val density = resources.displayMetrics.density
                 val reserved = ((if (onChangeImage != null) 340 else 270) * density).toInt()
                 val availW = resources.displayMetrics.widthPixels - (32 * density).toInt()

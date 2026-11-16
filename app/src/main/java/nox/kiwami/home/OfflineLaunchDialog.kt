@@ -19,12 +19,6 @@ import nox.kiwami.databinding.DialogOfflineLaunchBinding
 import nox.kiwami.isOnline
 import nox.kiwami.util.setPressBounce
 
-/**
- * Shown when the app is launched with no internet:
- *  - Try again       -> re-checks the connection; if it is back the activity is recreated normally
- *  - Pre-cached home -> closes the popup, leaving the cached Home + "Offline" pill underneath
- *  - Offline mode    -> same as above, plus [onOfflineMode] (MainActivity shows the offline banner)
- */
 class OfflineLaunchDialog(
     private val activity: AppCompatActivity,
     private val onOfflineMode: () -> Unit
@@ -40,7 +34,7 @@ class OfflineLaunchDialog(
         val b = DialogOfflineLaunchBinding.inflate(LayoutInflater.from(activity))
         val d = Dialog(activity).apply {
             setContentView(b.root)
-            setCancelable(true) // back / outside tap == "Pre-cached home" (it is already behind us)
+            setCancelable(true)
             window?.apply {
                 setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                 setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -61,7 +55,6 @@ class OfflineLaunchDialog(
             onOfflineMode()
         }
 
-        // entrance: card rises with a little overshoot
         b.offlineCard.apply {
             alpha = 0f
             scaleX = 0.88f
@@ -84,11 +77,7 @@ class OfflineLaunchDialog(
         dialog = null
     }
 
-    // ---- animations ---------------------------------------------------------------------------
-
     private fun startAnimations(b: DialogOfflineLaunchBinding) {
-        // Two staggered rings. They grow from the disc's size (104dp) to 1.45x (~151dp), which still
-        // fits the 160dp icon box, and fade out completely before reaching its edge.
         listOf(b.offlineRingOne to 0L, b.offlineRingTwo to 900L).forEach { (ring, delay) ->
             ring.alpha = 0f
             animators += ObjectAnimator.ofPropertyValuesHolder(
@@ -104,7 +93,6 @@ class OfflineLaunchDialog(
                 start()
             }
         }
-        // the disc + icon gently breathe
         animators += ObjectAnimator.ofPropertyValuesHolder(
             b.offlineIconDisc,
             PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.06f),
@@ -132,13 +120,10 @@ class OfflineLaunchDialog(
         spinner = null
     }
 
-    // ---- try again ----------------------------------------------------------------------------
-
     private fun tryAgain(b: DialogOfflineLaunchBinding) {
         if (checking) return
         checking = true
         b.offlineTryAgainText.setText(R.string.offline_dialog_checking)
-        // the refresh icon spins while we "check"
         spinner = ObjectAnimator.ofFloat(b.offlineTryAgainIcon, View.ROTATION, 0f, 360f).apply {
             duration = 700L
             repeatCount = ObjectAnimator.INFINITE
@@ -153,7 +138,6 @@ class OfflineLaunchDialog(
             if (activity.isFinishing || activity.isDestroyed) return@postDelayed
             if (isOnline(activity)) {
                 dismiss()
-                // rebuild so the full bar + Anime/Manga pages come up
                 activity.recreate()
             } else {
                 b.offlineTryAgain.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -166,7 +150,6 @@ class OfflineLaunchDialog(
         }, 900L)
     }
 
-    /** Medium-speed shake; the card has room to swing because nothing above it clips. */
     private fun shake(v: View) {
         val d = 10f * v.resources.displayMetrics.density
         ObjectAnimator.ofFloat(

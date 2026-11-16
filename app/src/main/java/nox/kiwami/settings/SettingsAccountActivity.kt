@@ -60,8 +60,6 @@ class SettingsAccountActivity : AppCompatActivity() {
         refreshPills()
         refreshSettingsList()
 
-        // Older Discord logins never saved a banner, and avatars/banners can change,
-        // so quietly refresh the profile and redraw the pill when new data arrives.
         if (Discord.token != null) {
             lifecycleScope.launch {
                 if (Discord.refreshProfile()) refreshPills()
@@ -72,7 +70,6 @@ class SettingsAccountActivity : AppCompatActivity() {
     private fun refreshPills() {
         val context = this
         binding.apply {
-            // ---------- AniList ----------
             if (Anilist.token != null) {
                 settingsAnilistLogin.setText(R.string.logout)
                 settingsAnilistLogin.setOnClickListener {
@@ -113,7 +110,6 @@ class SettingsAccountActivity : AppCompatActivity() {
                 }
             }
 
-            // ---------- Discord ----------
             if (Discord.token != null) {
                 val id = PrefManager.getVal(PrefName.DiscordId, null as String?)
                 val avatar = PrefManager.getVal(PrefName.DiscordAvatar, null as String?)
@@ -133,7 +129,6 @@ class SettingsAccountActivity : AppCompatActivity() {
                     refreshSettingsList()
                 }
 
-                // Profile picture (falls back to the default placeholder until the profile is fetched)
                 val avatarUrl = Discord.avatarUrl(id, avatar)
                 if (avatarUrl != null) {
                     ImageViewCompat.setImageTintList(settingsDiscordAvatar, null)
@@ -148,7 +143,6 @@ class SettingsAccountActivity : AppCompatActivity() {
                     settingsDiscordAvatar.setOnClickListener(null)
                 }
 
-                // Banner: image if there is one, otherwise the banner colour
                 val bannerUrl = Discord.bannerUrl(id, banner)
                 val color = bannerColor?.takeIf { it.isNotBlank() }
                     ?.let { runCatching { Color.parseColor(it) }.getOrNull() }
@@ -174,7 +168,6 @@ class SettingsAccountActivity : AppCompatActivity() {
                     }
                 }
             } else {
-                // Logged out: same as the AniList pill - small logo, "Login", default avatar
                 settingsDiscordLogo.visibility = View.VISIBLE
                 settingsDiscordUsername.visibility = View.GONE
                 settingsDiscordBanner.visibility = View.GONE
@@ -201,7 +194,7 @@ class SettingsAccountActivity : AppCompatActivity() {
     private fun refreshSettingsList() {
         val context = this
         val key = highlightKey
-        highlightKey = null // only highlight once, not on every refresh
+        highlightKey = null
         binding.settingsRecyclerView.adapter = SettingsAdapter(
             arrayListOf(
                 Settings(

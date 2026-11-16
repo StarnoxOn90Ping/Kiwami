@@ -6,10 +6,6 @@ import android.widget.TextView
 import androidx.annotation.DrawableRes
 import nox.kiwami.R
 
-/**
- * Centered "nothing here" placeholder shared by the Downloads hub Anime / Manga tabs.
- * Backed by layout_offline_empty_state.xml (included in fragment_offline_page.xml).
- */
 class OfflineEmptyState(root: View) {
     private val container: View = root.findViewById(R.id.offlineEmptyState)
     private val icon: ImageView = root.findViewById(R.id.offlineEmptyIcon)

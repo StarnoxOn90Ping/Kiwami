@@ -102,7 +102,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         textInputLayout.boxBackgroundColor = semiTransparentColor
         val materialCardView = view.findViewById<MaterialCardView>(R.id.offlineMangaAvatarContainer)
 
-        // Embedded in the Downloads hub: the hub already owns the header/settings, so slim this one down
         if (arguments?.getBoolean(nox.kiwami.download.hub.DownloadsActivity.ARG_EMBEDDED, false) == true) {
             materialCardView.visibility = View.GONE
             view.findViewById<View>(R.id.animeTitleContainer).apply {
@@ -210,10 +209,8 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
     private fun grid() {
         gridView.visibility = View.VISIBLE
         val fadeIn = AlphaAnimation(0f, 1f)
-        fadeIn.duration = 300 // animations  pog
+        fadeIn.duration = 300
         gridView.layoutAnimation = LayoutAnimationController(fadeIn)
-        // The adapter (and the list it holds) survives view-style switches, so changing the layout
-        // just re-binds what is already loaded instead of reloading every download.
         if (!::adapter.isInitialized) {
             adapter = OfflineAnimeAdapter(requireContext(), downloads, this)
             getDownloads()
@@ -223,7 +220,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         gridView.adapter = adapter
         gridView.scheduleLayoutAnimation()
         gridView.setOnItemClickListener { _, _, position, _ ->
-            // Get the OfflineAnimeModel that was clicked
             val item = adapter.getItem(position) as OfflineAnimeModel
             val media =
                 downloadManager.animeDownloadedTypes.firstOrNull { it.titleName.compareName(item.title) }
@@ -247,11 +243,9 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
             }
         }
         gridView.setOnItemLongClickListener { _, _, position, _ ->
-            // Get the OfflineAnimeModel that was clicked
             val item = adapter.getItem(position) as OfflineAnimeModel
             val type: MediaType = MediaType.ANIME
 
-            // Alert dialog to confirm deletion
             requireContext().customAlertDialog().apply {
                 setTitle("Delete ${item.title}?")
                 setMessage("Are you sure you want to delete ${item.title}?")
@@ -261,12 +255,11 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
                         PrefManager.getAnimeDownloadPreferences().all?.filter { it.key.contains(item.title) }?.values
                             ?: emptySet()
                     if (mediaIds.isEmpty()) {
-                        snackString("No media found")  // if this happens, terrible things have happened
+                        snackString("No media found")
                     }
                     getDownloads()
                 }
                 setNegButton(R.string.no) {
-                    // Do nothing
                 }
                 show()
             }
@@ -286,7 +279,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
             gridView.smoothScrollToPositionFromTop(0, 0)
         }
 
-        // Assuming 'scrollTop' is a view that you want to hide/show
         scrollTop.visibility = View.GONE
 
         gridView.setOnScrollListener(object : AbsListView.OnScrollListener {
@@ -316,11 +308,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
     }
 
 
-    /**
-     * Shows the downloaded anime. Cards that were built before come straight from the cache, so the
-     * page appears at once; only titles without a card are loaded (a few at a time, in parallel) and
-     * show up as they finish. [force] throws the cache away first (pull-to-refresh).
-     */
     private fun getDownloads(force: Boolean = false) {
         if (downloadsJob.isActive) {
             downloadsJob.cancel()
@@ -375,7 +362,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
 
     private fun showDownloads(list: List<OfflineAnimeModel>, loading: Boolean) {
         if (!isAdded || view == null) return
-        // unchanged list: leave the grid alone so scroll position and images aren't disturbed
         if (list != downloads) {
             downloads = list
             adapter.setItems(list)
@@ -391,11 +377,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         }
     }
 
-    /**
-     * Load media.json file from the directory and convert it to Media class
-     * @param downloadedType DownloadedType object
-     * @return Media object
-     */
     private suspend fun getMedia(downloadedType: DownloadedType): Media? {
         return try {
             val directory = DownloadsManager.getSubDirectory(
@@ -432,11 +413,6 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         }
     }
 
-    /**
-     * Load OfflineAnimeModel from the directory
-     * @param downloadedType DownloadedType object
-     * @return OfflineAnimeModel object
-     */
     private suspend fun loadOfflineAnimeModel(downloadedType: DownloadedType): OfflineAnimeModel {
         val type = downloadedType.type.asText()
         try {

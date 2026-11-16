@@ -25,10 +25,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
 import kotlin.math.roundToInt
 
-/**
- * Settings > Streak. Everything here is read by the Home header the next time Home is shown,
- * so there is nothing to restart.
- */
 class StreakSettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityStreakSettingsBinding
 
@@ -47,7 +43,6 @@ class StreakSettingsActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        // ---- look ---------------------------------------------------------------------------
         bindSwitch(binding.streakShow, PrefName.StreakShow)
         bindSwitch(binding.streakAnimated, PrefName.StreakFireAnimated)
         bindSwitch(binding.streakButtonFire, PrefName.StreakButtonFire)
@@ -55,7 +50,6 @@ class StreakSettingsActivity : AppCompatActivity() {
         bindSwitch(binding.streakLines, PrefName.StreakLines)
         bindSwitch(binding.streakHaptics, PrefName.StreakHaptics)
 
-        // ---- rules --------------------------------------------------------------------------
         bindSwitch(binding.streakGrace, PrefName.StreakGraceDay)
 
         bindSlider(
@@ -87,14 +81,10 @@ class StreakSettingsActivity : AppCompatActivity() {
             }
         }
 
-        // ---- stages (just the text) -----------------------------------------------------------
         binding.streakStages.text = getString(R.string.streak_stages_text)
 
-        // ---- debug --------------------------------------------------------------------------
         setupDebug()
     }
-
-    // ---- helpers -----------------------------------------------------------------------------
 
     private fun bindSwitch(view: CompoundButton, pref: PrefName) {
         view.isChecked = PrefManager.getVal(pref)
@@ -117,8 +107,6 @@ class StreakSettingsActivity : AppCompatActivity() {
         }
     }
 
-    // ---- debug tools -------------------------------------------------------------------------
-
     private fun setupDebug() {
         val on = PrefManager.getVal<Boolean>(PrefName.StreakDebug)
         binding.streakDebug.isChecked = on
@@ -126,8 +114,6 @@ class StreakSettingsActivity : AppCompatActivity() {
 
         binding.streakDebug.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                // start from the real streak so there is a sensible number to edit
-                // (snapshot() still shows the real one here: debug is not on yet)
                 PrefManager.setVal(PrefName.StreakDebugCount, StreakManager.snapshot().count)
                 PrefManager.setVal(PrefName.StreakDebugStatus, 0)
             }
@@ -136,7 +122,6 @@ class StreakSettingsActivity : AppCompatActivity() {
             refreshDebugTexts()
         }
 
-        // quick jumps: one button for the start of every stage
         val d = resources.displayMetrics.density
         binding.streakDebugQuick.removeAllViews()
         StreakManager.STAGE_STARTS.forEach { n ->

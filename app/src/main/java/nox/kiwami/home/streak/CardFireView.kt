@@ -28,29 +28,6 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
-/**
- * Fire for the Anime / Manga list cards.
- *
- * The view has exactly the size of the card it burns on and draws OUTSIDE its own bounds (its
- * parents need clipChildren=false). Nothing is ever clipped with a rectangle: every flame is
- * rooted on the card's real rounded outline and points away from it, so the fire follows the
- * corners instead of ending in a straight line, and it thins out around the corners until it is
- * gone at the point where the corner meets the side.
- *
- * Life cycle:
- *
- *   WAITING   draws nothing. The card is still sliding in. [ignite] is called once it is in place.
- *   IGNITE    a flash at the top centre, then two "fuses" run along the outline in both
- *             directions (down the sides, round the bottom) and light the flames as they pass.
- *   HOLD      the whole button is on fire: flames all round, the face glows from below, the
- *             border burns hot yellow.
- *   RECEDE    the fire dies from the bottom upwards, until only the flames on top are left.
- *   SETTLED   the calm steady fire on the top edge, with a red / orange border glow that fades
- *             down the sides.
- *
- * [abortIgnition] (called when Home is scrolled) shortens IGNITE / HOLD / RECEDE to a quick
- * fade into SETTLED.
- */
 class CardFireView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -60,12 +37,10 @@ class CardFireView @JvmOverloads constructor(
 
     private val d = resources.displayMetrics.density
 
-    // ---- state -------------------------------------------------------------------------------
-
     private var phase = Phase.WAITING
     private var igniteStart = 0L
-    private var ignP = 0f // how far the fire has spread round the outline, 0..1
-    private var recP = 0f // how far it has died back from the bottom, 0..1
+    private var ignP = 0f
+    private var recP = 0f
     private var aborting = false
     private var abortStart = 0L
     private var abortMul = 1f
@@ -87,8 +62,6 @@ class CardFireView @JvmOverloads constructor(
     private var spawnDebt = 0f
     private var fuseDebt = 0f
 
-    // ---- paints ------------------------------------------------------------------------------
-
     private val outer = Paint(Paint.ANTI_ALIAS_FLAG)
     private val mid = Paint(Paint.ANTI_ALIAS_FLAG)
     private val inner = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -108,30 +81,27 @@ class CardFireView @JvmOverloads constructor(
     private val rect = RectF()
     private val shaderM = Matrix()
 
-    // ---- outline geometry (rebuilt when the size or the corner radius changes) ----------------
-
     private var cw = 0f
     private var ch = 0f
     private var cr = 1f
-    private var segA = 0f // half of the straight top edge
-    private var segArc = 0f // one rounded corner
-    private var segV = 0f // one straight side
-    private var segB = 0f // the straight bottom edge
+    private var segA = 0f
+    private var segArc = 0f
+    private var segV = 0f
+    private var segB = 0f
     private var perim = 0f
     private var spacing = 1f
     private var n = 0
 
-    // One entry per flame root, walking the outline clockwise from the top centre.
-    private var fx = FloatArray(0) // root x
-    private var fy = FloatArray(0) // root y
-    private var flean = FloatArray(0) // lean in degrees (+ = towards the right)
+    private var fx = FloatArray(0)
+    private var fy = FloatArray(0)
+    private var flean = FloatArray(0)
     private var fcos = FloatArray(0)
-    private var fdist = FloatArray(0) // 0 at the top centre .. 1 at the bottom centre
-    private var fset = FloatArray(0) // strength of the steady fire here (1 on top, 0 down the sides)
-    private var fwTop = FloatArray(0) // weights for the full-fire height (top / side / bottom)
+    private var fdist = FloatArray(0)
+    private var fset = FloatArray(0)
+    private var fwTop = FloatArray(0)
     private var fwSide = FloatArray(0)
     private var fwBot = FloatArray(0)
-    private val pt = FloatArray(4) // x, y, normal x, normal y
+    private val pt = FloatArray(4)
 
     private class Spark(
         var x: Float, var y: Float, var vx: Float, var vy: Float,
@@ -144,12 +114,9 @@ class CardFireView @JvmOverloads constructor(
     private val scrollListener = ViewTreeObserver.OnScrollChangedListener {
         if (phase == Phase.IGNITE || phase == Phase.HOLD || phase == Phase.RECEDE) {
             getLocationInWindow(loc)
-            // only a real scroll of Home counts (other lists scrolling sideways fire this too)
             if (abs(loc[1] - startY) > 2) abortIgnition()
         }
     }
-
-    // ---- configuration -----------------------------------------------------------------------
 
     fun setStage(value: Int) {
         stage = value.coerceIn(0, StreakManager.MAX_STAGE)
@@ -157,13 +124,11 @@ class CardFireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** 1 = normal. */
     fun setBoost(value: Float) {
         boost = value.coerceIn(0.5f, 1.5f)
         invalidate()
     }
 
-    /** false = a still picture of the steady fire, no ignition, no flicker, no sparks. */
     fun setAnimated(value: Boolean) {
         if (animated == value) return
         animated = value
@@ -180,7 +145,6 @@ class CardFireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** @param value 0f = burning, 1f = grey and nearly out */
     fun setDim(value: Float) {
         dim = value.coerceIn(0f, 1f)
         val filter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(1f - dim * 0.9f) })
@@ -188,13 +152,11 @@ class CardFireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** How far above the card the fire may reach, in px. Nothing is ever drawn higher. */
     fun setHeadroom(px: Float) {
         headroom = px.coerceIn(0f, 80f * d)
         invalidate()
     }
 
-    /** Corner radius of the card, in px. */
     fun setCornerRadius(px: Float) {
         cornerPx = px
         computeGeometry()
@@ -202,10 +164,9 @@ class CardFireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** Starts the ignition. Call it once the card is in place. Does nothing the second time. */
     fun ignite() {
         if (phase != Phase.WAITING) return
-        clearAnimation() // a layout animation may have been attached; the fire never slides
+        clearAnimation()
         if (!animated) {
             phase = Phase.SETTLED
             invalidate()
@@ -226,7 +187,6 @@ class CardFireView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** Ends the ignition early: the full fire fades away quickly and only the top flames stay. */
     fun abortIgnition() {
         if (aborting) return
         if (phase == Phase.IGNITE || phase == Phase.HOLD || phase == Phase.RECEDE) {
@@ -234,8 +194,6 @@ class CardFireView @JvmOverloads constructor(
             abortStart = System.nanoTime()
         }
     }
-
-    // ---- lifecycle ---------------------------------------------------------------------------
 
     private fun updateRunning() {
         val shouldRun = animated && phase != Phase.WAITING && isShown && isAttachedToWindow
@@ -271,12 +229,6 @@ class CardFireView @JvmOverloads constructor(
         buildShaders()
     }
 
-    // ---- geometry ----------------------------------------------------------------------------
-
-    /**
-     * Point on the card's rounded outline [sIn] px along it, walking clockwise from the top centre.
-     * Result in [pt]: x, y and the outward normal (nx, ny).
-     */
     private fun pointAt(sIn: Float) {
         var s = sIn
         val w = cw
@@ -331,7 +283,7 @@ class CardFireView @JvmOverloads constructor(
             fdist = FloatArray(n); fset = FloatArray(n)
             fwTop = FloatArray(n); fwSide = FloatArray(n); fwBot = FloatArray(n)
         }
-        val inset = ROOT_INSET * d // roots sit a little inside the card, so the fire grows out of its edge
+        val inset = ROOT_INSET * d
         for (k in 0 until n) {
             val s = k * spacing
             pointAt(s)
@@ -340,12 +292,9 @@ class CardFireView @JvmOverloads constructor(
             fx[k] = pt[0] - nx * inset
             fy[k] = pt[1] - ny * inset
             fdist[k] = min(s, perim - s) / (perim / 2f)
-            // angle of the outward normal away from "straight up": 0 on top, 90 at the sides, 180 at the bottom
             val a = abs(Math.toDegrees(atan2(nx.toDouble(), (-ny).toDouble())).toFloat())
             val sign = if (nx >= 0f) 1f else -1f
-            // steady fire: full on the straight top, tapering round the corner, gone where it meets the side
             fset[k] = if (a >= 88f) 0f else (1f - a / 88f).pow(1.4f)
-            // flames lean away from the card round the corner, and stand up straight at the bottom
             flean[k] = sign * (if (a <= 90f) a * 0.5f else 45f * (1f - (a - 90f) / 90f))
             fcos[k] = max(0.5f, cos(Math.toRadians(flean[k].toDouble())).toFloat())
             fwTop[k] = if (a <= 90f) 1f - a / 90f else 0f
@@ -359,7 +308,6 @@ class CardFireView @JvmOverloads constructor(
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
-        // flame-local gradients: y = 0 is the root, y = -100 the tip (scaled per flame when drawn)
         val pos = floatArrayOf(0f, 0.55f, 1f)
         fun grad(c0: Int, c1: Int, c2: Int) =
             LinearGradient(0f, 0f, 0f, -100f, intArrayOf(c0, c1, c2), pos, Shader.TileMode.CLAMP)
@@ -379,20 +327,17 @@ class CardFireView @JvmOverloads constructor(
             floatArrayOf(0f, 0.35f, 1f), Shader.TileMode.CLAMP
         )
 
-        // the face of the card lights up from the bottom while the whole button burns
         face.shader = LinearGradient(
             0f, 0f, 0f, h,
             intArrayOf(0x00FF3D00, 0x55FF4A00, 0xFFFF7A00.toInt()),
             floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
         )
 
-        // the border: red-orange at the top, fading away down the sides
         rimRed.shader = LinearGradient(
             0f, -4f * d, 0f, h,
             intArrayOf(0xFFFF5A00.toInt(), 0xCCFF3D00.toInt(), 0x55D62800, 0x00B71C1C),
             floatArrayOf(0f, 0.22f, 0.55f, 1f), Shader.TileMode.CLAMP
         )
-        // white-hot yellow on the very top of the border, only really visible while it burns
         rimHot.shader = LinearGradient(
             0f, -4f * d, 0f, h * 0.75f,
             intArrayOf(0xFFFFF0B0.toInt(), 0xE6FFC400.toInt(), 0x00FF8F00),
@@ -401,8 +346,6 @@ class CardFireView @JvmOverloads constructor(
     }
 
     private fun haloRx() = cw / 2f + 10f * d
-
-    // ---- timeline ----------------------------------------------------------------------------
 
     private fun smooth(x: Float): Float {
         val t = x.coerceIn(0f, 1f)
@@ -440,10 +383,6 @@ class CardFireView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * How much the full fire burns at a place on the outline ([dist01]: 0 at the top centre,
-     * 1 at the bottom centre). It is lit from the top by the fuses and dies from the bottom up.
-     */
     private fun engulfCov(dist01: Float): Float {
         if (phase == Phase.WAITING || phase == Phase.SETTLED) return 0f
         val ign = smooth((ignP * 1.15f - dist01) / 0.15f)
@@ -451,9 +390,6 @@ class CardFireView @JvmOverloads constructor(
         return ign * (1f - rem) * abortMul
     }
 
-    // ---- drawing -----------------------------------------------------------------------------
-
-    /** Smooth pseudo-noise in -1..1. */
     private fun noise(t: Float, phase: Float): Float =
         (sin(t * 2.3f + phase) + 0.6f * sin(t * 3.9f + phase * 1.7f) + 0.35f * sin(t * 6.1f + phase * 0.6f)) / 1.95f
 
@@ -483,17 +419,14 @@ class CardFireView @JvmOverloads constructor(
         val pulse = 0.88f + 0.12f * sin(t * 4.2f) + 0.04f * sin(t * 9.1f)
         rect.set(0f, 0f, cw, ch)
 
-        // 1. heat haze above the card (it fades out sideways, so it never ends in a box)
         drawHalo(canvas, halo, (0.30f + 0.35f * ii + 0.25f * burn) * pulse, (12f + 22f * burn) * d)
         if (flash > 0.01f) drawHalo(canvas, flashP, flash * 0.9f, 16f * d)
 
-        // 2. the face of the card glows from below while the whole button burns
         if (burn > 0.01f) {
             face.alpha = ((burn * 0.5f).coerceIn(0f, 1f) * 255f).toInt()
             canvas.drawRoundRect(rect, cr, cr, face)
         }
 
-        // 3. the border: a red / orange glow that is strongest at the top and fades down the sides
         val rimStrength = 0.7f + 0.3f * ii
         shaderM.setScale(1f, 1f + 0.9f * burn, 0f, 0f)
         rimRed.shader?.setLocalMatrix(shaderM)
@@ -511,10 +444,8 @@ class CardFireView @JvmOverloads constructor(
             canvas.drawRoundRect(rect, cr, cr, rimHot)
         }
 
-        // 4. the flames
         drawFlames(canvas, t, ii)
 
-        // 5. sparks and the two fuses that light the button
         if (animated && sparksOn) updateSparks(canvas, dt, ii, burn)
         if (phase == Phase.IGNITE && !aborting && ignP < 0.98f) drawFuses(canvas)
 
@@ -537,7 +468,6 @@ class CardFireView @JvmOverloads constructor(
         canvas.drawRect(cx - rx, 0f, cx + rx, downPx, p)
     }
 
-    /** A teardrop whose tip leads and whose body lags, so it licks instead of just swaying. */
     private fun flame(canvas: Canvas, w: Float, h: Float, t: Float, ph: Float, lean: Float, paint: Paint) {
         val s1 = noise(t * 1.5f, ph) * w * 0.14f
         val s2 = noise(t * 1.5f - 0.45f, ph + 1.3f) * w * 0.55f
@@ -554,7 +484,6 @@ class CardFireView @JvmOverloads constructor(
 
     private fun drawFlames(canvas: Canvas, t: Float, ii: Float) {
         val inset = ROOT_INSET * d
-        // steady fire on top, and the taller fire of the full burn (top / sides / bottom)
         val reachS = min(headroom + inset, 42f * d) * (0.55f + 0.45f * ii)
         val reachE = min(headroom + inset, 52f * d) * 1.15f
         val sideE = ch * 0.62f
@@ -571,10 +500,8 @@ class CardFireView @JvmOverloads constructor(
                 val base = hS + (max(hE, hS) - hS) * eng
                 if (base < 1.5f * d) continue
                 val n01 = 0.5f + 0.5f * noise(t * 1.3f, k * 2.37f)
-                // slow waves of taller flames travelling along the outline
                 val wave = 0.82f + 0.18f * sin(t * 1.7f - k * 0.55f)
                 var fh = base * (0.35f + 0.65f * n01) * wave * grow
-                // a flame's tip never goes higher than the free space above the card
                 fh = min(fh, (fy[k] + headroom) / fcos[k])
                 if (fh < 1.5f * d) continue
                 paint.alpha = ((fh / (7f * d)).coerceIn(0f, 1f) * 255f).toInt()
@@ -589,8 +516,6 @@ class CardFireView @JvmOverloads constructor(
             }
         }
     }
-
-    // ---- sparks and fuses --------------------------------------------------------------------
 
     private fun spawnAt(k: Int, speedMul: Float) {
         if (sparks.size >= MAX_SPARKS) return
@@ -622,7 +547,6 @@ class CardFireView @JvmOverloads constructor(
         }
         if (spawnDebt > 3f) spawnDebt = 3f
 
-        // while the fuses run, they throw sparks
         if (phase == Phase.IGNITE && !aborting && dim <= 0.85f) {
             fuseDebt += 70f * dt
             var g = 0
@@ -641,7 +565,6 @@ class CardFireView @JvmOverloads constructor(
             if (s.life <= 0f || s.y < -headroom) { iter.remove(); continue }
             s.x += s.vx * dt + sin(s.life * 9f + s.size) * 0.35f * d
             s.y += s.vy * dt * 0.85f
-            // they fade out as they near the top of the free space
             val ceiling = ((s.y + headroom) / (headroom * 0.4f + 1f)).coerceIn(0f, 1f)
             val a = s.life.coerceIn(0f, 1f) * ceiling
             val rad = s.size * (0.5f + 0.5f * s.life)
@@ -667,19 +590,16 @@ class CardFireView @JvmOverloads constructor(
     }
 
     private companion object {
-        /** How fierce the fire is per stage (0..1). The list buttons only burn from stage 3 on. */
         val EDGE_INTENSITY = floatArrayOf(0f, 0f, 0f, 0.45f, 0.72f, 1f)
 
-        const val ROOT_INSET = 3f // dp: flames are rooted this far inside the card's edge
+        const val ROOT_INSET = 3f
         const val MAX_SPARKS = 30
 
-        // ignition timeline, in ms
-        const val IGNITE_MS = 850f // the fuses run round the button
-        const val HOLD_MS = 1200f // the whole button burns
-        const val RECEDE_MS = 1400f // the fire dies from the bottom up
-        const val ABORT_MS = 380f // quick fade when Home is scrolled
+        const val IGNITE_MS = 850f
+        const val HOLD_MS = 1200f
+        const val RECEDE_MS = 1400f
+        const val ABORT_MS = 380f
 
-        // border glow layers (dp, alpha)
         val RIM_W = floatArrayOf(10f, 5.5f, 2.6f)
         val RIM_A = floatArrayOf(0.10f, 0.22f, 0.85f)
         val HOT_W = floatArrayOf(4f, 1.4f)

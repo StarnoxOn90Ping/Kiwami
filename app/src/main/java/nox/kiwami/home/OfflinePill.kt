@@ -20,14 +20,6 @@ import nox.kiwami.databinding.ItemNavbarBinding
 import nox.kiwami.isOnline
 import nox.kiwami.util.setPressBounce
 
-/**
- * The pill that stands in for the "Anime | Home | Manga" bar when the app is launched without internet.
- *
- *  - amber, softly pulsing "Offline" badge (Home keeps showing its cached content)
- *  - if the connection returns while the app is still in offline mode, it morphs into a green
- *    "Reconnect" pill; tapping it recreates MainActivity with the full bar
- *  - tapping it while still offline just gives a little shake
- */
 class OfflinePill(
     private val activity: AppCompatActivity,
     private val nav: ItemNavbarBinding
@@ -42,7 +34,6 @@ class OfflinePill(
     private var recovered = false
     private var released = false
 
-    /** Called with true when the connection returns, false if it drops again. */
     var onRecoveredChanged: ((Boolean) -> Unit)? = null
 
     fun show() {
@@ -51,7 +42,6 @@ class OfflinePill(
         pill.setPressBounce(0.94f)
         pill.setOnClickListener { onTap() }
 
-        // entrance: rises from below with a springy overshoot
         pill.alpha = 0f
         pill.scaleX = 0.6f
         pill.scaleY = 0.6f
@@ -68,7 +58,6 @@ class OfflinePill(
         watchNetwork()
     }
 
-    /** Cancels the animators and unregisters the network callback. Call from onDestroy. */
     fun release() {
         released = true
         stopAnimations()
@@ -80,8 +69,6 @@ class OfflinePill(
         }
         callback = null
     }
-
-    // ---- states -------------------------------------------------------------------------------
 
     private fun markRecovered() {
         if (released || recovered) return
@@ -96,7 +83,6 @@ class OfflinePill(
         swapTitle(R.string.offline_reconnect_title)
         startAnimations()
 
-        // happy little pop
         nav.offlinePill.animate().setStartDelay(0L).scaleX(1.08f).scaleY(1.08f).setDuration(140L)
             .withEndAction {
                 nav.offlinePill.animate().setStartDelay(0L).scaleX(1f).scaleY(1f).setDuration(320L)
@@ -120,15 +106,12 @@ class OfflinePill(
 
     private fun onTap() {
         if (recovered || isOnline(activity)) {
-            // connection is back: rebuild the activity so the full bar + Anime/Manga pages come up
             activity.recreate()
         } else {
             nav.offlinePill.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             shake()
         }
     }
-
-    // ---- animation helpers --------------------------------------------------------------------
 
     private fun startAnimations() {
         stopAnimations()
@@ -145,7 +128,6 @@ class OfflinePill(
             interpolator = DecelerateInterpolator()
             start()
         }
-        // the icon gently breathes
         breatheAnimator = ObjectAnimator.ofFloat(nav.offlineIcon, View.ALPHA, 1f, 0.6f).apply {
             duration = 1400L
             repeatCount = ObjectAnimator.INFINITE
@@ -174,7 +156,6 @@ class OfflinePill(
         }
     }
 
-    /** Cross-fades the title instead of snapping it. */
     private fun swapTitle(resId: Int) {
         val view = nav.offlineTitle
         val text = activity.getString(resId)
@@ -189,13 +170,10 @@ class OfflinePill(
         }).start()
     }
 
-    // ---- connectivity -------------------------------------------------------------------------
-
     private fun watchNetwork() {
         val cm = activity.getSystemService(ConnectivityManager::class.java) ?: return
         val cb = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                // capabilities need a moment to settle before isOnline() reports true
                 nav.offlinePill.postDelayed({
                     if (!released && isOnline(activity)) markRecovered()
                 }, 500L)

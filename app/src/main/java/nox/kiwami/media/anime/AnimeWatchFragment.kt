@@ -277,7 +277,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
                     episodes.forEach { (i, episode) ->
                         val epNum = episode.number
                         if (!isTorrentSource) {
-                            // 1. Jikan (Lowest for metadata, only source for filler flag)
                             if (media.anime?.fillerEpisodes != null) {
                                 val fillerEp = media.anime!!.fillerEpisodes!![epNum]
                                     ?: media.anime!!.fillerEpisodes!!.getEpisode(epNum)
@@ -322,13 +321,11 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
                                 applyAniZip()
                             }
 
-                            // Title fallback order: AniZip English -> Kitsu -> Jikan/MAL -> "Episode X"
                             val anifyTitle = cleanTitle((media.anime?.anifyEpisodes?.get(epNum) ?: media.anime?.anifyEpisodes?.getEpisode(epNum))?.title)
                             val kitsuTitle = cleanTitle((media.anime?.kitsuEpisodes?.get(epNum) ?: media.anime?.kitsuEpisodes?.getEpisode(epNum))?.title)
                             val jikanTitle = cleanTitle((media.anime?.fillerEpisodes?.get(epNum) ?: media.anime?.fillerEpisodes?.getEpisode(epNum))?.title)
                             episode.title = anifyTitle ?: kitsuTitle ?: jikanTitle ?: buildFallbackEpisodeTitle(i, episode)
                         } else {
-                            // For torrent/magnet streams, preserve real file names and file size descriptions
                             if (episode.title.isNullOrBlank()) {
                                 episode.title = episode.sEpisode?.name ?: buildFallbackEpisodeTitle(i, episode)
                             }
@@ -492,7 +489,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
         }
     }
 
-    //implement Multi download
     fun multiDownload(episodeNumber: String? = null, n: Int) {
         val selected = media.userProgress
         val episodes = media.anime?.episodes?.values?.toList()
@@ -538,7 +534,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
         }
     }
 
-    // ---------------- Multi-select (long-press an episode) ----------------
     private var selectionBar: EpisodeSelectionBar? = null
     private val selectionBackCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -576,7 +571,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     private var recyclerBasePaddingBottom = -1
     private var selectionInset = 0
 
-    /** Adds bottom room to the list (and lifts the scroll-to-top button) while the bar is showing. */
     private fun applySelectionInsets(show: Boolean) {
         val b = _binding ?: return
         val bar = selectionBar ?: return
@@ -821,7 +815,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
                         show()
                     }
             } else {
-                // If there's only one setting, proceed with the fragment transaction
                 requireActivity().runOnUiThread {
                     val fragment =
                         AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
@@ -861,11 +854,9 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
             clipText
         } else null
 
-        // If no clipboard torrent, check if one is already saved for this media (shows info on re-click)
         val savedUrl = PrefManager.getNullableCustomVal("${media.id}_torrent_url", null, String::class.java)
             ?.takeIf { it.isNotBlank() }
 
-        // Prefer clipboard URL (allows replacing torrent), fall back to saved URL (shows existing torrent info)
         val torrentUrl = clipTorrentUrl ?: savedUrl
 
         val sheet = nox.kiwami.torrent.DirectTorrentBottomSheet.newInstanceLinked(media, torrentUrl)
@@ -935,7 +926,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     }
 
     fun onAnimeEpisodeStopDownloadClick(i: String) {
-        // Idle UI immediately (not "Failed"); ignore late progress broadcasts
         AnimeDownloader.stopDownload(media.id, i)
         episodeAdapter.clearDownloadState(i)
 
@@ -948,7 +938,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
         }
         requireContext().sendBroadcast(cancelIntent)
 
-        // Remove partial files from the manager
         downloadManager.removeDownload(
             DownloadedType(
                 media.mainName(),
@@ -1113,7 +1102,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     private fun reload() {
         val selected = model.loadSelected(media)
 
-        // Find latest episode for subscription
         selected.latest =
             media.anime?.episodes?.values?.maxOfOrNull { it.number.toFloatOrNull() ?: 0f } ?: 0f
         selected.latest =
@@ -1140,9 +1128,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
             }
         }
 
-        // Same episodes, same order, same layout (e.g. just back from the player with new progress):
-        // keep the list as it is and only update what changed. The tile you just watched dims in
-        // with an animation instead of the whole list being rebuilt.
         val old = episodeAdapter.arr
         val sameList = old.isNotEmpty() &&
             old.size == arr.size &&

@@ -32,7 +32,6 @@ object MangaSources : MangaReadSources() {
         )
         isInitialized = true
 
-        // Update as StateFlow emits new values
         fromExtensions.collect { extensions ->
             list = sortPinnedMangaSources(
                 createParsersFromExtensions(extensions),
@@ -45,7 +44,6 @@ object MangaSources : MangaReadSources() {
     }
 
     fun performReorderMangaSources() {
-        //remove the downloaded source from the list to avoid duplicates
         list = list.filter { it.name != "Downloaded" && it.name != "Local" }
         list = sortPinnedMangaSources(list, pinnedMangaSources) + listOf(
             Lazier({ LocalMangaParser() }, "Local"),

@@ -19,7 +19,6 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
         val height = toTransform.height
         if (width <= 0 || height <= 0) return toTransform
 
-        // If bitmap is HARDWARE, copy to software config so getPixels is allowed
         val safeBitmap = if (toTransform.config == Bitmap.Config.HARDWARE) {
             toTransform.copy(Bitmap.Config.ARGB_8888, false) ?: return toTransform
         } else {
@@ -33,13 +32,11 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
             return toTransform
         }
 
-        // Find the non-white area by scanning from the edges
         var left = 0
         var top = 0
         var right = width - 1
         var bottom = height - 1
 
-        // Scan from the left edge
         for (x in 0 until width) {
             var stop = false
             for (y in 0 until height) {
@@ -52,7 +49,6 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
             if (stop) break
         }
 
-        // Scan from the right edge
         for (x in width - 1 downTo left) {
             var stop = false
             for (y in 0 until height) {
@@ -65,7 +61,6 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
             if (stop) break
         }
 
-        // Scan from the top edge
         for (y in 0 until height) {
             var stop = false
             for (x in 0 until width) {
@@ -78,7 +73,6 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
             if (stop) break
         }
 
-        // Scan from the bottom edge
         for (y in height - 1 downTo top) {
             var stop = false
             for (x in 0 until width) {
@@ -97,7 +91,6 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
             return toTransform
         }
 
-        // Crop the bitmap to the non-white area
         return Bitmap.createBitmap(
             safeBitmap,
             left,

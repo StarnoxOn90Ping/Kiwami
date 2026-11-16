@@ -59,7 +59,6 @@ class SubscriptionNotificationTask : Task {
                         Logger.log("SubscriptionNotificationTask: timed out waiting for sources initialization")
                         return@withContext false
                     }
-                    // Anime are handled by the airing alarm (fires when the info page countdown hits zero)
                     val subscriptions = SubscriptionHelper.getSubscriptions().filterValues { !it.isAnime }
                     var i = 0
                     val index = subscriptions.map { i++; it.key to i }.toMap()
@@ -76,8 +75,6 @@ class SubscriptionNotificationTask : Task {
                             ID_SUBSCRIPTION_CHECK_PROGRESS,
                             progressNotification.build()
                         )
-                        //Seems like if the parent coroutine scope gets cancelled, the notification stays
-                        //So adding this as a safeguard? dk if this will be useful
                         CoroutineScope(Dispatchers.Main).launch {
                             delay(5 * subscriptions.size * 1000L)
                             notificationManager.cancel(ID_SUBSCRIPTION_CHECK_PROGRESS)

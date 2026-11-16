@@ -221,12 +221,10 @@ class Stories @JvmOverloads constructor(
                     storyIndex += 1
                     showStory()
                 } else {
-                    // on stories end
                     binding.androidStoriesLoadingView.visibility = GONE
                     onStoriesCompleted()
                 }
             } else {
-                // on stories end
                 binding.androidStoriesLoadingView.visibility = GONE
                 onStoriesCompleted()
             }
@@ -544,7 +542,6 @@ class Stories @JvmOverloads constructor(
                 }
                 val mediaMap = mediaList?.associateBy { it.id } ?: emptyMap()
                 withContext(Dispatchers.Main) {
-                    // Re-render the text view: replace AniList URLs with media titles
                     if (mediaMap.isNotEmpty() && !(context as android.app.Activity).isDestroyed) {
                         val titleMap = mediaMap.mapValues { (_, media) -> media.userPreferredName }
                         val htmlWithTitles = AnilistLinkParser.replaceAnilistUrlsInHtml(
@@ -553,7 +550,6 @@ class Stories @JvmOverloads constructor(
                         val markwon = buildMarkwon(context, false)
                         markwon.setMarkdown(binding.textActivity, htmlWithTitles)
                     }
-                    // Add preview cards
                     links.forEach { link ->
                         val previewView = AnilistLinkPreviewView(context)
                         val media = mediaMap[link.id]

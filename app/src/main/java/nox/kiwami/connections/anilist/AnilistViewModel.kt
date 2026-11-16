@@ -26,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** What the home rows actually show for one item. Equal signatures = nothing visible changed. */
 fun mediaSignature(m: Media): String = buildString {
     append(m.id).append('|').append(m.cover).append('|').append(m.userPreferredName).append('|')
     append(m.userProgress).append('|').append(m.userProgressVolumes).append('|')
@@ -59,7 +58,6 @@ class AnilistHomeViewModel : ViewModel() {
     fun getListImages(): LiveData<ArrayList<String?>> = listImages
     suspend fun setListImages() {
         val images = Anilist.query.getBannerImages()
-        // same banners as already shown: nothing to redraw
         if (images != listImages.value) listImages.postValue(images)
     }
 
@@ -161,7 +159,6 @@ class AnilistHomeViewModel : ViewModel() {
 
     fun getUserStatus(): LiveData<ArrayList<User>?> = userStatus
     suspend fun initUserStatus(forceRefresh: Boolean = false) {
-        // Showing data and not forced: a fresh result identical to it is simply dropped.
         val keepIfSame = !forceRefresh && userStatus.value != null
         val before = userStatus.value?.let { userStatusSignature(it) }
         if (!keepIfSame) {

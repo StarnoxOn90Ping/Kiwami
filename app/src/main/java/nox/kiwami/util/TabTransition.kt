@@ -11,13 +11,6 @@ import androidx.viewpager2.widget.ViewPager2
 import java.util.WeakHashMap
 import kotlin.math.abs
 
-/**
- * Depth-parallax tab transition. It is driven by the scroll position on every frame, so it is one
- * continuous motion (nothing restarts or flashes when a page settles):
- *  - both pages drift towards the middle at half speed, so they glide over each other
- *  - the page that is leaving shrinks back a little and fades out, the new one grows in and fades up
- *  - the fade is eased (squared), so the content never dips noticeably dark halfway through
- */
 class TabPageTransformer : ViewPager2.PageTransformer {
     override fun transformPage(page: View, position: Float) {
         val p = position.coerceIn(-1f, 1f)
@@ -42,7 +35,6 @@ class TabPageTransformer : ViewPager2.PageTransformer {
 private val running = WeakHashMap<ViewPager2, ValueAnimator>()
 private val guarded = WeakHashMap<ViewPager2, Boolean>()
 
-/** Quiet safety net: once the pager is idle, make sure every page is in its resting look. */
 private fun ViewPager2.ensureRestGuard() {
     if (guarded.put(this, true) != null) return
     val pager = this
@@ -53,7 +45,6 @@ private fun ViewPager2.ensureRestGuard() {
     })
 }
 
-/** Selected page fully visible, the others hidden. Does nothing when the pages are already right. */
 private fun ViewPager2.restPages() {
     if (scrollState != ViewPager2.SCROLL_STATE_IDLE || isFakeDragging) return
     if (running[this]?.isRunning == true) return
@@ -68,7 +59,6 @@ private fun ViewPager2.restPages() {
     }
 }
 
-/** Where the pager really is right now, in pages (1.5 = halfway between tab 1 and tab 2). */
 private fun ViewPager2.pagePosition(): Float {
     val lm = (getChildAt(0) as? RecyclerView)?.layoutManager as? LinearLayoutManager
         ?: return currentItem.toFloat()
@@ -77,14 +67,6 @@ private fun ViewPager2.pagePosition(): Float {
     return first - view.left / width.toFloat()
 }
 
-/**
- * Switches to [item] with a long, soft glide (fast start, gentle landing).
- *
- * One glide drives the whole switch. If you tap another tab while it is still moving, the same
- * glide is simply re-aimed from wherever the pages are right now, so quick taps flow into each
- * other instead of stopping, jumping or restarting. The fade and scale come from
- * [TabPageTransformer], which follows the scroll position, so they look right at any speed.
- */
 fun ViewPager2.switchTabSmoothly(item: Int, duration: Long = 480L) {
     ensureRestGuard()
     if (width == 0) {
@@ -101,7 +83,6 @@ fun ViewPager2.switchTabSmoothly(item: Int, duration: Long = 480L) {
         if (isFakeDragging) endFakeDrag()
         return
     }
-    // keeps the running fake drag when re-aiming, only starts one when idle
     if (!isFakeDragging && !beginFakeDrag()) {
         setCurrentItem(item, true)
         return
@@ -109,7 +90,7 @@ fun ViewPager2.switchTabSmoothly(item: Int, duration: Long = 480L) {
     var last = 0f
     val animator = ValueAnimator.ofFloat(0f, diff * width).apply {
         this.duration = (duration * abs(diff).coerceIn(0.45f, 1f)).toLong()
-        interpolator = PathInterpolator(0.22f, 1f, 0.36f, 1f) // easeOutQuint-ish
+        interpolator = PathInterpolator(0.22f, 1f, 0.36f, 1f)
         addUpdateListener {
             val v = it.animatedValue as Float
             fakeDragBy(-(v - last))

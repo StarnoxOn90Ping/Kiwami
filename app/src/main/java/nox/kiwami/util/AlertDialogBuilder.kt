@@ -158,7 +158,7 @@ class AlertDialogBuilder(private val context: Context) {
     }
 
     fun show() {
-        if (context is Activity && context.isFinishing) return // Ensure context is valid
+        if (context is Activity && context.isFinishing) return
 
         val builder = AlertDialog.Builder(context, R.style.MyPopup)
         if (title != null) builder.setTitle(title)

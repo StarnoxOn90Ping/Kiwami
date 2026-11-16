@@ -644,7 +644,6 @@ class MediaAdaptor(
     fun getBitmapFromImageView(imageView: ImageView): Bitmap? {
         val drawable = imageView.drawable ?: return null
 
-        // If the drawable is a BitmapDrawable, then just get the bitmap
         if (drawable is BitmapDrawable) {
             return drawable.bitmap
         }
@@ -663,7 +662,6 @@ class MediaAdaptor(
             return null
         }
 
-        // Draw the drawable onto the bitmap
         val canvas = Canvas(bitmap)
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)

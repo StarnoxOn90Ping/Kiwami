@@ -30,7 +30,6 @@ class MangaSourcePreferencesFragment : PreferenceFragmentCompat() {
         try {
             onCloseAction?.invoke()
         } catch (e: Exception) {
-            // Ignore if parent detached during destroy
         }
     }
 
@@ -51,7 +50,6 @@ class MangaSourcePreferencesFragment : PreferenceFragmentCompat() {
                 println("pref.dialogTitle: ${pref.dialogTitle}")
             }
 
-            // Apply incognito IME for EditTextPreference
             if (pref is EditTextPreference) {
                 val setListener = pref.getOnBindEditTextListener()
                 pref.setOnBindEditTextListener {

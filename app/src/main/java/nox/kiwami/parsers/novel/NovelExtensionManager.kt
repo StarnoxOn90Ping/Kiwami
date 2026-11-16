@@ -13,11 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import rx.Observable
 
-/**
- * Coordinator manager for both Dan Novel (APK-based) extensions and LNReader (JS-based) plugins.
- * Maintains a clean separation of concerns by delegating to [KiwamiNovelExtensionManager]
- * and [LnReaderExtensionManager].
- */
 @Inject
 @SingleIn(AppScope::class)
 class NovelExtensionManager(private val context: Context) {
@@ -54,7 +49,6 @@ class NovelExtensionManager(private val context: Context) {
         }
     }
 
-    // --- APK Extension Delegation ---
     fun installExtension(extension: NovelExtension.Available): Observable<InstallStep> =
         kiwamiNovelManager.installExtension(extension)
 
@@ -73,7 +67,6 @@ class NovelExtensionManager(private val context: Context) {
     fun uninstallExtension(pkgName: String) =
         kiwamiNovelManager.uninstallExtension(pkgName)
 
-    // --- LNReader JS Plugin Delegation ---
     suspend fun findAvailableLnReaderPlugins(extraRepos: List<String> = emptyList()) =
         lnReaderManager.findAvailablePlugins(extraRepos)
 

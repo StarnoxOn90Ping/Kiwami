@@ -7,15 +7,6 @@ import nox.kiwami.util.Logger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * AniZip API integration for episode metadata.
- * API: https://api.ani.zip/mappings?anilist_id=<id>
- *
- * This object was previously named "Anify" and called the defunct Anify API.
- * It is now backed by api.ani.zip but keeps the same name/interface so the
- * rest of the code (MediaDetailsViewModel, AnimeWatchFragment, Anime.kt) does
- * not need renaming.
- */
 object Anify {
 
     suspend fun fetchAndParseMetadata(anilistId: Int? = null, malId: Int? = null): Map<String, Episode> {
@@ -32,7 +23,6 @@ object Anify {
 
             episodes.entries
                 .filter { (key, _) ->
-                    // Only include numbered episodes (1, 2, 3 …); skip specials like "S1", "S2"
                     key.toIntOrNull() != null
                 }
                 .associate { (key, ep) ->
@@ -60,8 +50,6 @@ object Anify {
 
     suspend fun fetchAndParseMetadata(anilistId: Int): Map<String, Episode> =
         fetchAndParseMetadata(anilistId = anilistId, malId = null)
-
-    // ── Data models ────────────────────────────────────────────────────────────
 
     @Serializable
     data class AniZipResponse(

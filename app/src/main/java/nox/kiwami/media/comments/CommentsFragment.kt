@@ -112,7 +112,6 @@ class CommentsFragment : Fragment() {
             val includeSystemPaddings = it != activity.binding.mediaBottomBarContainer
             binding.commentsLayout.setBaseline(it, includeSystemNavBar = includeSystemPaddings)
         }
-        //get the media id from the intent
         val mediaId = arguments?.getInt("mediaId") ?: -1
         mediaName = arguments?.getString("mediaName") ?: "unknown"
         if (mediaId == -1) {
@@ -324,7 +323,6 @@ class CommentsFragment : Fragment() {
                                     }
                                 }
                             } else {
-                                //snackString("No more comments") fix spam?
                                 Logger.log("No more comments")
                             }
                         }
@@ -355,7 +353,6 @@ class CommentsFragment : Fragment() {
                         )
                     }
                 }
-                //adds additional comments to the section
                 private suspend fun updateUIWithComment(comment: Comment) {
                     withContext(Dispatchers.Main) {
                         section.add(
@@ -419,7 +416,6 @@ class CommentsFragment : Fragment() {
             }
 
             activity.binding.commentLabel.setOnClickListener {
-                //alert dialog to enter a number, with a cancel and ok button
                 activity.customAlertDialog().apply {
                     val customView = DialogEdittextBinding.inflate(layoutInflater)
                     setTitle("Enter a chapter/episode number tag")
@@ -462,7 +458,6 @@ class CommentsFragment : Fragment() {
             }
         }
 
-        // Spoiler toggle button
         activity.binding.commentSpoiler.setOnClickListener {
             isSpoilerMode = !isSpoilerMode
             activity.binding.commentSpoiler.alpha = if (isSpoilerMode) 1f else 0.5f
@@ -472,7 +467,6 @@ class CommentsFragment : Fragment() {
             )
         }
 
-        // GIF picker button
         activity.binding.commentGif.setOnClickListener {
             val gifPicker = GifPickerBottomDialog.newInstance()
             gifPicker.setOnGifSelectedListener { gifUrl ->
@@ -626,11 +620,6 @@ class CommentsFragment : Fragment() {
         return chapterValue != null && tagValue != null && chapterValue == tagValue
     }
 
-    /**
-     * Loads and displays the comments
-     * Called when the activity is created
-     * Or when the user refreshes the comments
-     */
     private fun getEffectiveFilter(): Int? = when {
         filterTag != null -> filterTag
         isAutoFilterOn && userProgress != null && userProgress!! > 0 -> userProgress
@@ -808,7 +797,6 @@ class CommentsFragment : Fragment() {
             return
         }
 
-        // Traverse up to root parent if this is a reply
         val commentChain = mutableListOf<Comment>()
         commentChain.add(targetComment)
 
@@ -823,8 +811,6 @@ class CommentsFragment : Fragment() {
             hops++
         }
 
-        // threadList is ordered from root down to targetComment:
-        // [rootComment, ..., parentComment, targetComment]
         val threadList = commentChain.reversed()
 
         withContext(Dispatchers.Main) {
@@ -863,7 +849,6 @@ class CommentsFragment : Fragment() {
                         backgroundColor,
                         depth
                     )
-                    // Expand this child's replies if there are subsequent replies in the chain leading to targetComment
                     if (index < threadList.size - 1) {
                         childItem.updateRepliesVisibility(true)
                     }
@@ -872,7 +857,6 @@ class CommentsFragment : Fragment() {
                 }
             }
 
-            // If target is the root comment and has replies, show its replies
             if (threadList.size == 1 && (targetComment.replyCount ?: 0) > 0) {
                 currentParentItem?.showReplies()
             }
@@ -893,10 +877,6 @@ class CommentsFragment : Fragment() {
         }
     }
 
-    /**
-     * Resets the old state of the comment input
-     * @return the old state
-     */
     private fun resetOldState(): InteractionState {
         val oldState = interactionState
         interactionState = InteractionState.NONE
@@ -925,11 +905,6 @@ class CommentsFragment : Fragment() {
         }
     }
 
-    /**
-     * Callback from the comment item to edit the comment
-     * Called every time the edit button is clicked
-     * @param comment the comment to edit
-     */
     fun editCallback(comment: CommentItem) {
         if (resetOldState() == InteractionState.EDIT) return
         commentWithInteraction = comment
@@ -941,11 +916,6 @@ class CommentsFragment : Fragment() {
         interactionState = InteractionState.EDIT
     }
 
-    /**
-     * Callback from the comment item to reply to the comment
-     * Called every time the reply button is clicked
-     * @param comment the comment to reply to
-     */
     fun replyCallback(comment: CommentItem) {
         if (resetOldState() == InteractionState.REPLY) return
         commentWithInteraction = comment
@@ -972,10 +942,6 @@ class CommentsFragment : Fragment() {
         }
     }
 
-    /**
-     * Callback from the comment item to view the replies to the comment
-     * @param comment the comment to view the replies of
-     */
     fun viewReplyCallback(comment: CommentItem) {
         lifecycleScope.launch {
             val replies = withContext(Dispatchers.IO) {
@@ -1002,10 +968,6 @@ class CommentsFragment : Fragment() {
         }
     }
 
-    /**
-     * Shows the comment rules dialog
-     * Called when the user tries to comment for the first time
-     */
     private fun showCommentRulesDialog() {
         activity.customAlertDialog().apply {
             setTitle("Commenting Rules")
@@ -1038,10 +1000,8 @@ class CommentsFragment : Fragment() {
             return
         }
 
-        // Wrap in spoiler tags if spoiler mode is active
         if (isSpoilerMode) {
             commentText = "||$commentText||"
-            // Reset spoiler mode after sending
             isSpoilerMode = false
             activity.binding.commentSpoiler.alpha = 0.5f
             activity.binding.commentSpoiler.setImageResource(R.drawable.ic_round_remove_red_eye_24)
@@ -1094,10 +1054,6 @@ class CommentsFragment : Fragment() {
         item.notifyChanged()
     }
 
-    /**
-     * Handles the new user-added comment
-     * @param commentText the text of the comment
-     */
     private suspend fun handleNewComment(commentText: String) {
         val success = withContext(Dispatchers.IO) {
             CommentsAPI.comment(

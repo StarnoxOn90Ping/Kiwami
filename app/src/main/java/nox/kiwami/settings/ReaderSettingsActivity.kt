@@ -35,7 +35,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        //Manga Settings
         binding.readerSettingsSourceName.isChecked = PrefManager.getVal(PrefName.ShowSource)
         binding.readerSettingsSourceName.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.ShowSource, isChecked)
@@ -45,7 +44,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.readerSettingsSystemBars.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.ShowSystemBars, isChecked)
         }
-        //Default Manga
         binding.readerSettingsAutoWebToon.isChecked = PrefManager.getVal(PrefName.AutoDetectWebtoon)
         binding.readerSettingsAutoWebToon.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.AutoDetectWebtoon, isChecked)
@@ -184,7 +182,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.LongClickImage, isChecked)
         }
 
-        //LN settings
         val layoutListLN = listOf(
             binding.LNpaged,
             binding.LNcontinuous
@@ -350,7 +347,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.VolumeButtonsNovel, isChecked)
         }
 
-        //Update Progress
         binding.readerSettingsAskUpdateProgress.isChecked =
             PrefManager.getVal(PrefName.AskIndividualReader)
         binding.readerSettingsAskUpdateProgress.setOnCheckedChangeListener { _, isChecked ->

@@ -33,18 +33,6 @@ import nox.kiwami.R
 import com.google.android.material.color.MaterialColors
 import kotlin.math.abs
 
-/**
- * The slim bar under the Anime / Manga list buttons.
- *
- *  - rounded like the list buttons (see [CORNER_DP]), theme-coloured with a soft tonal gradient,
- *    a glossy top edge, a hairline border, a theme-tinted glow and a slow shimmer
- *  - one line of text that slides / fades to the next one when the card changes
- *  - tiny page dots on the right: the active dot stretches into a little bar
- *
- * Tapping the bar only ever cycles ([onTap]); a horizontal swipe cycles too ([onSwipe]).
- * Cards that can *do* something show a small round button at the left end ([setAction]);
- * only that button runs [onAction].
- */
 class InfoPillView(context: Context) : FrameLayout(context) {
 
     var onTap: (() -> Unit)? = null
@@ -53,7 +41,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
     enum class Action { CALENDAR, DICE }
     var onSwipe: ((forward: Boolean) -> Unit)? = null
 
-    /** Called (posted) when the bar got its width, so the controller can re-fit the text. */
     var onResized: (() -> Unit)? = null
 
     private val d = resources.displayMetrics.density
@@ -61,8 +48,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
 
     private val base = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
     private val onBase = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnPrimary)
-
-    // ---- drawing ------------------------------------------------------------------------------
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = base }
     private val glossPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -86,13 +71,8 @@ class InfoPillView(context: Context) : FrameLayout(context) {
     private var dotActive = 0f
     private var dotAnim: ValueAnimator? = null
 
-    // ---- text ---------------------------------------------------------------------------------
-
     private val textHost = FrameLayout(context)
 
-    // The text is centred on the *bar*: both sides reserve the same room (the dots on the right,
-    // the round button on the left). Only when a text is too long for that does it fall back to
-    // the old, wider-but-lopsided area. The paddings are animated, so nothing ever jumps.
     private var reserveTarget = 0f
     private var wideMode = false
     private var padL = 0f
@@ -102,8 +82,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
     private var shown = makeText()
     private var hidden = makeText()
 
-    // ---- touch --------------------------------------------------------------------------------
-
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
     private var downY = 0f
@@ -112,10 +90,8 @@ class InfoPillView(context: Context) : FrameLayout(context) {
     private var pressAnim: android.animation.ObjectAnimator? = null
     private var downOnAction = false
 
-    // ---- action button ------------------------------------------------------------------------
-
     private var action: Action? = null
-    private var actionDrawn: Action = Action.CALENDAR // kept while the button fades out
+    private var actionDrawn: Action = Action.CALENDAR
     private var actionShow = 0f
     private var actionAnim: ValueAnimator? = null
     private var actionPressed = false
@@ -140,7 +116,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         }
         clipToOutline = true
 
-        // a soft glow in the theme colour under the bar
         elevation = 5f * d
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             outlineSpotShadowColor = base
@@ -177,8 +152,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
     }
 
-    // ---- touch --------------------------------------------------------------------------------
-
     override fun onTouchEvent(e: MotionEvent): Boolean {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -188,7 +161,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
                 actionPressed = downOnAction
                 isPressed = true
                 foreground?.setHotspot(e.x, e.y)
-                // pressing the little button squishes it (drawn), pressing the bar squishes the bar
                 if (!downOnAction) pressTo(0.985f, 0.9f, 110, DecelerateInterpolator())
                 invalidate()
             }
@@ -198,7 +170,7 @@ class InfoPillView(context: Context) : FrameLayout(context) {
                 val dy = e.y - downY
                 if (!swiping && abs(dx) > slop && abs(dx) > abs(dy) * 1.2f) {
                     swiping = true
-                    parent?.requestDisallowInterceptTouchEvent(true) // keep the page from scrolling
+                    parent?.requestDisallowInterceptTouchEvent(true)
                 }
             }
 
@@ -242,10 +214,8 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         return super.performClick()
     }
 
-    /** The button's touch area: the left end of the bar, the full height of it. */
     private fun isOnAction(x: Float): Boolean = action != null && actionShow > 0.5f && x <= 34 * d
 
-    /** Shows the round button for a card that has an action, or hides it (null). */
     fun setAction(a: Action?) {
         if (a == action) return
         action = a
@@ -279,7 +249,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         val u = d * (0.6f + 0.4f * t)
         when (actionDrawn) {
             Action.CALENDAR -> {
-                // page with a header line and two binder rings
                 actionRect.set(cx - 4f * u, cy - 3f * u, cx + 4f * u, cy + 4f * u)
                 canvas.drawRoundRect(actionRect, 1.4f * u, 1.4f * u, actionStroke)
                 canvas.drawLine(cx - 4f * u, cy - 0.6f * u, cx + 4f * u, cy - 0.6f * u, actionStroke)
@@ -288,7 +257,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
             }
 
             Action.DICE -> {
-                // a die showing three
                 actionRect.set(cx - 4f * u, cy - 4f * u, cx + 4f * u, cy + 4f * u)
                 canvas.drawRoundRect(actionRect, 1.8f * u, 1.8f * u, actionStroke)
                 canvas.drawCircle(cx - 1.9f * u, cy - 1.9f * u, 0.75f * u, actionDot)
@@ -298,9 +266,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         }
     }
 
-    // ---- api ----------------------------------------------------------------------------------
-
-    /** Dots (one per card). With 0 or 1 card the dots disappear. */
     fun setPages(count: Int, active: Int, animate: Boolean) {
         if (count != dotCount) {
             dotCount = count
@@ -320,23 +285,19 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         }
     }
 
-    /** Makes a screen reader read the current card. */
     fun setReadableText(text: CharSequence) {
         contentDescription = text
     }
 
-    /** Text without any transition (live countdown, data refresh). */
     fun updateText(text: CharSequence) {
         if (shown.text.toString() != text.toString()) shown.text = text
         currentText = text
-        refitPadding(allowNarrow = false) // a ticking countdown must not make the text hop around
+        refitPadding(allowNarrow = false)
     }
 
-    /** Text with the slide / fade transition. [forward] decides which way it travels. */
     fun showText(text: CharSequence, animate: Boolean, forward: Boolean = true) {
         shown.animate().cancel()
         hidden.animate().cancel()
-        // finish whatever was moving: `shown` always holds the newest text
         shown.alpha = 1f
         shown.translationY = 0f
         hidden.alpha = 0f
@@ -367,10 +328,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
     private fun leftWide(): Float = (if (action != null) ACTION_RESERVE_DP * d else 0f) + EDGE_DP * d
     private fun rightWide(): Float = dotsReserve + 4f * d
 
-    /**
-     * Room for the text in the widest layout. Computed from the bar's own width and the current
-     * button / dots state, so it is right immediately, even before the next layout pass.
-     */
     private fun textWidthPx(): Int =
         (width - leftWide() - rightWide() - 1f * d).toInt().coerceAtLeast(0)
 
@@ -380,10 +337,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         textHost.setPadding(l.toInt(), 0, r.toInt(), 0)
     }
 
-    /**
-     * Picks the paddings for the current text: equal on both sides (text exactly in the middle of
-     * the bar) when it fits, otherwise the wide fallback. [allowNarrow] false = only ever widen.
-     */
     private fun refitPadding(allowNarrow: Boolean) {
         reserveTarget = maxOf(dotsReserve.toFloat(), if (action != null) ACTION_RESERVE_DP * d else 0f)
         val sym = reserveTarget + EDGE_DP * d
@@ -413,10 +366,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         }
     }
 
-    /**
-     * "<title><suffix>" where only the title is shortened (with …) when it does not fit, so the
-     * episode and countdown part always stays readable.
-     */
     fun fitTitle(title: String, suffix: String): CharSequence {
         val avail = textWidthPx()
         if (avail <= 0) return title + suffix
@@ -427,11 +376,8 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         return TextUtils.ellipsize(title, paint, room, TextUtils.TruncateAt.END).toString() + suffix
     }
 
-    // ---- look: gradient, border, shimmer, dots ------------------------------------------------
-
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        // tonal gradient: a touch lighter on the left, a touch deeper on the right
         fillPaint.shader = LinearGradient(
             0f, 0f, w.toFloat(), 0f,
             ColorUtils.blendARGB(base, 0xFFFFFFFF.toInt(), 0.12f),
@@ -466,7 +412,6 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         val p = shimmerProgress
         val shader = shimmerShader
         if (p in 0f..1f && shader != null) {
-            // the band crosses the bar during the first part of the cycle, then rests
             val x = -shimmerWidth + (w + shimmerWidth) * p
             shimmerMatrix.setSkew(-0.35f, 0f)
             shimmerMatrix.postTranslate(x, 0f)
@@ -507,7 +452,7 @@ class InfoPillView(context: Context) : FrameLayout(context) {
         if (shimmerAnim != null) return
         if (!ValueAnimator.areAnimatorsEnabled()) return
         shimmerAnim = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 6500 // slow: ~3.5 s sweep, then a rest
+            duration = 6500
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
             addUpdateListener {
@@ -547,13 +492,10 @@ class InfoPillView(context: Context) : FrameLayout(context) {
     }
 
     companion object {
-        /** Corner radius. The Anime / Manga list buttons use 16dp on a 72dp-tall card. */
         const val CORNER_DP = 8f
 
-        /** Breathing room between the text area and each end of the bar. */
         private const val EDGE_DP = 10f
 
-        /** Room the round action button takes on the left. */
         private const val ACTION_RESERVE_DP = 26f
     }
 }

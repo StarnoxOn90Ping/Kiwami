@@ -137,14 +137,12 @@ class SettingsDataActivity : AppCompatActivity() {
         return try {
             val uri = Uri.parse(uriString)
 
-            // 1. Try Anggrayudi getAbsolutePath on DocumentFile
             val docFile = DocumentFile.fromTreeUri(this, uri)
             val resolvedPath = runCatching { docFile?.getAbsolutePath(this) }.getOrNull()
             if (!resolvedPath.isNullOrBlank() && !resolvedPath.contains("/tree/") && !resolvedPath.contains("msd:")) {
                 return resolvedPath
             }
 
-            // 2. Handle MediaStore document tree (e.g. msd:1000174957)
             val docId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
                 ?: uri.lastPathSegment ?: ""
             if (docId.startsWith("msd:") || uriString.contains("msd:")) {
@@ -184,14 +182,12 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             }
 
-            // 3. Handle primary storage document tree (e.g. primary:Download/Kiwami)
             if (docId.contains("primary:") || uriString.contains("primary:") || uriString.contains("primary%3A")) {
                 val decoded = Uri.decode(docId)
                 val relative = decoded.substringAfter("primary:").substringAfter("primary%3A").trimStart('/')
                 return "/storage/emulated/0/$relative"
             }
 
-            // 4. Handle SD card volume document tree (e.g. 1234-5678:Download/Kiwami)
             if (docId.contains(":")) {
                 val volume = docId.substringBefore(":")
                 val relative = docId.substringAfter(":").trimStart('/')
@@ -200,7 +196,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             }
 
-            // 5. Fallback to DocumentFile display name
             val docName = docFile?.name
             if (!docName.isNullOrBlank() && !docName.contains("msd:")) {
                 return "/storage/emulated/0/Download/$docName"
@@ -281,7 +276,6 @@ class SettingsDataActivity : AppCompatActivity() {
         val copyCounts = arrayOf("1", "2", "3", "5")
 
         val settingsList = arrayListOf(
-            // Clear Cache
             Settings(
                 type = 1,
                 name = getString(R.string.clear_cache),
@@ -310,7 +304,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Smart cache: on/off
             Settings(
                 type = 2,
                 name = "Smart cache",
@@ -359,7 +352,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ).also { smartCacheSwitchItem = it },
 
-            // Smart cache: size slider
             Settings(
                 type = 1,
                 name = "Smart cache size",
@@ -406,7 +398,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 onClick = {}
             ),
 
-            // Smart cache: usage
             Settings(
                 type = 1,
                 name = "Smart cache usage",
@@ -416,7 +407,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 onClick = {}
             ),
 
-            // Auto Backup Interval
             Settings(
                 type = 1,
                 name = getString(R.string.auto_backup_interval),
@@ -437,7 +427,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Auto Backup Max Copies
             Settings(
                 type = 1,
                 name = getString(R.string.auto_backup_max_copies),
@@ -459,7 +448,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Last Auto-Backup info
             Settings(
                 type = 1,
                 name = getString(R.string.auto_backup),
@@ -476,7 +464,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 onClick = {}
             ),
 
-            // Manual Backup Now
             Settings(
                 type = 1,
                 name = getString(R.string.backup_now),
@@ -494,7 +481,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Restore Backup
             Settings(
                 type = 1,
                 name = getString(R.string.restore_backup),
@@ -506,7 +492,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Change Download Directory
             Settings(
                 type = 1,
                 name = getString(R.string.change_download_directory),
@@ -548,7 +533,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Rebuild Download Index
             Settings(
                 type = 1,
                 name = getString(R.string.rebuild_download_index),
@@ -574,7 +558,6 @@ class SettingsDataActivity : AppCompatActivity() {
                 }
             ),
 
-            // Purge Downloads
             Settings(
                 type = 1,
                 name = getString(R.string.purge_downloads),

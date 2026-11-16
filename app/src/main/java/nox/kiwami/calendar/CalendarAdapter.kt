@@ -20,7 +20,6 @@ sealed class CalendarRow {
     data class Item(val entry: CalendarEntry) : CalendarRow()
 }
 
-/** "3h 20m", "2d 4h", "12m" … */
 fun formatDuration(totalSeconds: Long): String {
     val s = kotlin.math.abs(totalSeconds)
     val m = s / 60
@@ -58,7 +57,6 @@ class CalendarAdapter(
         notifyDataSetChanged()
     }
 
-    /** re-binds everything so countdowns stay fresh */
     fun tick() {
         if (rows.isNotEmpty()) notifyItemRangeChanged(0, rows.size, TICK)
     }
@@ -79,12 +77,11 @@ class CalendarAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         bindRow(holder, position)
-        // the same pop-in the home pages use whenever a row scrolls into view
         setAnimation(holder.itemView.context, holder.itemView)
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
-        if (payloads.contains(TICK)) bindRow(holder, position) // countdown refresh: no pop-in
+        if (payloads.contains(TICK)) bindRow(holder, position)
         else super.onBindViewHolder(holder, position, payloads)
     }
 
@@ -115,13 +112,11 @@ class CalendarAdapter(
                 R.string.cal_episode_at, e.episode, timeFormat.format(e.airingAt * 1000)
             )
 
-            // countdown block
             b.entryCountdown.text = formatDuration(diff)
             b.entryCountdownLabel.text = ctx.getString(if (aired) R.string.cal_ago else R.string.cal_left)
             b.entryCountdown.alpha = if (aired) 0.6f else 1f
             b.entryRow.alpha = if (aired) 0.62f else 1f
 
-            // list status chip + watch progress
             val status = ListStatus.from(e.listStatus)
             if (status != null && !compact) {
                 b.entryChipRow.visibility = View.VISIBLE
@@ -143,7 +138,6 @@ class CalendarAdapter(
                 b.entryChipRow.visibility = View.GONE
             }
 
-            // compact vs comfortable cover
             b.entryCoverCard.layoutParams = b.entryCoverCard.layoutParams.apply {
                 width = ((if (compact) 42 else 62) * density).toInt()
                 height = ((if (compact) 60 else 88) * density).toInt()

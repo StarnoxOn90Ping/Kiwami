@@ -337,7 +337,6 @@ class WebGpuReaderView(
             }
         }
 
-        // 1. Check MangaCache for ImageData with source (handles cookies, Cloudflare, headers)
         try {
             val mangaCache = Injekt.get<MangaCache>()
             val imageData = mangaCache.get(url)
@@ -354,7 +353,6 @@ class WebGpuReaderView(
             Logger.log("WebGpuReaderView: source.getImage error: ${e.message}")
         }
 
-        // 2. Network fallback with OkHttpClient
         try {
             val okHttpClient = Injekt.get<OkHttpClient>()
             val requestBuilder = Request.Builder().url(url)

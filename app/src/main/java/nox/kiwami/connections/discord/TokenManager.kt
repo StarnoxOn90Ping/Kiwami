@@ -26,13 +26,7 @@ import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Manages OAuth2 PKCE token exchange for Discord headless sessions.
- * Exchanges a raw user auth token for a Bearer token with `activities.write` scope.
- * Token is cached to disk; re-acquired on failure.
- *
- * Ported from brahmkshatriya/echo-discord TokenManager.kt
- */
+/** Ported from brahmkshatriya/echo-discord TokenManager.kt */
 class TokenManager(
     val authToken: String,
     val filesDir: File,
@@ -78,7 +72,6 @@ class TokenManager(
                 saveTokens(response)
                 Logger.log("TokenManager: Token refreshed successfully via refresh_token")
             }.onFailure {
-                // fallback to PKCE
                 val response = createAccessToken()
                 saveTokens(response)
                 Logger.log("TokenManager: New access token saved to disk via PKCE logic")
@@ -87,7 +80,6 @@ class TokenManager(
         accessToken!!
     }
 
-    /** Returns the token expiry timestamp (millis), or 0 if unknown. */
     fun getTokenExpiresAt(): Long {
         if (tokenExpiresAt == 0L) {
             tokenExpiresAt = runCatching {
@@ -107,7 +99,6 @@ class TokenManager(
             filesDir.resolve("discord_refresh.txt").writeText(it)
         }
 
-        // Track expiry: refresh 1 minute early to avoid edge-case failures
         response.expiresIn?.let {
             tokenExpiresAt = System.currentTimeMillis() + (it * 1000) - 60_000
             filesDir.resolve("discord_expiry.txt").writeText(tokenExpiresAt.toString())
@@ -242,7 +233,6 @@ class TokenManager(
     }
 
     companion object {
-        // PreMiD client ID ΓÇô widely used for headless Discord RPC (same as Echo)
         const val CLIENT_ID = "503557087041683458"
         const val REDIRECT_URI = "https://login.premid.app"
         val SCOPES = listOf("identify", "activities.write")

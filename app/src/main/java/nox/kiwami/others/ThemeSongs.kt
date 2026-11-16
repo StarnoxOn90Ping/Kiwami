@@ -18,14 +18,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/**
- * Loads the opening / ending theme songs of an anime for the Info tab.
- * Read-only metadata lookup through the entry's idMAL: it only fills media.anime.op / .ed
- * and has nothing to do with MAL accounts, login or the removed Rescue/MAL mode.
- *
- * 1. scrape the public MyAnimeList page, 2. fall back to the Jikan themes endpoint.
- */
-/** One opening / ending, as listed on AnimeThemes (playable audio / video links). */
 data class ThemeSong(
     val type: String,
     val slug: String,
@@ -46,7 +38,6 @@ object ThemeSongs {
     private val streamingWords =
         Regex("(Spotify|Apple Music|Amazon Music|YouTube Music|Youtube Music)", RegexOption.IGNORE_CASE)
 
-    // revisiting an entry should not hit the network again
     private val cache = HashMap<Int, Pair<List<String>, List<String>>>()
 
     suspend fun load(media: Media) {
@@ -59,7 +50,6 @@ object ThemeSongs {
             return
         }
 
-        // 1. MyAnimeList page
         try {
             withTimeout(5000) {
                 val res = client.get("https://myanimelist.net/anime/$malId", headers).document
@@ -71,7 +61,6 @@ object ThemeSongs {
                     if (rows.isEmpty()) rows = res.select("#songs span.$mobileHeaderClass ~ div.di-b table tr")
                     if (rows.isEmpty()) rows = res.select("#songs span.$mobileHeaderClass ~ table tr")
                     rows.forEach {
-                        // drop the streaming-service links (Spotify, Apple Music, ...) from the row text
                         val row = it.clone()
                         row.select("a, input, script, .theme-song-links, .js-theme-song-link, .spoiler_toggle")
                             .remove()
@@ -94,7 +83,6 @@ object ThemeSongs {
             Logger.log("ThemeSongs: MAL page failed for $malId: ${e.message}")
         }
 
-        // 2. Jikan fallback
         if (anime.op.isEmpty() && anime.ed.isEmpty()) {
             try {
                 withTimeout(5000) {
@@ -124,13 +112,11 @@ object ThemeSongs {
 
     private val themesCache = HashMap<Int, List<ThemeSong>>()
 
-    /** Why the last AnimeThemes lookup found nothing (shown to help track problems down). */
     @Volatile
     var lastError: String? = null
 
     private fun norm(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
 
-    /** Picks the AnimeThemes entry that belongs to a line of the plain-text list (by title, then by number). */
     fun match(songs: List<ThemeSong>, type: String, index: Int, title: String): ThemeSong? {
         val group = songs.filter { it.type.equals(type, ignoreCase = true) }
         if (group.isEmpty()) return null
@@ -147,10 +133,6 @@ object ThemeSongs {
 
     private fun order(slug: String) = Regex("\\d+").find(slug)?.value?.toIntOrNull() ?: 0
 
-    /**
-     * Openings and endings with playable links from AnimeThemes.
-     * Looks the anime up by AniList id, then by MAL id, then by its title.
-     */
     suspend fun loadAnimeThemes(media: Media): List<ThemeSong> {
         themesCache[media.id]?.let { return it }
         lastError = null
@@ -255,7 +237,6 @@ object ThemeSongs {
         return songs
     }
 
-    /** First YouTube video id for a search query (used when AnimeThemes has no video). */
     suspend fun findYoutubeId(query: String): String? {
         return try {
             withTimeout(8000) {

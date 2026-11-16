@@ -192,7 +192,6 @@ class App : Application(), GraphProvider<AppGraph> {
 
         val activityName = activity.javaClass.simpleName
         if (activityName == "ExoplayerView" || activityName == "MangaReaderActivity" || activityName == "NovelReaderActivity") {
-            // These activities manage their own Discord presence
             return
         }
 
@@ -234,7 +233,6 @@ class App : Application(), GraphProvider<AppGraph> {
             }
         }
 
-        // Otherwise, we are browsing!
         val rpcData = RPC.Companion.RPCData(
             applicationId = Discord.application_Id,
             type = RPC.Type.PLAYING,

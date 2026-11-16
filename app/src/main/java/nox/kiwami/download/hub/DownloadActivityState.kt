@@ -4,16 +4,9 @@ import nox.kiwami.download.anime.AnimeServiceDataSingleton
 import nox.kiwami.download.manga.MangaServiceDataSingleton
 import nox.kiwami.download.novel.NovelServiceDataSingleton
 
-/**
- * A cheap, allocation-light snapshot of everything the three downloader services are doing right now.
- * Used by the home screen's downloads button (animation + badge) and by the Downloads hub banner.
- */
 data class DownloadActivityState(
-    /** queued + running tasks across anime, manga and novels */
     val total: Int,
-    /** tasks that are being worked on right now */
     val running: Int,
-    /** average percent of the running tasks, or -1 when no task has reported progress yet */
     val percent: Int
 ) {
     val isActive: Boolean get() = total > 0

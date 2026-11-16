@@ -31,7 +31,7 @@ object Logger {
             if (!PrefManager.getVal<Boolean>(PrefName.LogToFile) || file != null) return
             file = File(context.getExternalFilesDir(null), "log.txt")
             if (file?.exists() == true) {
-                if (file!!.length() > 1024 * 1024 * 5) { // 5 MB
+                if (file!!.length() > 1024 * 1024 * 5) {
                     file?.delete()
                     file?.createNewFile()
                 }
@@ -49,7 +49,6 @@ object Logger {
 
     fun log(message: String) {
         if (file == null) {
-            // no log file: nothing to record, so skip building the stack trace for every call
             Log.d("Internal Logger", message)
             return
         }
@@ -187,10 +186,6 @@ object Logger {
         }
     }
 
-    /**
-     * Reads recent logcat output for the current process.
-     * Capped at [maxLines] to avoid blowing past the Intent size limit.
-     */
     fun readLogcat(maxLines: Int = 500): String {
         return try {
             val pid = android.os.Process.myPid()
@@ -203,7 +198,6 @@ object Logger {
             val lines = reader.readLines()
             reader.close()
             process.destroy()
-            // Keep the tail so we get the lines closest to the crash
             lines.takeLast(maxLines).joinToString("\n")
         } catch (e: Exception) {
             "Failed to read logcat: ${e.message}"
@@ -213,7 +207,7 @@ object Logger {
 
 class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
     private val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
-    private val MAX_STACK_TRACE_SIZE = 131071 //128 KB - 1
+    private val MAX_STACK_TRACE_SIZE = 131071
 
     override fun uncaughtException(t: Thread, e: Throwable) {
         val stackTraceString = Log.getStackTraceString(e)
@@ -223,7 +217,6 @@ class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
             App.instance?.applicationContext?.let { ctx ->
                 val lastLoadedActivity = App.instance?.mFTActivityLifecycleCallbacks?.lastActivity
 
-                // --- crash report (same as before) ---
                 val report = StringBuilder()
                 report.append(getDeviceAndAppInfo(ctx))
                 report.append("Thread: ${t.name}\n")
@@ -234,7 +227,6 @@ class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
                 val reportString = report.toString()
                 Logger.uncaughtException(t, Error(reportString))
 
-                // --- logcat snapshot taken at crash time ---
                 val logcatString = Logger.readLogcat()
 
                 val intent = Intent(ctx, CrashActivity::class.java)
@@ -243,7 +235,6 @@ class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
                     reportString.substring(0, MAX_STACK_TRACE_SIZE)
                 else reportString
 
-                // Logcat gets its own size budget so it never crowds out the stack trace
                 val trimmedLogcat = if (logcatString.length > MAX_STACK_TRACE_SIZE)
                     logcatString.substring(logcatString.length - MAX_STACK_TRACE_SIZE)
                 else logcatString

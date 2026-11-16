@@ -59,7 +59,6 @@ class SettingsSearchAdapter(
                 ContextCompat.getDrawable(context, item.icon)
             )
         } catch (_: Exception) {
-            // fallback
         }
 
         binding.searchResultLayout.setOnClickListener {

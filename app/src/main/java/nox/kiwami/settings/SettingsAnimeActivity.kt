@@ -37,7 +37,6 @@ class SettingsAnimeActivity : AppCompatActivity() {
         )
     }
 
-    /** One dialog: "Off" plus every third party player (only VLC for now). */
     private fun showExternalPlayerDialog(context: Context, onChanged: () -> Unit) {
         val players = ExternalPlayer.entries
         val names = (listOf(context.getString(R.string.external_player_off)) +
@@ -230,7 +229,6 @@ object ResolutionPriorityDialog {
 
     private fun number(res: String) = Regex("""\d+""").find(res)?.value?.toIntOrNull() ?: 0
 
-    /** Saved order first; resolutions missing from it are slotted in by size (never dumped last). */
     private fun buildList(saved: List<String>): MutableList<String> {
         val list = saved.toMutableList()
         ALL_RESOLUTIONS.filter { it !in list }.forEach { missing ->
@@ -266,7 +264,6 @@ object ResolutionPriorityDialog {
                 androidx.recyclerview.widget.ItemTouchHelper.UP or
                         androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0
             ) {
-                // long press anywhere on a row starts the drag
                 override fun isLongPressDragEnabled() = true
 
                 override fun onMove(
@@ -304,7 +301,6 @@ object ResolutionPriorityDialog {
                 ) {
                     super.clearView(recyclerView, viewHolder)
                     viewHolder.itemView.alpha = 1f
-                    // refresh the 1. 2. 3. numbers once the item is dropped
                     recyclerView.post { listAdapter.notifyDataSetChanged() }
                 }
             })
@@ -362,7 +358,6 @@ object ResolutionPriorityDialog {
     }
 }
 
-/** "Default extension" picker shared by the anime and manga settings pages. */
 object DefaultSourceDialog {
     fun show(
         context: android.content.Context,

@@ -11,13 +11,8 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 class PreferencePackager {
-    //map one or more preference maps for import/export
-
     companion object {
 
-        /**
-         * @return a json string of the packed preferences
-         */
         fun pack(map: Map<Location, SharedPreferences>, includeExtensionSettings: Boolean = false): String {
             val prefsMap = packagePreferences(map).toMutableMap()
             if (includeExtensionSettings) {
@@ -43,20 +38,16 @@ class PreferencePackager {
                         }
                     }
                 } catch (e: Exception) {
-                    // Ignore errors packing sources
                 }
             }
             val gson = Gson()
             return gson.toJson(prefsMap)
         }
 
-        /**
-         * @return true if successful, false if error
-         */
         fun unpack(decryptedJson: String): Boolean {
             val gson = Gson()
             val type = object :
-                TypeToken<Map<String, Map<String, Map<String, Any>>>>() {}.type  //oh god...
+                TypeToken<Map<String, Map<String, Map<String, Any>>>>() {}.type
             val rawPrefsMap: Map<String, Map<String, Map<String, Any>>> =
                 gson.fromJson(decryptedJson, type)
 
@@ -72,7 +63,7 @@ class PreferencePackager {
                     val value = typeValueMap["value"]
 
                     innerMap[key] =
-                        when (typeName) {  //weirdly null sometimes so cast to string
+                        when (typeName) {
                             "kotlin.Int" -> (value as? Double)?.toInt()
                             "kotlin.String" -> value.toString()
                             "kotlin.Boolean" -> value as? Boolean
@@ -87,9 +78,6 @@ class PreferencePackager {
             return unpackagePreferences(deserializedMap)
         }
 
-        /**
-         * @return a map of location names to a map of preference names to their values
-         */
         private fun packagePreferences(map: Map<Location, SharedPreferences>): Map<String, Map<String, *>> {
             val result = mutableMapOf<String, Map<String, *>>()
             for ((location, preferences) in map) {
@@ -106,9 +94,6 @@ class PreferencePackager {
             return result
         }
 
-        /**
-         * @return true if successful, false if error
-         */
         private fun unpackagePreferences(map: Map<String, Map<String, *>>): Boolean {
             var success = true
             map.forEach { (location, prefMap) ->

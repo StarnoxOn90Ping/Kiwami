@@ -267,11 +267,8 @@ class MangaReaderActivity : AppCompatActivity() {
             val chapterNum = selectedChapter?.number?.let { MediaNameAdapter.findChapterNumber(it) }
             val chapter = (chapterNum?.minus(1L) ?: 0).toString()
             if (chapter == "0.0" && PrefManager.getVal(PrefName.ChapterZeroReader)
-                // Not asking individually or incognito
                 && !showProgressDialog && !PrefManager.getVal<Boolean>(PrefName.Incognito)
-                // Not ...opted out ...already? Somehow?
                 && PrefManager.getCustomVal("${media.id}_save_progress", true)
-                //  Allowing Doujin updates or not one
                 && if (media.isAdult) PrefManager.getVal(PrefName.UpdateForHReader) else true
             ) {
                 updateProgress(media, chapter)
@@ -325,7 +322,6 @@ class MangaReaderActivity : AppCompatActivity() {
         val currentMedia = model.getMedia().value
         media = if (currentMedia == null || currentMedia.manga == null)
             try {
-                //(intent.getSerialized("media")) ?: return
                 MediaSingleton.media ?: return
             } catch (e: Exception) {
                 logError(e)
@@ -356,7 +352,6 @@ class MangaReaderActivity : AppCompatActivity() {
         model.mangaReadSources = if (media.isAdult) HMangaSources else MangaSources
         binding.mangaReaderSource.isVisible = PrefManager.getVal(PrefName.ShowSource)
         if (model.mangaReadSources!!.names.isEmpty()) {
-            //try to reload sources
             try {
                 val mangaSources = MangaSources
                 val scope = lifecycleScope
@@ -371,7 +366,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 logError(e)
             }
         }
-        //check that index is not out of bounds (crash fix)
         if (media.selected!!.sourceIndex >= model.mangaReadSources!!.names.size) {
             media.selected!!.sourceIndex = 0
         }
@@ -395,7 +389,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 true
             ) else false
 
-        //Chapter Change
         fun change(index: Int) {
             mangaCache.clear()
             PrefManager.setCustomVal(
@@ -406,7 +399,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 .show(supportFragmentManager, "dialog")
         }
 
-        //ChapterSelector
         binding.mangaReaderChapterSelect.adapter =
             NoPaddingArrayAdapter(this, R.layout.item_dropdown, chaptersTitleArr)
         binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
@@ -503,7 +495,6 @@ class MangaReaderActivity : AppCompatActivity() {
             snackString("${newSpeed}x")
         }
 
-        //Next Chapter
         binding.mangaReaderNextChap.setOnClickListener {
             binding.mangaReaderNextChapter.performClick()
         }
@@ -516,7 +507,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 snackString(getString(R.string.next_chapter_not_found))
             }
         }
-        //Prev Chapter
         binding.mangaReaderPrevChap.setOnClickListener {
             binding.mangaReaderPreviousChapter.performClick()
         }
@@ -604,13 +594,11 @@ class MangaReaderActivity : AppCompatActivity() {
         saveReaderSettings("${media.id}_current_settings", defaultSettings)
         hideSystemBars()
 
-        //true colors
         SubsamplingScaleImageView.setPreferredBitmapConfig(
             if (defaultSettings.trueColors) Bitmap.Config.ARGB_8888
             else Bitmap.Config.RGB_565
         )
 
-        //keep screen On
         if (defaultSettings.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -1196,7 +1184,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 val x = event.rawX.toInt()
                 val y = event.rawY.toInt()
                 val screenWidth = Resources.getSystem().displayMetrics.widthPixels
-                //if in the 1st 1/5th of the screen width, left and lower than 1/5th of the screen height, left
                 if (screenWidth / 5 in x + 1..<y) {
                     pressLocation = if (defaultSettings.direction == RIGHT_TO_LEFT) {
                         PressPos.RIGHT
@@ -1204,7 +1191,6 @@ class MangaReaderActivity : AppCompatActivity() {
                         PressPos.LEFT
                     }
                 }
-                //if in the last 1/5th of the screen width, right and lower than 1/5th of the screen height, right
                 else if (x > screenWidth - screenWidth / 5 && y > screenWidth / 5) {
                     pressLocation = if (defaultSettings.direction == RIGHT_TO_LEFT) {
                         PressPos.LEFT
@@ -1214,11 +1200,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
             }
 
-            // if pressLocation is left or right go to previous or next page (paged mode only)
             if (pressLocation == PressPos.LEFT) {
 
                 if (binding.mangaReaderPager.currentItem > 0) {
-                    //if  the current images zoomed in, go back to normal before going to previous page
                     if (imageAdapter?.isZoomed() == true) {
                         imageAdapter?.setZoom(1f)
                     }
@@ -1228,11 +1212,9 @@ class MangaReaderActivity : AppCompatActivity() {
 
             } else if (pressLocation == PressPos.RIGHT) {
                 if (binding.mangaReaderPager.currentItem < maxChapterPage - 1) {
-                    //if  the current images zoomed in, go back to normal before going to next page
                     if (imageAdapter?.isZoomed() == true) {
                         imageAdapter?.setZoom(1f)
                     }
-                    //if right to left, go to previous page
                     binding.mangaReaderPager.currentItem += 1
                     return
                 }
@@ -1242,7 +1224,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 hideSystemBars()
                 checkNotch()
             }
-            // Hide the scrollbar completely
             if (defaultSettings.hideScrollBar) {
                 binding.mangaReaderSliderContainer.visibility = View.GONE
             } else {
@@ -1274,7 +1255,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
                 binding.mangaReaderSliderContainer.visibility = View.VISIBLE
             }
-            //horizontal scrollbar
             if (defaultSettings.horizontalScrollBar) {
                 binding.mangaReaderSliderContainer.updateLayoutParams {
                     height = ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1528,7 +1508,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
         } catch (e: Exception) {
             if (toast) snackString(a?.getString(R.string.error_loading_data, fileName))
-            //try to delete the file
             try {
                 a?.deleteFile(fileName)
             } catch (e: Exception) {
@@ -1789,7 +1768,6 @@ class MangaReaderActivity : AppCompatActivity() {
                 newIdx > oldIdx
             }
 
-            // Only mark previous chapter as read and sync progress if actually moving forward
             if (isMovingForward) {
                 PrefManager.setCustomVal("${media.id}_${oldChapter.number}", maxChapterPage)
                 val cleanOldChapNum = oldChapNum?.let {

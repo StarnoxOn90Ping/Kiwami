@@ -45,7 +45,6 @@ object SubSourceSubtitles {
                 val movie = searchResult.data.firstOrNull() ?: return@withContext emptyList()
                 val movieId = movie.movieId
 
-                // Fetch subtitles for this movie
                 val userLangs = try {
                     PrefManager.getVal<Set<String>>(PrefName.OnlineSubtitleLanguages).joinToString(",") { it.lowercase(Locale.ROOT) }
                 } catch (_: Exception) { "" }
@@ -123,7 +122,6 @@ object SubSourceSubtitles {
                     resp.body.bytes()
                 }
                 if (bytes.isEmpty()) return@withContext null
-                // Parse ZIP stream
                 ZipInputStream(ByteArrayInputStream(bytes)).use { zipIn ->
                     var entry = zipIn.nextEntry
                     while (entry != null) {
@@ -135,7 +133,6 @@ object SubSourceSubtitles {
                         entry = zipIn.nextEntry
                     }
                 }
-                // Fallback for non-zip plain text
                 val rawText = bytes.toString(Charsets.UTF_8)
                 if (rawText.contains("-->") || rawText.contains("[Script Info]")) {
                     Pair("subtitle.srt", rawText)

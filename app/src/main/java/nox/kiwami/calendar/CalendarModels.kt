@@ -3,15 +3,11 @@ package nox.kiwami.calendar
 import nox.kiwami.media.Media
 import nox.kiwami.settings.saving.PrefManager
 
-/** One episode that will air (or has aired) inside the calendar window. */
 data class CalendarEntry(
     val media: Media,
     val episode: Int,
-    /** epoch seconds */
     val airingAt: Long,
-    /** AniList list status: CURRENT, PLANNING, REPEATING, PAUSED, COMPLETED, DROPPED – or null when not listed */
     val listStatus: String?,
-    /** episodes the user has watched, when known */
     val progress: Int?
 )
 
@@ -33,7 +29,6 @@ enum class ListStatus(val key: String, val bit: Int, val color: Int) {
     }
 }
 
-/** Persisted calendar customisation. */
 object CalendarPrefs {
     const val SOURCE_MINE = 0
     const val SOURCE_ALL = 1
@@ -73,7 +68,6 @@ object CalendarPrefs {
         get() = PrefManager.getCustomVal(K_COMPACT, false)
         set(v) = PrefManager.setCustomVal(K_COMPACT, v)
 
-    /** 0 = follow the system setting, 1 = 12h, 2 = 24h */
     var timeFormat: Int
         get() = PrefManager.getCustomVal(K_24H, 0)
         set(v) = PrefManager.setCustomVal(K_24H, v)

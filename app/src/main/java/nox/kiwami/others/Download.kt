@@ -114,7 +114,6 @@ object Download {
             val bundle = Bundle()
             defaultHeaders.forEach { a -> bundle.putString(a.key, a.value) }
             file.headers.forEach { a -> bundle.putString(a.key, a.value) }
-            // documentation: https://www.apps2sd.info/idmp/faq?id=35
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 component = ComponentName(appName, "idm.internet.download.manager.Downloader")
                 data = Uri.parse(file.url)
@@ -142,7 +141,6 @@ object Download {
             val bundle = Bundle()
             defaultHeaders.forEach { a -> bundle.putString(a.key, a.value) }
             file.headers.forEach { a -> bundle.putString(a.key, a.value) }
-            // unofficial documentation: https://pastebin.com/ScDNr2if (there is no official documentation)
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 component = ComponentName("com.dv.adm", "com.dv.adm.AEditor")
                 putExtra("com.dv.get.ACTION_LIST_ADD", "${file.url}<info>$fileName")

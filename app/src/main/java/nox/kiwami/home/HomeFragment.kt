@@ -127,7 +127,6 @@ class HomeFragment : Fragment() {
                         && PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot) == true
                 currentBinding.homeNotificationCount.text = Anilist.unreadNotificationCount.toString()
 
-                // The banner is always shown still and sharp (no blur, no Ken Burns movement).
                 currentBinding.homeUserBg.visibility = View.GONE
                 currentBinding.homeUserBgNoKen.visibility = View.VISIBLE
                 if (shownBanner == null || shownBanner != Anilist.bg) {
@@ -243,9 +242,7 @@ class HomeFragment : Fragment() {
             Refresh.activity[1]!!.postValue(true)
         }
 
-        //UserData
         load()
-        //List Images
         model.getListImages().observe(viewLifecycleOwner) {
             if (it.isNotEmpty()) {
                 binding.homeAnimeListImage.loadImage(it[0] ?: "https://bit.ly/31bsIHq")
@@ -274,7 +271,6 @@ class HomeFragment : Fragment() {
             return list
         }
 
-        //Function For Recycler Views
         fun initRecyclerView(
             mode: LiveData<ArrayList<Media>>,
             container: View,
@@ -299,7 +295,6 @@ class HomeFragment : Fragment() {
                 false
             )
 
-            // what each shown item looked like when it was bound
             var shownSigs: List<String> = emptyList()
 
             mode.observe(viewLifecycleOwner) {
@@ -330,7 +325,6 @@ class HomeFragment : Fragment() {
                             diff.dispatchUpdatesTo(currentAdapter)
                         } else {
                             recyclerView.tag = "loaded"
-                            // the adapter owns its list, so later updates can diff against it
                             recyclerView.adapter = MediaAdaptor(0, ArrayList(it), requireActivity())
                             recyclerView.layoutManager = LinearLayoutManager(
                                 requireContext(),
@@ -363,7 +357,6 @@ class HomeFragment : Fragment() {
 
         }
 
-        // Recycler Views
         initRecyclerView(
             model.getAnimeContinue(),
             binding.homeContinueWatchingContainer,
@@ -495,7 +488,6 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                 users == null -> {
                     val show = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout)
                         .getOrElse(7) { true }
-                    // while stories are already showing (pull to refresh) keep them on screen
                     if (show && latestStatusUsers.isEmpty()) {
                         binding.homeUserStatusContainer.visibility = View.VISIBLE
                         binding.homeUserStatusProgressBar.visibility = View.VISIBLE
@@ -583,7 +575,6 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
         }
         model.empty.observe(viewLifecycleOwner)
         {
-            // posted after every refresh: only react when the empty state actually flips
             val show = it == true
             if (binding.homeKiwamiContainer.isVisible != show) {
                 binding.homeKiwamiContainer.visibility = if (show) View.VISIBLE else View.GONE
@@ -646,8 +637,6 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                 running = true
                 scope.launch {
                     withContext(Dispatchers.IO) {
-                        // The header totals used to be fetched only once at login, so they
-                        // went stale until the next re-login. Re-fetch on every refresh.
                         if (Anilist.initialized) fetchStats(force = _binding?.homeRefresh?.isRefreshing == true)
                         Anilist.userid =
                             PrefManager.getNullableVal<String>(PrefName.AnilistUserId, null)
@@ -729,7 +718,6 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
             binding.homeNotificationCount.text = Anilist.unreadNotificationCount.toString()
             headerController?.onReturn()
             pillController?.onReturn()
-            // Coming back from a media page / the player: pick up progress made in the meantime.
             if (Anilist.initialized) {
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     fetchStats(force = false)

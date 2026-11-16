@@ -16,9 +16,6 @@ import com.google.android.material.button.MaterialButton
 import eltos.simpledialogfragment.SimpleDialog
 import eltos.simpledialogfragment.color.SimpleColorDialog
 
-/**
- * The configuration screen for the [UpcomingWidget] AppWidget.
- */
 class UpcomingWidgetConfigure : AppCompatActivity(),
     SimpleDialog.OnDialogResultListener {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID

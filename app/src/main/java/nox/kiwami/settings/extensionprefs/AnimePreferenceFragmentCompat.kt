@@ -45,7 +45,6 @@ class AnimeSourcePreferencesFragment : PreferenceFragmentCompat() {
         try {
             onCloseAction?.invoke()
         } catch (e: Exception) {
-            // Ignore if parent detached during destroy
         }
     }
 
@@ -100,7 +99,7 @@ class AnimeSourcePreferencesFragment : PreferenceFragmentCompat() {
         return fragment
     }
 
-    companion object { //idk why it needs both
+    companion object {
         private const val SOURCE_ID = "source_id"
     }
 }
@@ -117,7 +116,6 @@ class InitialAnimeSourcePreferencesFragment(
             snackString(e.message ?: "Unknown error")
             preferenceManager.createPreferenceScreen(requireContext())
         }
-        //set background color
         val color =
             requireContext().getThemeColor(com.google.android.material.R.attr.backgroundColor)
         view?.setBackgroundColor(color)

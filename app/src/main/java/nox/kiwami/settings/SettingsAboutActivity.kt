@@ -134,7 +134,6 @@ class SettingsAboutActivity : AppCompatActivity() {
                                 return@Settings
                             }
                             CoroutineScope(Dispatchers.IO).launch {
-                                // 1) online copy, 2) last copy saved from a previous online load, 3) copy bundled in the app
                                 val cacheFile = java.io.File(filesDir, "privacy_policy.md")
                                 val online = try {
                                     val out = client.get(pPLink)
@@ -144,13 +143,11 @@ class SettingsAboutActivity : AppCompatActivity() {
                                     null
                                 }
                                 if (online != null) {
-                                    // keep the saved copy in step with the repo, so the newest policy is used next time
                                     try {
                                         if (!cacheFile.exists() || cacheFile.readText() != online) {
                                             cacheFile.writeText(online)
                                         }
                                     } catch (e: Exception) {
-                                        // saving is best effort, showing the policy is what matters
                                     }
                                 }
                                 val saved = if (online == null) {

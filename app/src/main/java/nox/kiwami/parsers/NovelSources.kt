@@ -42,7 +42,6 @@ object NovelSources : NovelReadSources() {
     }
 
     fun performReorderNovelSources() {
-        //remove the downloaded source from the list to avoid duplicates
         list = list.filter { it.name != "Downloaded" && it.name != "Local" }
         list = sortPinnedNovelSources(list, pinnedNovelSources) + Lazier<BaseParser>(
             { LocalNovelParser() },

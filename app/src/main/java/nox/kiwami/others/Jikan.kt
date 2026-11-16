@@ -7,11 +7,6 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Jikan (unofficial MyAnimeList REST API) - used only as a read-only metadata source for the
- * filler flag and episode air dates of an AniList entry (looked up through its idMAL).
- * It has nothing to do with MAL accounts, login or the removed Rescue/MAL mode.
- */
 object Jikan {
 
     suspend fun getEpisodes(malId: Int): Map<String, Episode> {
@@ -36,7 +31,6 @@ object Jikan {
 
                 hasNextPage = res.pagination?.hasNextPage == true
                 page++
-                // Jikan rate limits aggressively (3 requests/second)
                 if (hasNextPage) delay(400)
             }
             episodes

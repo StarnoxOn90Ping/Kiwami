@@ -110,7 +110,6 @@ object Helper {
             val database = Injekt.get<StandaloneDatabaseProvider>()
             val downloadDirectory = File(getDownloadDirectory(context), DOWNLOAD_CONTENT_DIRECTORY)
             val dataSourceFactory = DataSource.Factory {
-                //val dataSource: HttpDataSource = OkHttpDataSource.Factory(okHttpClient).createDataSource()
                 val networkHelper = Injekt.get<NetworkHelper>()
                 val okHttpClient = networkHelper.client
                 val dataSource: HttpDataSource =
@@ -133,7 +132,7 @@ object Helper {
                     Requirements(Requirements.NETWORK or Requirements.DEVICE_STORAGE_NOT_LOW)
                 maxParallelDownloads = 3
             }
-            downloadManager.addListener(  //for testing
+            downloadManager.addListener(
                 object : DownloadManager.Listener {
                     override fun onDownloadChanged(
                         downloadManager: DownloadManager,

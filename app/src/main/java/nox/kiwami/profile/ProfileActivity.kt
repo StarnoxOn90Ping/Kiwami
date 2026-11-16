@@ -285,7 +285,6 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
         }
     }
 
-    //Collapsing UI Stuff
     private var isCollapsed = false
     private val percent = 65
     private var mMaxScrollSize = 0

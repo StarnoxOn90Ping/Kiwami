@@ -18,14 +18,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import nox.kiwami.settings.saving.PrefManager
 
-/**
- * Discord Headless Sessions RPC client.
- * Uses OAuth2 Bearer token (via TokenManager PKCE) to POST rich presence
- * to https://discord.com/api/v10/users/@me/headless-sessions
- *
- * No WebSocket, no foreground service needed.
- * Ported from brahmkshatriya/echo-discord RPC.kt
- */
+/** Ported from brahmkshatriya/echo-discord RPC.kt */
 class HeadlessRPC(
     val authToken: String,
     filesDir: File,
@@ -51,11 +44,9 @@ class HeadlessRPC(
         }
     )
 
-    /** Session token returned by the headless sessions API; passed on subsequent updates */
     internal var activityToken: String? = null
     private val mutex = Mutex()
 
-    /** Send (or update) a rich presence activity. */
     suspend fun newActivity(activity: DiscordActivity?) = mutex.withLock {
         if (activity == null) {
             Logger.log("HeadlessRPC: Activity is null, calling deleteSession")
@@ -74,7 +65,6 @@ class HeadlessRPC(
         )
     }
 
-    /** Delete the current headless session (clears Discord status). */
     suspend fun deleteSession() = mutex.withLock {
         deleteSessionInternal()
     }
@@ -159,7 +149,6 @@ class HeadlessRPC(
         }
     }
 
-    /** Fetch the current Discord user's details using the raw auth token. */
     suspend fun getUserDetails(): JsonObject = withContext(Dispatchers.IO) {
         val body = client.newCall(
             Request.Builder()
@@ -173,14 +162,12 @@ class HeadlessRPC(
         json.decodeFromString<JsonObject>(body)["user"]!!.jsonObject
     }
 
-    /** Clear the presence and invalidate stored Bearer token. */
     fun stop() {
         tokenManager.clear()
         activityToken = null
         PrefManager.removeCustomVal("discord_activity_token")
     }
 
-    /** Clear the current activity by deleting the session. */
     suspend fun clear() = mutex.withLock {
         deleteSessionInternal()
     }

@@ -137,8 +137,6 @@ open class ImageAdapter(
                 }
             }
 
-        // Apply image quality scaling when the bitmap is larger than screen and quality mode requires it.
-        // FAST: skip (SSIV's own GPU bilinear is fine). BALANCED/LANCZOS: pre-scale on IO thread.
         val quality = settings.imageQuality ?: CurrentReaderSettings.ImageQuality.FAST
         if (quality != CurrentReaderSettings.ImageQuality.FAST &&
             (bitmap.width > sWidth || bitmap.height > sHeight)

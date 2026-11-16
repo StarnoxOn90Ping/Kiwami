@@ -98,7 +98,6 @@ class TorrentAnimeParser : AnimeParser() {
 
             if (videoFiles.isEmpty()) return emptyList()
 
-            // Strip common root folder prefix across all files if present
             val relativePaths = stripCommonRootDirectory(videoFiles.map { it.path })
 
             val episodesList = mutableListOf<Episode>()
@@ -186,10 +185,6 @@ class TorrentAnimeParser : AnimeParser() {
     }
 
     companion object {
-        /**
-         * Strips common top-level root directory (e.g. "[Anime Time] Attack On Titan (Ultimate Collection)/")
-         * when all files in the torrent share the same top-level root folder.
-         */
         fun stripCommonRootDirectory(paths: List<String>): List<String> {
             val normalized = paths.map { it.replace('\\', '/').trim('/') }
             if (normalized.isEmpty()) return normalized

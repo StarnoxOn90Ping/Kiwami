@@ -41,7 +41,7 @@ object ExtensionRepoMetaHelper {
     }
 
     private val metaCache = ConcurrentHashMap<String, ExtensionRepoMeta>()
-    private val installedRepoMap = ConcurrentHashMap<String, Pair<String, String?>>() // pkgName -> (repoUrl, repoName)
+    private val installedRepoMap = ConcurrentHashMap<String, Pair<String, String?>>()
     @Volatile
     private var isLoaded = false
 
@@ -121,7 +121,6 @@ object ExtensionRepoMetaHelper {
         if (url.isNullOrBlank()) return null
         val clean = url.trim()
 
-        // Match GitHub raw URLs (e.g. raw.githubusercontent.com/user/repo/...)
         val rawGithubRegex = Regex("""(?:https?://)?raw\.githubusercontent\.com/([^/]+)/([^/]+)""")
         val rawMatch = rawGithubRegex.find(clean)
         if (rawMatch != null) {
@@ -129,7 +128,6 @@ object ExtensionRepoMetaHelper {
             return "https://github.com/$owner/$repo"
         }
 
-        // Match GitHub repository URLs
         val githubRegex = Regex("""(?:https?://)?github\.com/([^/]+)/([^/]+)""")
         val ghMatch = githubRegex.find(clean)
         if (ghMatch != null) {
@@ -138,7 +136,6 @@ object ExtensionRepoMetaHelper {
             return "https://github.com/$owner/$cleanRepo"
         }
 
-        // Match GitLab URLs
         val gitlabRegex = Regex("""(?:https?://)?gitlab\.com/([^/]+)/([^/]+)""")
         val glMatch = gitlabRegex.find(clean)
         if (glMatch != null) {
@@ -147,7 +144,6 @@ object ExtensionRepoMetaHelper {
             return "https://gitlab.com/$owner/$cleanRepo"
         }
 
-        // Match Codeberg URLs
         val codebergRegex = Regex("""(?:https?://)?codeberg\.org/([^/]+)/([^/]+)""")
         val cbMatch = codebergRegex.find(clean)
         if (cbMatch != null) {
@@ -286,7 +282,7 @@ object ExtensionRepoMetaHelper {
                 if (responseBytes.isEmpty()) continue
                 val firstByte = responseBytes[0]
 
-                if (firstByte == 0x7B.toByte()) { // '{'
+                if (firstByte == 0x7B.toByte()) {
                     val bodyString = responseBytes.toString(Charsets.UTF_8)
                     val store = runCatching {
                         json.decodeFromString<NetworkExtensionStore>(bodyString)
@@ -316,7 +312,7 @@ object ExtensionRepoMetaHelper {
                         )
                         break
                     }
-                } else if (firstByte != 0x5B.toByte()) { // Protobuf
+                } else if (firstByte != 0x5B.toByte()) {
                     val metaOnly = runCatching {
                         ProtoBuf.decodeFromByteArray<NetworkExtensionStoreMetaOnly>(responseBytes)
                     }.getOrNull()
@@ -333,7 +329,6 @@ object ExtensionRepoMetaHelper {
                     }
                 }
             } catch (_: Throwable) {
-                // Continue to next candidate
             }
         }
 
@@ -341,7 +336,6 @@ object ExtensionRepoMetaHelper {
             return@withContext fetchedMeta
         }
 
-        // Fallback to URL-derived metadata
         val fallback = saveMeta(
             repoUrl = repoUrl,
             name = cached?.name?.takeIf { it.isNotBlank() } ?: cleanShownUrl(repoUrl),

@@ -135,7 +135,7 @@ object MediaNameAdapter {
 
     fun removeEpisodeNumberCompletely(text: String): String {
         val removedNumber = text.replace(EPISODE_REGEX, "")
-        return if (removedNumber.equals(text, true)) {  // if nothing was removed
+        return if (removedNumber.equals(text, true)) {
             PART_NUMBER_REGEX.replace(removedNumber) { mr ->
                 mr.value.replaceFirst(mr.groupValues[1], "")
             }

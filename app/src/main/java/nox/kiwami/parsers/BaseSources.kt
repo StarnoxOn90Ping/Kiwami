@@ -193,11 +193,11 @@ class EmptyNovelParser : NovelParser() {
     override val volumeRegex: Regex = Regex("")
 
     override suspend fun loadBook(link: String, extra: Map<String, String>?): Book {
-        return Book("", "", null, emptyList())  // Return an empty Book object or some default value
+        return Book("", "", null, emptyList())
     }
 
     override suspend fun search(query: String): List<ShowResponse> {
-        return listOf() // Return an empty list or some default value
+        return listOf()
     }
 }
 

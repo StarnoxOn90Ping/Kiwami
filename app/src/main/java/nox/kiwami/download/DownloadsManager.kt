@@ -95,8 +95,6 @@ class DownloadsManager(private val context: Context) {
     @Synchronized
     fun rebuildIndexFromDisk(replace: Boolean = false): Int {
         var added = 0
-        // When the download location changed, entries from the old location are meaningless:
-        // start from an empty index and rebuild purely from what is in the current folder.
         if (replace) {
             downloadsList.clear()
             OfflineLibraryCache.clear()
@@ -112,7 +110,6 @@ class DownloadsManager(private val context: Context) {
                 for (chapterDir in titleDir.listFiles()) {
                     if (!chapterDir.isDirectory) continue
                     val chapter = chapterDir.name ?: continue
-                    // Skip empty shells left behind by a cancelled download.
                     if (chapterDir.listFiles().none { it.isFile && it.length() > 0 }) continue
 
                     val alreadyIndexed = downloadsList.any {
@@ -135,7 +132,6 @@ class DownloadsManager(private val context: Context) {
     fun addDownload(downloadedType: DownloadedType) {
         downloadsList.add(downloadedType)
         saveDownloads()
-        // cover / media.json of this title may have just been (re)written
         OfflineLibraryCache.invalidate(downloadedType.titleName)
     }
 
@@ -215,7 +211,6 @@ class DownloadsManager(private val context: Context) {
     }
 
     private fun cleanDownload(type: MediaType) {
-        // remove all folders that are not in the downloads list
         val directory = getBaseDirectory(context, type)
         val downloadsSubLists = when (type) {
             MediaType.MANGA -> mangaDownloadedTypes
@@ -239,7 +234,6 @@ class DownloadsManager(private val context: Context) {
                 }
             }
         }
-        //now remove all downloads that do not have a folder
         val iterator = downloadsList.iterator()
         while (iterator.hasNext()) {
             val download = iterator.next()
@@ -256,8 +250,6 @@ class DownloadsManager(private val context: Context) {
         newUri: Uri,
         onFinished: (Boolean, String) -> Unit
     ) {
-        // The new location is already saved in the prefs by the time we get here, so whatever the
-        // outcome of the move, the index has to match what is actually in the new folder.
         val finished: (Boolean, String) -> Unit = { ok, message ->
             try {
                 rebuildIndexFromDisk(replace = true)
@@ -340,7 +332,6 @@ class DownloadsManager(private val context: Context) {
             baseDirectory?.findFolder(downloadedType.titleName)
                 ?.findFolder(downloadedType.chapterName)
         downloadsList.removeAll { it.titleName == downloadedType.titleName && it.chapterName == downloadedType.chapterName }
-        // Check if the directory exists and delete it recursively
         if (directory?.exists() == true) {
             val deleted = directory.delete()
             if (deleted) {
@@ -377,12 +368,6 @@ class DownloadsManager(private val context: Context) {
         private const val NOVEL_SUB_LOCATION = "Novel"
 
 
-        /**
-         * Get and create a base directory for the given type
-         * @param context the context
-         * @param type the type of media
-         * @return the base directory
-         */
         @Synchronized
         private fun getBaseDirectory(context: Context, type: MediaType): DocumentFile? {
             val baseDirectory = Uri.parse(PrefManager.getVal<String>(PrefName.DownloadsDir))
@@ -404,14 +389,6 @@ class DownloadsManager(private val context: Context) {
             }
         }
 
-        /**
-         * Get and create a subdirectory for the given type
-         * @param context the context
-         * @param type the type of media
-         * @param title the title of the media
-         * @param chapter the chapter of the media
-         * @return the subdirectory
-         */
         @Synchronized
         fun getSubDirectory(
             context: Context,

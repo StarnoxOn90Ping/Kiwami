@@ -28,23 +28,6 @@ import kotlinx.coroutines.withContext
 import java.io.Serializable
 import java.util.Calendar
 
-/**
- * Drives the slim info pill under the Anime / Manga list buttons (see [InfoPillView]).
- *
- * Cards, most relevant first (a card without data is simply not in the cycle):
- *  - Up next        next episode from your list, live countdown. Tap the text -> airing calendar
- *  - Airing today   how many episodes from your list air today
- *  - Time today     watch + reading time today ([WatchTimeTracker])
- *  - Backlog        planned list size, and how many were not touched for 30+ days
- *  - Feeling lucky  tap the text -> info page of a random planned show (needs network)
- *
- * Tapping the bar only cycles to the next card; swiping goes forward / back. The two cards with
- * an action (Up next -> calendar, Feeling lucky -> random pick) show a small round button on the
- * left of the bar, and only that button runs the action.
- *
- * Offline / Pre-cached: everything comes from on-device data (airing cache, airing alarms,
- * cached Home lists, local watch time). Only the lucky card needs the network and is skipped.
- */
 class InfoPillController(
     private val b: FragmentHomeBinding,
     private val owner: LifecycleOwner,
@@ -56,15 +39,10 @@ class InfoPillController(
     private val pill = InfoPillView(ctx)
     private val cat = SleepyCatView(ctx)
 
-    // Holds the pill and the cat. It is the view that sits in the Home layout (so all the spacing
-    // maths below works on it); it does not clip, so the cat can lie on the pill's top edge in the
-    // gap above it without changing that gap.
     private val host = FrameLayout(ctx).apply {
         clipChildren = false
         clipToPadding = false
     }
-
-    // ---- cards --------------------------------------------------------------------------------
 
     private sealed interface Card {
         val key: String
@@ -97,8 +75,6 @@ class InfoPillController(
         }
     }
 
-    // ---- setup --------------------------------------------------------------------------------
-
     fun start() {
         val parent = b.homeTopContainer
         val at = parent.indexOfChild(b.homeListContainer) + 1
@@ -107,7 +83,6 @@ class InfoPillController(
         host.addView(
             cat,
             FrameLayout.LayoutParams(dp(CAT_W_DP), dp(CAT_H_DP), Gravity.TOP or Gravity.END).apply {
-                // the cat's feet end 2dp below the top of the pill (it lies on the edge)
                 topMargin = -(dp(CAT_H_DP) - dp(2))
                 marginEnd = dp(10)
             }
@@ -115,10 +90,9 @@ class InfoPillController(
         parent.addView(
             host, at,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(PILL_HEIGHT_DP)).apply {
-                // lines up with the outer edges of the two list buttons (24dp padding + 8dp margin)
                 marginStart = dp(32)
                 marginEnd = dp(32)
-                topMargin = 0 // set by alignGap() once the list buttons are measured
+                topMargin = 0
                 bottomMargin = dp(16)
             }
         )
@@ -126,7 +100,6 @@ class InfoPillController(
         pill.onAction = { runAction() }
         pill.onSwipe = { forward -> cat.nudge(); if (forward) next() else previous() }
         pill.onResized = { if (!released) rebuild() }
-        // keep the gap under the list buttons equal to the gap between the two buttons (16dp)
         b.homeListContainer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> pill.post { alignGap() } }
 
         cachedAiring = InfoPillStore.loadAiring()?.items ?: emptyList()
@@ -149,7 +122,6 @@ class InfoPillController(
         pill.onResized = null
     }
 
-    /** Home came back to the front (from a media page, the player, the calendar...). */
     fun onReturn() {
         if (released) return
         maybeRefreshAiring()
@@ -158,11 +130,9 @@ class InfoPillController(
 
     private fun dp(v: Int) = (v * d).toInt()
 
-    // ---- data ---------------------------------------------------------------------------------
-
     private fun updatedSec(m: Media): Long {
         val v = m.userUpdatedAt ?: 0L
-        return if (v > 100_000_000_000L) v / 1000 else v // seconds or milliseconds
+        return if (v > 100_000_000_000L) v / 1000 else v
     }
 
     private fun onPlannedChanged() {
@@ -179,7 +149,6 @@ class InfoPillController(
         InfoPillStore.savePlanned(snap)
     }
 
-    /** Asks AniList for the airing times of the shows on the list. Cached; skipped offline. */
     private fun maybeRefreshAiring() {
         if (released || refreshingAiring || !isOnline(ctx)) return
         val ids = (model.getAnimeContinue().value.orEmpty() + model.getAnimePlanned().value.orEmpty())
@@ -231,8 +200,6 @@ class InfoPillController(
         return anime.ifEmpty { model.getMangaPlanned().value.orEmpty().filter { it.id > 0 } }
     }
 
-    // ---- building the cycle -------------------------------------------------------------------
-
     private fun buildCards(): List<Card> {
         val nowMs = System.currentTimeMillis()
         val nowSec = nowMs / 1000
@@ -255,8 +222,6 @@ class InfoPillController(
             if (total == 0) null else {
                 val all = p.anime + p.manga
                 val known = all.count { it > 0 }
-                // "untouched" = no change to the list entry for 30 days. It is only trusted when
-                // AniList gave us the update time for most of the entries.
                 val reliable = known * 2 >= total
                 val limit = nowSec - 30L * 24 * 3600
                 Card.Backlog(total, all.count { it in 1..limit }, reliable)
@@ -290,7 +255,6 @@ class InfoPillController(
         if (cardChanged) pill.showText(text, animate = shownOnce && host.isVisible) else pill.updateText(text)
     }
 
-    /** Visible only when there is something to show and the list buttons are already on screen. */
     private fun applyVisibility() {
         val shouldShow = cards.isNotEmpty() && b.homeAnimeList.isVisible
         if (shouldShow == host.isVisible) return
@@ -312,13 +276,12 @@ class InfoPillController(
         }
     }
 
-    /** Space between the list buttons and the pill = space between the two list buttons. */
     private fun alignGap() {
         if (released) return
         val list = b.homeListContainer
         if (list.height <= 0) return
         val lowest = maxOf(b.homeAnimeList.bottom, b.homeMangaList.bottom)
-        val wanted = dp(GAP_DP) - (list.height - lowest) // the container already has some room below
+        val wanted = dp(GAP_DP) - (list.height - lowest)
         val lp = host.layoutParams as LinearLayout.LayoutParams
         if (lp.topMargin == wanted) return
         lp.topMargin = wanted
@@ -331,7 +294,6 @@ class InfoPillController(
         return lp.height + lp.topMargin + lp.bottomMargin
     }
 
-    /** The banner behind the header is a fixed height: grow it by the pill's height. */
     private fun setBannerExtra(extra: Int) {
         val delta = extra - bannerExtra
         if (delta == 0) return
@@ -339,8 +301,6 @@ class InfoPillController(
         b.homeUserBg.updateLayoutParams { height += delta }
         b.homeUserBgNoKen.updateLayoutParams { height += delta }
     }
-
-    // ---- text ---------------------------------------------------------------------------------
 
     private fun render(card: Card): CharSequence {
         val r = ctx.resources
@@ -398,28 +358,23 @@ class InfoPillController(
         }
     }
 
-    // ---- live updates -------------------------------------------------------------------------
-
     private fun tick() {
         if (!pill.isAttachedToWindow || pill.windowVisibility != View.VISIBLE) return
         ticks++
         val card = cards.getOrNull(index)
 
         if (!host.isVisible) {
-            // waiting for the list buttons to appear (cheap), or for data (slower)
             if (cards.isNotEmpty()) applyVisibility() else if (ticks % 5 == 0) rebuild()
             return
         }
 
         if (card is Card.UpNext) {
             val nowSec = System.currentTimeMillis() / 1000
-            if (card.item.airingAtSec <= nowSec) rebuild() // it just aired: move on to the next one
+            if (card.item.airingAtSec <= nowSec) rebuild()
             else pill.updateText(render(card))
         }
         if (ticks % 30 == 0) rebuild()
     }
-
-    // ---- taps ---------------------------------------------------------------------------------
 
     private fun next() {
         if (cards.size < 2) return
@@ -449,7 +404,6 @@ class InfoPillController(
         }
     }
 
-    /** Shows the round button only on the cards that have an action. */
     private fun syncAction() {
         pill.setAction(
             when (cards.getOrNull(index)) {
@@ -462,7 +416,7 @@ class InfoPillController(
 
     private fun pickRandom() {
         if (!isOnline(ctx)) {
-            rebuild() // went offline in the meantime: the card drops out of the cycle
+            rebuild()
             return
         }
         val pool = luckyPool()

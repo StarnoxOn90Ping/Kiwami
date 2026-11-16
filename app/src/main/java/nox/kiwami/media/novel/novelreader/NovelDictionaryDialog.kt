@@ -106,7 +106,6 @@ class NovelDictionaryDialog : BottomSheetDialogFragment() {
 
                     val ctx = requireContext()
                     for (meaning in parsedMeanings) {
-                        // Part of speech badge
                         val posView = TextView(ctx).apply {
                             text = meaning.partOfSpeech.replaceFirstChar { it.uppercase() }
                             setTypeface(typeface, Typeface.BOLD_ITALIC)

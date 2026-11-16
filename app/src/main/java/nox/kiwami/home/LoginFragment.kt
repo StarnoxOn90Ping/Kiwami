@@ -52,7 +52,6 @@ class LoginFragment : Fragment() {
                                 ?: throw Exception("Error reading file")
                         val name =
                             DocumentFile.fromSingleUri(requireActivity(), uri)?.name ?: "settings"
-                        //.sani is encrypted, .ani is not
                         if (name.endsWith(".sani")) {
                             passwordAlertDialog { password ->
                                 if (password != null) {
@@ -96,7 +95,6 @@ class LoginFragment : Fragment() {
     private fun passwordAlertDialog(callback: (CharArray?) -> Unit) {
         val password = CharArray(16).apply { fill('0') }
 
-        // Inflate the dialog layout
         val dialogView = DialogUserAgentBinding.inflate(layoutInflater).apply {
             userAgentTextBox.hint = "Password"
             subtitle.visibility = View.VISIBLE

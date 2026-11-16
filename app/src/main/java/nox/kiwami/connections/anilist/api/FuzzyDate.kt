@@ -56,10 +56,6 @@ data class FuzzyDate(
         return values.takeWhile { it is String }.joinToString("-")
     }
 
-//    fun toInt(): Int {
-//        return 10000 * (this.year ?: 0) + 100 * (this.month ?: 0) + (this.day ?: 0)
-//    }
-
     override fun compareTo(other: FuzzyDate): Int = when {
         year != other.year -> (year ?: 0) - (other.year ?: 0)
         month != other.month -> (month ?: 0) - (other.month ?: 0)

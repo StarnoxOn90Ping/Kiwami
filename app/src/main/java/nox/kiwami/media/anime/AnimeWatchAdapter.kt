@@ -120,7 +120,6 @@ class AnimeWatchAdapter(
                 null
             )
         }
-        // Youtube
         if (media.anime?.youtube != null && PrefManager.getVal(PrefName.ShowYtButton)) {
             binding.animeSourceYT.visibility = View.VISIBLE
             binding.animeSourceYT.setOnClickListener {
@@ -134,7 +133,6 @@ class AnimeWatchAdapter(
                 R.string.subbed
             )
 
-        // PreferDub
         var changing = false
         binding.animeSourceDubbed.setOnCheckedChangeListener { _, isChecked ->
             binding.animeSourceDubbedText.text =
@@ -144,14 +142,12 @@ class AnimeWatchAdapter(
             if (!changing) fragment.onDubClicked(isChecked)
         }
 
-        // Wrong Title
         binding.mediaSourceSearch.setOnClickListener {
             SourceSearchDialogFragment().show(
                 fragment.requireActivity().supportFragmentManager,
                 null
             )
         }
-        // Source Selection
         var source =
             media.selected!!.sourceIndex.let { if (it >= watchSources.names.size) 0 else it }
         setLanguageList(media.selected!!.langIndex, source)
@@ -193,7 +189,6 @@ class AnimeWatchAdapter(
         }
 
         binding.mediaSourceLanguage.setOnItemClickListener { _, _, i, _ ->
-            // Check if 'extension' and 'selected' properties exist and are accessible
             (watchSources[source] as? DynamicAnimeParser)?.let { ext ->
                 ext.sourceLanguage = i
                 fragment.onLangChange(i)
@@ -211,17 +206,13 @@ class AnimeWatchAdapter(
             } ?: run { }
         }
 
-        // Settings
         binding.mediaSourceSettings.setOnClickListener {
             (watchSources[source] as? DynamicAnimeParser)?.let { ext ->
                 fragment.openSettings(ext.extension)
             }
         }
 
-        // Icons
 
-
-        // Play via Torrent / Magnet Button
         binding.mediaTorrentButton.setOnClickListener {
             fragment.openDirectTorrent()
         }
@@ -230,7 +221,6 @@ class AnimeWatchAdapter(
             true
         }
 
-        // Nested Button
         binding.mediaNestedButton.setOnClickListener {
             val dialogBinding = DialogLayoutBinding.inflate(fragment.layoutInflater)
             dialogBinding.apply {
@@ -249,7 +239,7 @@ class AnimeWatchAdapter(
                     run = true
                 }
 
-                var metadataApi = PrefManager.getVal<Int>(PrefName.EpisodeMetadataSource) // 0 or 1
+                var metadataApi = PrefManager.getVal<Int>(PrefName.EpisodeMetadataSource)
                 metadataApiText.text = if (metadataApi == 0) "Kitsu" else "AniZip"
                 metadataApiTop.setOnClickListener {
                     metadataApi = if (metadataApi == 0) 1 else 0
@@ -262,7 +252,6 @@ class AnimeWatchAdapter(
                     refresh = true
                 }
                 
-                // Grids
                 var selected = when (style) {
                     0 -> mediaSourceList
                     1 -> mediaSourceGrid
@@ -303,7 +292,6 @@ class AnimeWatchAdapter(
                     if (!WebViewUtil.supportsWebView(fragment.requireContext())) {
                         toast(R.string.webview_not_installed)
                     }
-                    // Start CookieCatcher activity
                     if (watchSources.names.isNotEmpty() && source in 0 until watchSources.names.size) {
                         val sourceAHH = watchSources[source] as? DynamicAnimeParser
                         val sourceHttp =
@@ -326,14 +314,12 @@ class AnimeWatchAdapter(
                     }
                 }
 
-                //implement Multi download
                 downloadNo.setText("0")
                 if (media.format == "LOCAL") {
                     animeDownloadContainer.visibility = View.GONE
                     mediaWebviewContainer.visibility = View.GONE
                 }
                 mediaDownloadTop.setOnClickListener {
-                    // Alert dialog asking for the number of Episodes to download
                     fragment.requireContext().customAlertDialog().apply {
                         setTitle("Multi Episode Downloader")
                         setMessage("Enter the number of episodes to download")
@@ -371,7 +357,6 @@ class AnimeWatchAdapter(
 
                 resetProgressDef.text = getString(currContext()!!, R.string.clear_stored_episode)
 
-                //animeDownloadContainer.visibility = View.GONE
                 fragment.requireContext().customAlertDialog().apply {
                     setTitle("Options")
                     setCustomView(dialogBinding.root)
@@ -389,10 +374,8 @@ class AnimeWatchAdapter(
                 }
             }
         }
-        // Episode Handling
         handleEpisodes()
 
-        //clear progress
         binding.sourceTitle.setOnLongClickListener {
             fragment.requireContext().customAlertDialog().apply {
                 setTitle(" Delete Progress for all episodes of ${media.nameRomaji}")
@@ -414,7 +397,6 @@ class AnimeWatchAdapter(
         }
     }
 
-    // Chips
     fun updateChips(limit: Int, names: Array<String>, arr: Array<Int>, selected: Int = 0) {
         val binding = _binding
         if (binding != null) {
@@ -496,15 +478,12 @@ class AnimeWatchAdapter(
                     MediaNameAdapter.findEpisodeNumber(key) ?: media.anime?.episodes?.get(key)?.number?.let { MediaNameAdapter.findEpisodeNumber(it) } ?: 0f
                 } ?: episodes.size.toFloat()
 
-                // If user progress already completed all available episodes, hide continue button
                 if (media.userProgress != null && media.userProgress!!.toFloat() >= maxAvailableEp && (media.userProgress ?: 0) >= appEp) {
                     binding.sourceContinue.visibility = View.GONE
                     binding.sourceProgressBar.visibility = View.GONE
                     return
                 }
 
-                // Prefer appEp if it has active in-progress data below the completion threshold,
-                // to avoid jumping to the next episode while the user is still mid-episode.
                 val appEpKey = episodes.find { key ->
                     val epObj = media.anime?.episodes?.get(key)
                     MediaNameAdapter.findEpisodeNumber(key)?.toInt() == appEp ||
@@ -524,7 +503,6 @@ class AnimeWatchAdapter(
                 }
                 val targetEpNum = if (anilistEp > appEp && !appEpHasActiveProgress) anilistEp.toFloat() else appEp.toFloat()
 
-                // Find matching episode key in media.anime.episodes
                 var matchingKey: String? = episodes.find { key ->
                     val epObj = media.anime.episodes?.get(key)
                     MediaNameAdapter.findEpisodeNumber(key) == targetEpNum ||
@@ -560,7 +538,6 @@ class AnimeWatchAdapter(
                                 continueEp
                             )
                         } else {
-                            // User watched the last available episode
                             continueEp = null
                         }
                     }

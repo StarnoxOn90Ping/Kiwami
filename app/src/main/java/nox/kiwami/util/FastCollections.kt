@@ -1,10 +1,5 @@
 package nox.kiwami.util
 
-/**
- * High-performance, zero-allocation collection extensions based on AndroidX / Compose internals.
- * Iterates directly by index on [List] and [ArrayList] instances without allocating an [Iterator].
- */
-
 inline fun <T> List<T>.fastForEach(action: (T) -> Unit) {
     for (index in 0 until size) {
         action(get(index))

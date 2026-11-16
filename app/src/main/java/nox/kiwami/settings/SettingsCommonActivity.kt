@@ -64,7 +64,6 @@ class SettingsCommonActivity : AppCompatActivity() {
                             contentResolver.openInputStream(uri)?.readBytes()
                                 ?: throw Exception("Error reading file")
                         val name = DocumentFile.fromSingleUri(this, uri)?.name ?: "settings"
-                        // .sani is encrypted, .ani is not
                         if (name.endsWith(".sani")) {
                             passwordAlertDialog(false) { password ->
                                 if (password != null) {
@@ -510,7 +509,6 @@ class SettingsCommonActivity : AppCompatActivity() {
     ) {
         val password = CharArray(16).apply { fill('0') }
 
-        // Inflate the dialog layout
         val dialogView = DialogUserAgentBinding.inflate(layoutInflater)
         val box = dialogView.userAgentTextBox
         box.hint = getString(R.string.password)
@@ -561,7 +559,6 @@ class SettingsCommonActivity : AppCompatActivity() {
         }
         dialog.show()
 
-        // Override the positive button here
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             handleOkAction()
         }

@@ -73,7 +73,6 @@ class ActivityFragment : Fragment() {
             else -> View.GONE
         }
         
-        // Set up filter icon visibility
         binding.filterButton.visibility = if (type != ActivityType.ONE) View.VISIBLE else View.GONE
         binding.filterButton.setOnClickListener {
             showFilterBottomSheet()

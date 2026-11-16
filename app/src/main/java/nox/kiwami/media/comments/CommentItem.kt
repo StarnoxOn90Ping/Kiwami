@@ -109,7 +109,7 @@ class CommentItem(
                     commentsFragment.onTagClicked(comment.tag.toString())
                 }
             }
-            replying(isReplying) //sets default text
+            replying(isReplying)
             editing(isEditing)
             if ((comment.replyCount ?: 0) > 0 || repliesVisible) {
                 commentTotalReplies.visibility = View.VISIBLE
@@ -251,7 +251,6 @@ class CommentItem(
                 }
                 popup.show()
             }
-            //fill the icon if the user has liked the comment
             setVoteButtons(viewBinding)
             commentUpVote.setOnClickListener {
                 val voteType = if (comment.userVoteType == 1) 0 else 1
@@ -486,13 +485,6 @@ class CommentItem(
         textView.movementMethod = LinkMovementMethod.getInstance()
     }
 
-    /**
-     * Builds the dialog for yes/no confirmation
-     * no doesn't do anything, yes calls the callback
-     * @param title the title of the dialog
-     * @param message the message of the dialog
-     * @param callback the callback to call when the user clicks yes
-     */
     private fun dialogBuilder(title: String, message: String, callback: () -> Unit) {
         commentsFragment.activity.customAlertDialog().apply {
             setTitle(title)

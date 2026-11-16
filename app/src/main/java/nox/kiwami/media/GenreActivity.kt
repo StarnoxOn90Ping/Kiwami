@@ -71,7 +71,6 @@ class GenreActivity : AppCompatActivity() {
         return if (genres.isEmpty()) {
             null
         } else {
-            //sort alphabetically
             genres.sort().let { genres as ArrayList<String> }
         }
     }

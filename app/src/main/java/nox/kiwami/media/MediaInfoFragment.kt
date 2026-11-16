@@ -96,7 +96,6 @@ class MediaInfoFragment : Fragment() {
         super.onPause()
     }
 
-    // heading sits right on top of its text (Opening / Ending)
     private fun tightTextSection(title: TextView, text: TextView) {
         val d = resources.displayMetrics.density
         (title.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
@@ -109,7 +108,6 @@ class MediaInfoFragment : Fragment() {
         }
     }
 
-    // same look as the Synopsis / Details / Names headings
     private fun styleSectionHeading(tv: TextView) {
         val d = resources.displayMetrics.density
         tv.textSize = 20f
@@ -144,7 +142,6 @@ class MediaInfoFragment : Fragment() {
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "synopsis_tts")
     }
 
-    // theme-coloured, softly pulsing icon while the synopsis is being read
     private fun setTtsActive(active: Boolean) {
         val button = _binding?.mediaInfoTts ?: return
         ttsPulse?.cancel()
@@ -193,7 +190,6 @@ class MediaInfoFragment : Fragment() {
         _binding = null
     }
 
-    // Method to display anime adaptation
     private fun displayAnimeAdaptation(adaptation: MangaAnimeUtil.AnimeAdaptation) {
         if (adaptation.hasAdaptation) {
             val adaptationText = buildString {
@@ -288,7 +284,6 @@ class MediaInfoFragment : Fragment() {
                 binding.mediaInfoContainer.visibility = View.VISIBLE
                 binding.mediaInfoCountry.text = media.countryOfOrigin ?: "~"
 
-                // Names section
                 fun bindName(container: View, valueView: TextView, value: String?) {
                     if (value.isNullOrBlank()) {
                         container.visibility = View.GONE
@@ -332,7 +327,6 @@ class MediaInfoFragment : Fragment() {
                             )
                         }
                     }
-                    // Show producers as a chip group (same style as External Links)
                     if (!media.anime.producers.isNullOrEmpty()) {
                         val validProducers = media.anime.producers!!.filter { it.id != "null" }
                         if (validProducers.isNotEmpty()) {
@@ -418,8 +412,6 @@ class MediaInfoFragment : Fragment() {
                     if (desc.toString() != "null") desc else getString(R.string.no_description_available)
                 binding.mediaInfoDescription.text = infoDesc
 
-                // "Read more / Read less" link, only when the synopsis is actually cut off.
-                // The last visible line fades out from the bottom instead of ending in "...".
                 val collapsedLines = 5
                 val descView = binding.mediaInfoDescription
                 var expanded = false
@@ -475,7 +467,6 @@ class MediaInfoFragment : Fragment() {
                 }
                 descLayoutListener?.let { descView.removeOnLayoutChangeListener(it) }
                 descLayoutListener = View.OnLayoutChangeListener { v, left, _, right, _, oldLeft, _, oldRight, _ ->
-                    // only the width matters; re-check after the layout pass has finished
                     if (right - left != oldRight - oldLeft) v.post { updateReadMore() }
                 }
                 descView.addOnLayoutChangeListener(descLayoutListener)
@@ -494,7 +485,6 @@ class MediaInfoFragment : Fragment() {
                 descView.setOnClickListener(toggleSynopsis)
                 binding.mediaInfoReadMore.setOnClickListener(toggleSynopsis)
 
-                // read the synopsis out loud (button squishes on tap and pulses while speaking)
                 binding.mediaInfoTts.setOnClickListener { button ->
                     button.animate().cancel()
                     button.animate().scaleX(0.78f).scaleY(0.78f).setDuration(90).withEndAction {
@@ -562,8 +552,6 @@ class MediaInfoFragment : Fragment() {
                     }
                     parent.addView(bind.root)
                 }
-                // "People watching" row: a slot at this position that is filled right away from the
-                // loaded details and again with a fresh followers lookup (so caching can't hide it).
                 val usersSlot = FrameLayout(requireContext()).apply {
                     tag = "dynamic_view"
                     layoutParams = ViewGroup.LayoutParams(
@@ -626,7 +614,6 @@ class MediaInfoFragment : Fragment() {
                         private var mCustomViewCallback: CustomViewCallback? = null
                         private var mOriginalSystemUiVisibility = 0
 
-                        // errors from the trailer page end up in the log file (Settings > log to file)
                         override fun onConsoleMessage(message: ConsoleMessage): Boolean {
                             if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
                                 Logger.log(
@@ -677,7 +664,6 @@ class MediaInfoFragment : Fragment() {
                     styleSectionHeading(bind.mediaInfoTrailerText)
                     val trailerId = media.trailer!!
                     val thumbBase = "https://img.youtube.com/vi/$trailerId/"
-                    // plain image instead of a WebView; the biggest thumbnail first, then the standard one
                     Glide.with(bind.root.context)
                         .load(thumbBase + "maxresdefault.jpg")
                         .error(
@@ -688,7 +674,6 @@ class MediaInfoFragment : Fragment() {
                         .centerCrop()
                         .into(bind.mediaInfoTrailerThumb)
 
-                    // the WebView only exists once the trailer is actually played
                     bind.mediaInfoTrailerFrame.setOnClickListener { frame ->
                         frame.setOnClickListener(null)
                         frame.isClickable = false
@@ -776,7 +761,6 @@ class MediaInfoFragment : Fragment() {
                     }
                     parent.addView(themesSlot)
 
-                    // a song link of the plain list: find its AnimeThemes video and open the video page
                     fun openThemeLink(link: String) {
                         val uri = Uri.parse(link)
                         val type = uri.getQueryParameter("type") ?: "OP"
@@ -787,7 +771,6 @@ class MediaInfoFragment : Fragment() {
                             ctx, R.string.themes_finding, android.widget.Toast.LENGTH_SHORT
                         ).show()
                         viewLifecycleOwner.lifecycleScope.launch {
-                            // 1. AnimeThemes video
                             val songs = withContext(Dispatchers.IO) {
                                 runCatching { ThemeSongs.loadAnimeThemes(media) }
                                     .getOrDefault(emptyList())
@@ -800,7 +783,6 @@ class MediaInfoFragment : Fragment() {
                             }
                             val reason = ThemeSongs.lastError
 
-                            // 2. the same song on YouTube, played inside the app
                             val word = if (type.equals("OP", true)) "opening" else "ending"
                             val query = "${media.mainName()} $word $title"
                             val ytId = withContext(Dispatchers.IO) {
@@ -817,7 +799,6 @@ class MediaInfoFragment : Fragment() {
                                 return@launch
                             }
 
-                            // 3. nothing worked: say so and ask before leaving the app
                             com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
                                 .setTitle(R.string.themes_failed_title)
                                 .setMessage(
@@ -834,7 +815,6 @@ class MediaInfoFragment : Fragment() {
                         }
                     }
 
-                    // plain text list (from MAL / Jikan), used when AnimeThemes has nothing
                     fun showLegacySongs() {
                         val markWon = Markwon.builder(requireContext())
                             .usePlugin(SoftBreakAddsNewLinePlugin.create())
@@ -912,7 +892,6 @@ class MediaInfoFragment : Fragment() {
                         }
                     }
 
-                    // playable list (AnimeThemes): tap a row to play / pause it right here
                     fun showPlayableThemes(songs: List<ThemeSong>) {
                         themesSlot.removeAllViews()
                         val inflater = LayoutInflater.from(context)
@@ -1453,7 +1432,6 @@ class MediaInfoFragment : Fragment() {
     }
 }
 
-/** UI state of one playable song row. */
 private class ThemeRowHolder(private val b: ItemThemeSongBinding) {
     private var showingPause = false
 

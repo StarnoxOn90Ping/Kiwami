@@ -43,7 +43,6 @@ object LnReaderJsEngine {
     ): String = withContext(Dispatchers.IO) {
         val qjs = QuickJs.create()
         try {
-            // Bridge
             val jsoupElements = mutableMapOf<Int, org.jsoup.nodes.Element>()
             var elementCounter = 0
 
@@ -261,7 +260,6 @@ object LnReaderJsEngine {
             qjs.evaluate(MODULE_BOOTSTRAP_JS)
             qjs.evaluate(REQUIRE_SHIM_JS)
 
-            // Load plugin safely
             qjs.evaluate("""
                 (function() {
                     var exports = {};
@@ -279,7 +277,6 @@ object LnReaderJsEngine {
                 })();
             """.trimIndent())
 
-            // Call method and drain async Promise execution
             val invokeScript = """
                 globalThis.__callResult = null;
                 globalThis.__callError = null;
@@ -310,7 +307,6 @@ object LnReaderJsEngine {
             """.trimIndent()
             qjs.evaluate(invokeScript)
 
-            // Drain microtasks in QuickJS until Promise chain completes
             var isDone = false
             var iterations = 0
             while (!isDone && iterations < 500) {
@@ -360,7 +356,6 @@ object LnReaderJsEngine {
                 "Accept-Language" to "*",
                 "Cache-Control" to "max-age=0",
             )
-            // default first
             defaultHeaders.forEach { (k, v) ->
                 if (!parsedHeaders.keys.any { it.equals(k, ignoreCase = true) }) {
                     reqBuilder.addHeader(k, v)
@@ -423,8 +418,6 @@ object LnReaderJsEngine {
             )
         }
     }
-
-    //QuickJS
 
     interface FetchBridge {
         fun fetch(url: String, method: String, headersJson: String, body: String?): String

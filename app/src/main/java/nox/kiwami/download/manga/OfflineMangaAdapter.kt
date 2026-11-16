@@ -40,9 +40,9 @@ class OfflineMangaAdapter(
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
 
         val view: View = convertView ?: when (style) {
-            0 -> inflater.inflate(R.layout.item_media_large, parent, false) // large view
-            1 -> inflater.inflate(R.layout.item_media_compact, parent, false) // compact view
-            else -> inflater.inflate(R.layout.item_media_compact, parent, false) // compact view
+            0 -> inflater.inflate(R.layout.item_media_large, parent, false)
+            1 -> inflater.inflate(R.layout.item_media_compact, parent, false)
+            else -> inflater.inflate(R.layout.item_media_compact, parent, false)
         }
 
         val item = getItem(position) as OfflineMangaModel
@@ -56,7 +56,7 @@ class OfflineMangaAdapter(
         val typeView = view.findViewById<LinearLayout>(R.id.itemCompactType)
 
         if (style == 0) {
-            val bannerView = view.findViewById<ImageView>(R.id.itemCompactBanner) // for large view
+            val bannerView = view.findViewById<ImageView>(R.id.itemCompactBanner)
             val chapters = view.findViewById<TextView>(R.id.itemTotal)
             val text = " ${context.getString(R.string.chapters)}"
             chapters.text = text
@@ -64,12 +64,11 @@ class OfflineMangaAdapter(
             totalChapter.text = item.totalChapter
         } else if (style == 1) {
             val readChapter =
-                view.findViewById<TextView>(R.id.itemCompactUserProgress) // for compact view
+                view.findViewById<TextView>(R.id.itemCompactUserProgress)
             readChapter.text = item.readChapter
             totalChapter.text = context.getString(R.string.total_divider, item.totalChapter)
         }
 
-        // Bind item data to the views
         typeImage.setImageResource(if (item.type == "Novel") R.drawable.ic_round_book_24 else R.drawable.ic_round_import_contacts_24)
         type.text = item.type
         typeView.visibility = View.VISIBLE
@@ -97,7 +96,6 @@ class OfflineMangaAdapter(
         applyFilter()
     }
 
-    // a refreshed list keeps whatever the user typed in the search bar
     private fun applyFilter() {
         items = if (query.isEmpty()) originalItems
         else originalItems.filter { it.title.contains(query, ignoreCase = true) }

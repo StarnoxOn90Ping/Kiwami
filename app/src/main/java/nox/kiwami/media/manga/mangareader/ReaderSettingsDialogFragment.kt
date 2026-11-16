@@ -29,7 +29,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        // Lock the bottom sheet to expanded so tab switches don't change its height/position
         val bottomSheet = dialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
         if (bottomSheet != null) {
             val behavior = BottomSheetBehavior.from(bottomSheet)
@@ -53,20 +52,16 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         val activity = requireActivity() as MangaReaderActivity
         val settings = activity.defaultSettings
 
-        // Defensive null safety for settings deserialized from older versions
         settings.imageQuality = settings.imageQuality ?: CurrentReaderSettings.ImageQuality.FAST
         settings.layout = settings.layout ?: CurrentReaderSettings.Layouts.CONTINUOUS
         settings.direction = settings.direction ?: CurrentReaderSettings.Directions.TOP_TO_BOTTOM
         settings.dualPageMode = settings.dualPageMode ?: CurrentReaderSettings.DualPageModes.Automatic
 
-        // Close button
         binding.closeReaderSheet.setOnClickListener { dismiss() }
 
-        // Subtitle indicator
         binding.readerSheetSubtitle.text =
             resources.getStringArray(R.array.manga_layouts)[settings.layout.ordinal]
 
-        // --- SEGMENTED TAB SWITCHING ---
         val tabButtons = listOf(
             binding.tabLayoutBtn,
             binding.tabNavBtn,
@@ -105,7 +100,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             btn.setOnClickListener { selectTab(idx) }
         }
 
-        // ================= TAB 1: LAYOUT =================
         val layoutButtons = listOf(
             binding.readerPaged,
             binding.readerContinuousPaged,
@@ -171,7 +165,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             }
         }
 
-        // Continuous Side Padding Slider
         binding.readerContinuousPaddingSlider.value = settings.continuousSidePadding.toFloat()
         binding.readerContinuousPaddingText.text = "${settings.continuousSidePadding}%"
         binding.readerContinuousPaddingSlider.addOnChangeListener { _, value, fromUser ->
@@ -202,7 +195,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
-        // ================= TAB 2: NAVIGATION =================
         binding.readerOneHandZoom.isChecked = settings.oneHandZoom
         binding.readerOneHandZoom.setOnCheckedChangeListener { _, isChecked ->
             settings.oneHandZoom = isChecked
@@ -245,8 +237,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
-        // ================= TAB 3: DISPLAY =================
-        // Image Quality chips
         val currentQuality = settings.imageQuality ?: CurrentReaderSettings.ImageQuality.FAST
         when (currentQuality) {
             CurrentReaderSettings.ImageQuality.FAST     -> binding.readerImageQualityFast.isChecked = true
@@ -264,7 +254,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
-        // Background Color Chips (0: Auto, 1: Black, 2: Gray, 3: White)
         when (settings.backgroundColor) {
             0 -> binding.readerBgAuto.isChecked = true
             1 -> binding.readerBgBlack.isChecked = true
@@ -294,7 +283,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applyBackgroundColor(3)
         }
 
-        // Orientation Lock Chips (0: Free, 1: Portrait, 2: Landscape)
         when (settings.defaultRotation) {
             0 -> binding.readerRotationFree.isChecked = true
             1 -> binding.readerRotationPortrait.isChecked = true
@@ -376,7 +364,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
-        // ================= TAB 4: DATA & PRELOAD =================
         binding.readerPreloadSlider.value = settings.preloadAmount.toFloat()
         binding.readerPreloadText.text = "${settings.preloadAmount} Pages"
         binding.readerPreloadSlider.addOnChangeListener { _, value, fromUser ->
@@ -396,7 +383,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.saveCurrentSettings()
         }
 
-        // Data Saver Modes
         val dataSaverModes = listOf(
             binding.dataSaverNone,
             binding.dataSaverBandwidthHero,

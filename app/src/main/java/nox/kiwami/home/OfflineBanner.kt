@@ -18,10 +18,6 @@ import nox.kiwami.R
 import nox.kiwami.databinding.ViewOfflineBannerBinding
 import nox.kiwami.statusBarHeight
 
-/**
- * The "You're offline" banner floating at the top of Home in Offline mode.
- * Shimmering title + pulsing icon; turns green ("Back online") when the connection returns.
- */
 class OfflineBanner(
     private val view: View,
     private val b: ViewOfflineBannerBinding
@@ -90,7 +86,6 @@ class OfflineBanner(
             start()
         }
 
-        // light sweeping across the title text
         val title = b.offlineBannerTitle
         title.post {
             val w = title.width.toFloat().coerceAtLeast(1f)

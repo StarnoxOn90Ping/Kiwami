@@ -20,19 +20,6 @@ import java.io.File
 import java.lang.reflect.Type
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Remembers the cards shown on the downloads pages (anime / manga / novels).
- *
- * Building one card means walking the download folder through the storage access framework,
- * looking for cover.jpg / banner.jpg and parsing media.json, which is slow when there are many
- * titles. That used to happen for every title, one after another, every time a page was opened,
- * resumed, refreshed or its view style was changed. Now each title is built once, kept in memory
- * and mirrored to a small file in the cache folder, so the pages can show instantly and only
- * missing titles have to be loaded.
- *
- * Entries are tied to the current download location (a different location starts empty) and are
- * dropped when a title's downloads change (see [invalidate]) or the index is rebuilt ([clear]).
- */
 object OfflineLibraryCache {
     private const val FILE_NAME = "offline_library_cache_v1.json"
 
@@ -67,7 +54,6 @@ object OfflineLibraryCache {
 
     private fun mangaKey(type: String, title: String) = "$type|$title"
 
-    /** Loads the file once per process and resets everything when the download location changed. */
     fun ensureLoaded(context: Context) {
         synchronized(stateLock) {
             val dir = downloadsDir()
@@ -87,7 +73,6 @@ object OfflineLibraryCache {
                 anime.putAll(snapshot.anime)
                 manga.putAll(snapshot.manga)
             } catch (e: Exception) {
-                // a broken cache is only a slower first load, never a problem
                 Logger.log("OfflineLibraryCache: ignoring unreadable cache (${e.message})")
             }
         }
@@ -97,12 +82,6 @@ object OfflineLibraryCache {
 
     fun getManga(type: String, title: String): OfflineMangaModel? = manga[mangaKey(type, title)]
 
-    /**
-     * Returns the cached card for [title], or builds it with [load] (at most once even when several
-     * loads ask for the same title at the same time) and remembers it.
-     * Cards built from the "could not read this title" fallback are not remembered, so they get
-     * another chance next time.
-     */
     suspend fun animeOrLoad(
         title: String,
         load: suspend () -> OfflineAnimeModel
@@ -125,7 +104,6 @@ object OfflineLibraryCache {
         }
     }
 
-    /** A title's downloads changed (episode/chapter added or removed): rebuild its card next time. */
     fun invalidate(title: String) {
         val valid = title.findValidName()
         anime.remove(valid)
@@ -140,14 +118,12 @@ object OfflineLibraryCache {
 
     fun clearManga() = manga.clear()
 
-    /** Forget everything (download location changed, index rebuilt). */
     fun clear() {
         anime.clear()
         manga.clear()
         synchronized(stateLock) { currentDir = downloadsDir() }
     }
 
-    /** Writes the cache file. Call from a background thread. */
     fun persist(context: Context) {
         try {
             val snapshot = Snapshot(downloadsDir(), HashMap(anime), HashMap(manga))
@@ -160,6 +136,5 @@ object OfflineLibraryCache {
         }
     }
 
-    /** `episodes` / `chapters` value of the card the fragments build when a title can't be read. */
     const val FALLBACK = "hmm"
 }

@@ -285,7 +285,7 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         }
     }
 
-    override fun notifyDataChanged() { // do nothing
+    override fun notifyDataChanged() {
     }
 
     private class NovelExtensionsAdapter(

@@ -91,7 +91,6 @@ class ThemeManager(private val context: Activity) {
         val builder = DynamicColorsOptions.Builder()
         var needMaterial = true
 
-        // Set content-based source if a bitmap is provided
         if (bitmap != null) {
             builder.setContentBasedSource(bitmap)
             needMaterial = false
@@ -109,10 +108,8 @@ class ThemeManager(private val context: Activity) {
         }
         if (needMaterial && !useMaterialYou) return true
 
-        // Build the options
         val options = builder.build()
 
-        // Apply the dynamic colors to the activity
         val activity = context as Activity
         DynamicColors.applyToActivityIfAvailable(activity, options)
 

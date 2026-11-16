@@ -372,11 +372,6 @@ fun Activity.setNavigationTheme() {
     }
 }
 
-/**
- * Sets clipToPadding false and sets the combined height of navigation bars as bottom padding.
- *
- * When nesting multiple scrolling views, only call this method on the innermost scrolling view.
- */
 fun ViewGroup.setBaseline(view: View, includeSystemNavBar: Boolean = true) {
     fun updateLayout() {
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -528,13 +523,11 @@ open class BottomSheetDialogFragment :
                 com.google.android.material.R.attr.colorSurface
             )
 
-            // Deprecated on Android 15 (API 35)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 @Suppress("DEPRECATION")
                 window.navigationBarColor = surfaceColor
             }
 
-            // Match navigation bar icon color to the background
             controller.isAppearanceLightNavigationBars =
                 ColorUtils.calculateLuminance(surfaceColor) > 0.5
         }
@@ -1155,7 +1148,6 @@ fun savePrefs(
     return try {
         val encryptedData = PreferenceKeystore.encryptWithPassword(password, serialized, salt)
 
-        // Combine salt and encrypted data
         val dataToSave = salt + encryptedData
 
         file.writeBytes(dataToSave)
@@ -1398,7 +1390,7 @@ fun toast(res: Int) {
 }
 
 fun snackString(s: String?, activity: Activity? = null, clipboard: String? = null): Snackbar? {
-    try { //I have no idea why this sometimes crashes for some people...
+    try {
         if (s != null) {
             (activity ?: currActivity())?.apply {
                 val snackBar = Snackbar.make(
@@ -1538,25 +1530,6 @@ fun brightnessConverter(it: Float, fromLog: Boolean) =
         else it, 0.001f, 1f
     )
 
-// NOTE:Unused legacy function
-
-//fun checkCountry(context: Context): Boolean {
-//    val telMgr = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-//    return when (telMgr.simState) {
-//        TelephonyManager.SIM_STATE_ABSENT -> {
-//            val tz = TimeZone.getDefault().id
-//            tz.equals("Asia/Kolkata", ignoreCase = true)
-//        }
-//
-//        TelephonyManager.SIM_STATE_READY -> {
-//            val countryCodeValue = telMgr.networkCountryIso
-//            countryCodeValue.equals("in", ignoreCase = true)
-//        }
-//
-//        else -> false
-//    }
-//}
-
 const val INCOGNITO_CHANNEL_ID = 26
 
 @SuppressLint("LaunchActivityFromNotification")
@@ -1659,10 +1632,6 @@ fun ImageView.openImage(title: String, image: String) {
     }
 }
 
-/**
- * Attempts to open the link in the app, otherwise copies it to the clipboard
- * @param link the link to open
- */
 fun openOrCopyAnilistLink(link: String) {
     if (link.startsWith("https://anilist.co/anime/") || link.startsWith("https://anilist.co/manga/")) {
         val mangaAnime = link.substringAfter("https://anilist.co/").substringBefore("/")
@@ -1701,10 +1670,6 @@ fun openOrCopyAnilistLink(link: String) {
     }
 }
 
-/**
- * Builds the markwon instance with all the plugins
- * @return the markwon instance
- */
 fun buildMarkwon(
     activity: Context,
     userInputContent: Boolean = true,

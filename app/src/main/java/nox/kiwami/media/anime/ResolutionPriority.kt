@@ -4,11 +4,6 @@ import nox.kiwami.parsers.Video
 import nox.kiwami.parsers.VideoExtractor
 import nox.kiwami.settings.saving.PrefManager
 
-/**
- * Orders streams by the user's "resolution priority" list (Settings > Anime, or the per-extension
- * setting). The resolution at the top of that list comes first; streams whose resolution is not in
- * the list go last, highest quality first.
- */
 object ResolutionPriority {
 
     private fun number(res: String) = Regex("""\d+""").find(res)?.value?.toIntOrNull()
@@ -29,7 +24,6 @@ object ResolutionPriority {
     private fun bestQuality(extractor: VideoExtractor): Int =
         extractor.videos.maxOfOrNull { it.quality ?: 0 } ?: 0
 
-    /** Comparator for streams of the given extension (null = the global priority). */
     fun comparator(sourceName: String?): Comparator<VideoExtractor> {
         val priority = PrefManager.getPreferredDownloadResolutions(sourceName)
         return compareBy<VideoExtractor> { bestRank(it, priority) }
@@ -40,7 +34,6 @@ object ResolutionPriority {
     fun sort(extractors: List<VideoExtractor>, sourceName: String?): List<VideoExtractor> =
         extractors.sortedWith(comparator(sourceName))
 
-    /** Sorts the videos inside a single extractor the same way. */
     fun sortVideos(videos: List<Video>, sourceName: String?): List<Video> {
         val priority = PrefManager.getPreferredDownloadResolutions(sourceName)
         return videos.sortedWith(

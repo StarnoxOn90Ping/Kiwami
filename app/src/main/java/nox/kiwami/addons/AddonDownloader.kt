@@ -93,10 +93,6 @@ class AddonDownloader {
             }
         }
 
-        /**
-         * Returns the ABI that the app is most likely running on.
-         * @return The primary ABI for the device.
-         */
         private fun getCurrentABI(): String {
             return if (Build.SUPPORTED_ABIS.isNotEmpty()) {
                 Build.SUPPORTED_ABIS[0]

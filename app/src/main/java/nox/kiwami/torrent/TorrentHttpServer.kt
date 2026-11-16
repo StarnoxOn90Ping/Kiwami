@@ -30,7 +30,6 @@ class TorrentHttpServer(
                         val socket = serverSocket?.accept() ?: break
                         executor.submit { handleClient(socket) }
                     } catch (e: Exception) {
-                        // socket closed or error
                     }
                 }
             }
@@ -45,7 +44,6 @@ class TorrentHttpServer(
         try {
             serverSocket?.close()
         } catch (e: Exception) {
-            // ignore
         }
         serverSocket = null
         executor.shutdownNow()
@@ -55,7 +53,6 @@ class TorrentHttpServer(
     private fun handleClient(socket: Socket) {
         socket.use { client ->
             try {
-                // Enable TCP_NODELAY for lower streaming latency
                 client.tcpNoDelay = true
 
                 val input = client.getInputStream()
@@ -125,7 +122,6 @@ class TorrentHttpServer(
                     return
                 }
 
-                // Prioritize this file's pieces
                 val priorities = Array(fileStorage.numFiles()) { Priority.IGNORE }
                 priorities[fileIndex] = Priority.TOP_PRIORITY
                 torrentHandle.prioritizeFiles(priorities)
@@ -135,7 +131,6 @@ class TorrentHttpServer(
                 val pieceLength = torrentInfo.pieceLength().toLong()
                 val totalPieces = torrentInfo.numPieces()
 
-                // Read headers to check for HTTP Range
                 var rangeHeader: String? = null
                 while (true) {
                     val line = reader.readLine()
@@ -169,7 +164,6 @@ class TorrentHttpServer(
                 val contentSize = endByte - startByte + 1
                 val output = client.getOutputStream()
 
-                // Send response headers
                 val contentType = getMimeType(fileStorage.filePath(fileIndex))
                 val responseHeaders = if (rangeHeader != null) {
                     "HTTP/1.1 206 Partial Content\r\n" +
@@ -199,7 +193,7 @@ class TorrentHttpServer(
                 val targetFile = File(fileStorage.filePath(fileIndex, savePath))
 
                 var currentPosition = startByte
-                val buffer = ByteArray(128 * 1024) // 128KB buffer for high-throughput streaming
+                val buffer = ByteArray(128 * 1024)
                 var fileChannel: RandomAccessFile? = null
                 var lastPrebufferedPiece = -1
                 var lastLookaheadPieces = 0
@@ -209,9 +203,7 @@ class TorrentHttpServer(
                         val torrentByteOffset = fileOffset + currentPosition
                         val pieceIndex = (torrentByteOffset / pieceLength).toInt()
 
-                        // Adaptive 20MB Rolling Lookahead Window (dynamic piece budget)
                         if (pieceIndex != lastPrebufferedPiece) {
-                            // If seek occurred (jump > 2 pieces away), deprioritize previous lookahead window
                             if (lastPrebufferedPiece != -1 && kotlin.math.abs(pieceIndex - lastPrebufferedPiece) > 2) {
                                 for (p in lastPrebufferedPiece until (lastPrebufferedPiece + lastLookaheadPieces)) {
                                     if (p < totalPieces && p != pieceIndex) {
@@ -238,7 +230,6 @@ class TorrentHttpServer(
                             }
                         }
 
-                        // 1. Wait for current piece to complete
                         var waitCount = 0
                         var loggedWait = false
                         while (!torrentHandle.havePiece(pieceIndex)) {
@@ -252,7 +243,6 @@ class TorrentHttpServer(
                         }
                         if (!isRunning || !torrentHandle.isValid) break
 
-                        // 2. Determine how many bytes we can read from current piece
                         val pieceEndByteInTorrent = (pieceIndex.toLong() + 1) * pieceLength
                         val pieceEndPositionInFile = pieceEndByteInTorrent - fileOffset
                         val remainingToRead = endByte - currentPosition + 1
@@ -261,7 +251,6 @@ class TorrentHttpServer(
 
                         if (toRead <= 0) break
 
-                        // 3. Read directly from targetFile on disk
                         var bytesRead = -1
                         var readAttempts = 0
                         while (readAttempts < 200) {
@@ -293,7 +282,6 @@ class TorrentHttpServer(
                             break
                         }
 
-                        // 4. Stream to client socket
                         output.write(buffer, 0, bytesRead)
                         output.flush()
                         currentPosition += bytesRead
@@ -306,7 +294,6 @@ class TorrentHttpServer(
                 }
 
             } catch (e: Exception) {
-                // Connection reset by peer or similar
             }
         }
     }
@@ -324,7 +311,6 @@ class TorrentHttpServer(
             output.write(response.toByteArray())
             output.flush()
         } catch (e: Exception) {
-            // ignore
         }
     }
 

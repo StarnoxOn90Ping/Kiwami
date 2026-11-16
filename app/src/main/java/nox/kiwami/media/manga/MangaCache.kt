@@ -129,7 +129,6 @@ fun saveImage(
 
             val file = File(directory, filename)
 
-            // Check if the file already exists
             if (file.exists()) {
                 println("File already exists: ${file.absolutePath}")
                 return

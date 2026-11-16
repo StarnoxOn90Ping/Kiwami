@@ -46,7 +46,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
 
 
 
-    // aria2 process variables
     private var aria2Process: Process? = null
     private var rpcPort: Int = 6800
     private var aria2Secret: String = ""
@@ -289,7 +288,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             (!isDash && !hasVideoExtension(videoUrl) && isHlsPlaylist(videoUrl, headers))
 
         if (isHls && subtitleUrls.isEmpty() && audioUrls.isEmpty()) {
-            // HLS → parallel segments → remux once straight to destination MKV
             val tempFile = File(context.cacheDir, "hls_dl_${sessionId}.ts")
             val session = DownloadSession.HlsSession(sessionId, downloadPath, context)
             activeSessions[sessionId] = session
@@ -301,7 +299,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                         videoUrl, headers, tempFile, sessionId
                     ) { progressPercent, durationSec ->
                         session.durationSeconds = durationSec
-                        // Service maps stat/1000 → percent
                         emitProgress(sessionId, statCallback, progressPercent.toDouble() * 1000.0)
                     }
                     if (session.hasError || !isActive) {
@@ -312,7 +309,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                     session.totalBytes = hlsResult.totalBytes
                     session.downloadedBytes.set(hlsResult.totalBytes)
 
-                    // Single write: FFmpeg muxes directly to SAF/path (no intermediate mkv + copy)
                     remuxMpegTsToMkv(tempFile, downloadPath, emptyList(), emptyList())
                     assertHasPlayableVideo(downloadPath)
 
@@ -336,7 +332,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             return sessionId
 
         } else if (!isHls && !isDash && subtitleUrls.isEmpty() && audioUrls.isEmpty()) {
-            // Progressive HTTP/HTTPS URL -> Download using multi-connection aria2 subprocess (with OkHttp fallback)
             val tempFile = File(context.cacheDir, "aria_dl_${sessionId}.bin")
             val targetUri = uriMap[downloadPath]
             val session = DownloadSession.Aria2Session(sessionId, downloadPath, context)
@@ -359,7 +354,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                         val session = activeSessions[sessionId] as? DownloadSession.Aria2Session
                         session?.currentStatus = "RUNNING"
 
-                        // Poll status (500ms — progress is pushed via statCallback)
                         while (isActive) {
                             val statusMap = callAria2TellStatus(gid)
                             if (statusMap == null) {
@@ -392,7 +386,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                             delay(500.milliseconds)
                         }
                     } else {
-                        // Fallback to OkHttp progressive downloader
                         val session = activeSessions[sessionId] as? DownloadSession.Aria2Session
                         session?.currentStatus = "RUNNING"
 
@@ -446,7 +439,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                         return@launch
                     }
 
-                    // Copy completed temp file to SAF path
                     if (targetUri != null) {
                         copyFileToUri(tempFile, targetUri)
                     } else {
@@ -474,7 +466,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             return sessionId
 
         } else if (isHls) {
-            // Complex HLS: parallel video + subs + audio, then single mux to destination
             val tempVideoFile = File(context.cacheDir, "hls_dl_${sessionId}_video.ts")
             val session = DownloadSession.ComplexHlsSession(sessionId, downloadPath, context)
             activeSessions[sessionId] = session
@@ -493,7 +484,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                                 videoUrl, headers, tempVideoFile, sessionId
                             ) { progressPercent, durationSec ->
                                 session.durationSeconds = durationSec
-                                // Keep segment-based byte totals from updateHlsSessionBytes
                                 emitProgress(
                                     sessionId,
                                     statCallback,
@@ -587,7 +577,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             return sessionId
 
         } else {
-            // Complex non-HLS stream or has separate tracks/manifests -> fall back to embedded FFmpeg
             Logger.log("Built-in: Falling back to embedded FFmpeg downloader for session $sessionId")
             val command = StringBuilder()
             val headersStr = buildHeadersString(headers)
@@ -634,7 +623,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                 { session ->
                     Logger.log("Built-in FFmpeg session exited: state=${session.state} rc=${session.returnCode}")
                 }, {
-                    // console logs
                 }) {
                 val sid = ffmpegSessionId.get()
                 if (sid != -1L) {
@@ -644,7 +632,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             val rawId = exec.sessionId
             ffmpegSessionId.set(rawId)
             activeSessions[rawId] = DownloadSession.FFMpegSession(rawId, downloadPath)
-            // If already cancelled under our provisional id, cancel FFmpeg too
             if (cancelledSessions.contains(sessionId)) {
                 cancelledSessions.add(rawId)
                 FFmpegKit.cancel(rawId)
@@ -673,7 +660,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             }, {
                 logCallback(it.message)
             }) {
-            // stats
         }
         val rawId = exec.sessionId
         activeSessions[rawId] = DownloadSession.FFMpegSession(rawId, "")
@@ -691,7 +677,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
         }
         FFprobeKit.executeAsync(cmd,
             {
-                // logs
             }, {
                 logCallback(it.message)
             })
@@ -708,10 +693,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
     override fun hadError(sessionId: Long): Boolean {
         return activeSessions[sessionId]?.hadError() ?: false
     }
-
-    // ==========================================
-    // PARALLEL HLS SEGMENT DOWNLOADER
-    // ==========================================
 
     private data class HlsDownloadResult(
         val durationSeconds: Double,
@@ -788,7 +769,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                 repeat(initialConcurrency) {
                     launch {
                         while (isActive) {
-                            // Check shared rate-limit cooldown
                             val cooldownWait = rateLimitCooldownUntil.get() - android.os.SystemClock.elapsedRealtime()
                             if (cooldownWait > 0) {
                                 delay(cooldownWait.milliseconds)
@@ -841,7 +821,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
 
                                     Logger.log("Built-in: Rate limited on seg ${seg.index} (attempt ${seg.attempts}/8). Backing off for ${backoffMs}ms")
 
-                                    // Update shared cooldown so all other workers pause
                                     val cooldownUntil = android.os.SystemClock.elapsedRealtime() + backoffMs
                                     rateLimitCooldownUntil.updateAndGet { cur -> maxOf(cur, cooldownUntil) }
 
@@ -849,13 +828,11 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                                         throw IOException("HTTP ${e.code} Too Many Requests on segment ${seg.index} after ${seg.attempts} attempts", e)
                                     }
 
-                                    // Return segment to the front of queue to be retried
                                     synchronized(segmentQueue) {
                                         segmentQueue.add(0, seg)
                                     }
                                     delay(backoffMs.milliseconds)
                                 } else {
-                                    // General network/IO exception
                                     if (seg.attempts >= 5) {
                                         throw e
                                     }
@@ -1082,9 +1059,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
         return if (isLowRam) 4 else 8
     }
 
-    // ==========================================
-    // aria2 SUBPROCESS MANAGEMENT
-    // ==========================================
     private suspend fun ensureAria2Running(): Unit = aria2Mutex.withLock {
         if (aria2Process != null) return
         rpcPort = findFreePort(6800)
@@ -1112,11 +1086,9 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             try {
                 proc.inputStream.bufferedReader().use { reader ->
                     while (reader.readLine() != null) {
-                        // ignore/discard logs
                     }
                 }
             } catch (_: Exception) {
-                // ignore
             }
         }.start()
 
@@ -1192,10 +1164,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
         return@withContext null
     }
 
-    // ==========================================
-    // SAF UTILS & GENERAL HELPERS
-    // ==========================================
-
     private val pngSignature = byteArrayOf(
         0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
     )
@@ -1218,7 +1186,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
                 cipherIn.copyTo(output)
             }
         } catch (pkcsError: Exception) {
-            // Input already consumed on failure — caller retries segment download
             throw IOException("HLS AES decrypt failed: ${pkcsError.message}", pkcsError)
         }
     }
@@ -1239,13 +1206,11 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
 
             val needsSanitize = indexOfPng(head, 0, read) >= 0
             if (!needsSanitize && head[0] == 0x47.toByte()) {
-                // Clean TS-like segment: write peeked bytes then stream the rest
                 out.write(head, 0, read)
                 input.copyTo(out)
                 return
             }
 
-            // Slow path: load remainder and strip PNGs (segments are small, ~0.5–2MB)
             val rest = input.readBytes()
             val full = if (rest.isEmpty()) {
                 head.copyOf(read)
@@ -1298,7 +1263,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
         return -1
     }
 
-    /** Returns index just past IEND chunk, or offset+8 if parsing fails. */
     private fun skipPngAt(data: ByteArray, offset: Int): Int {
         var pos = offset + 8
         while (pos + 8 <= data.size) {
@@ -1448,7 +1412,6 @@ class NativeVideoDownloader(private val context: Context) : DownloadAddonApiV2 {
             throw IOException("FFmpeg muxing failed: ${exec.allLogsAsString}")
         }
 
-        // Filesystem path: verify size. SAF paths are validated via ffprobe next.
         val asFile = File(outputPath)
         if (asFile.exists() && asFile.length() < 1024L) {
             throw IOException("FFmpeg mux produced empty/too-small output (${asFile.length()} bytes)")

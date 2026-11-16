@@ -38,7 +38,6 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Listeners for Controls
         binding.switchShowIcon.setOnCheckedChangeListener { _, isChecked ->
             if (isLoadingSettings) return@setOnCheckedChangeListener
             if (isMangaTabSelected) {
@@ -69,7 +68,6 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
             updatePreview()
         }
 
-        // Setup Tabs
         binding.mediaTypeTabGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 isMangaTabSelected = checkedId == binding.btnTabManga.id
@@ -78,14 +76,12 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
             }
         }
 
-        // Initialize with Anime tab
         binding.mediaTypeTabGroup.check(binding.btnTabAnime.id)
         isMangaTabSelected = false
         loadSettingsForCurrentTab()
         updatePreview()
         updateTokenExpiry()
 
-        // Auto-refresh the token expiry display every 30s while dialog is open
         tokenRefreshJob = lifecycleScope.launch {
             while (true) {
                 delay(30_000L)
@@ -97,7 +93,6 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
     private fun updateTokenExpiry() {
         var expiresAt = RPCManager.getTokenExpiresAt()
 
-        // If RPCManager hasn't initialized yet, try loading from disk
         if (expiresAt == 0L) {
             expiresAt = runCatching {
                 val ctx = context ?: return
@@ -160,7 +155,6 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
         val useIcon = if (isMangaTabSelected) PrefManager.getVal(PrefName.DiscordRPCShowIconManga, true)
                       else PrefManager.getVal(PrefName.DiscordRPCShowIconAnime, true)
 
-        // Mock data based on tab
         if (isMangaTabSelected) {
             binding.previewActivityName.text = "Reading One Piece"
             binding.previewDetails.text = "Chapter 1100"
@@ -171,10 +165,8 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
             binding.previewState.text = "Episode : 1/??"
         }
 
-        // Large Image
         Glide.with(this).load(R.mipmap.ic_launcher).into(binding.previewLargeImage)
 
-        // Small Icon
         if (useIcon && mode != "nothing") {
             binding.previewSmallImage.visibility = View.VISIBLE
             val iconUrl = Discord.small_Image_AniList
@@ -183,7 +175,6 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
             binding.previewSmallImage.visibility = View.GONE
         }
 
-        // Buttons
         if (mode == "nothing") {
             binding.previewButton1.visibility = View.GONE
             binding.previewButton2.visibility = View.GONE

@@ -27,7 +27,6 @@ class OfflineMangaParser : MangaParser() {
         sManga: SManga
     ): List<MangaChapter> {
         val directory = getSubDirectory(context, MediaType.MANGA, false, mangaLink)
-        //get all of the folder names and add them to the list
         val chapters = mutableListOf<MangaChapter>()
         if (directory?.exists() == true) {
             var fileNames = directory.listFiles().filter { it.isDirectory }.map { it.name }

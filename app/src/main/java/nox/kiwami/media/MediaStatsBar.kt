@@ -32,13 +32,11 @@ private fun remaining(seconds: Long): String {
     }
 }
 
-/** Fills the score / popularity / favourites / duration bar and the live "airs in" line. */
 fun bindMediaStatsBar(binding: FragmentMediaInfoBinding, media: Media) {
     binding.mediaStatScore.text = media.meanScore?.let { (it / 10.0).toString() } ?: "~"
     binding.mediaStatPopularity.text = compact(media.popularity)
     binding.mediaStatFavorites.text = compact(media.favourites)
 
-    // episode length only exists for anime
     if (media.anime != null) {
         binding.mediaStatDurationColumn.visibility = View.VISIBLE
         binding.mediaStatSpacer3.visibility = View.VISIBLE
@@ -52,7 +50,6 @@ fun bindMediaStatsBar(binding: FragmentMediaInfoBinding, media: Media) {
 
     equalizeStatValues(binding)
 
-    // airing line (anime with a scheduled next episode)
     val row = binding.mediaAiringRow
     val nextEp = media.anime?.nextAiringEpisode
     val nextTime = media.anime?.nextAiringEpisodeTime
@@ -62,7 +59,7 @@ fun bindMediaStatsBar(binding: FragmentMediaInfoBinding, media: Media) {
     }
     val airTick = object : Runnable {
         override fun run() {
-            if (!row.isAttachedToWindow) return // page is gone, stop ticking
+            if (!row.isAttachedToWindow) return
             val left = nextTime - System.currentTimeMillis() / 1000
             if (left <= 0) {
                 row.visibility = View.GONE
@@ -80,7 +77,6 @@ fun bindMediaStatsBar(binding: FragmentMediaInfoBinding, media: Media) {
     airTick.run()
 }
 
-/** All four values share one text size: the biggest one at which every column fits side by side. */
 private const val STAT_MAX_SP = 18f
 private const val STAT_MIN_SP = 11f
 
@@ -93,14 +89,11 @@ private fun equalizeStatValues(binding: FragmentMediaInfoBinding) {
         binding.mediaStatDuration to binding.mediaStatDurationColumn
     ).filter { it.second.visibility == View.VISIBLE }
     val values = columns.map { it.first }
-    // never cut a value off with "..."
     values.forEach { it.ellipsize = null }
     fun fit() {
         val available = card.width - card.paddingLeft - card.paddingRight
         if (available <= 0 || values.isEmpty()) return
         val density = card.resources.displayMetrics.density
-        // each column is as wide as its value or its label, whichever is wider;
-        // keep a small gap between columns and a little room at both ends
         val labelWidths = columns.map { (_, col) ->
             val label = (col as android.view.ViewGroup).getChildAt(1) as android.widget.TextView
             label.paint.measureText(label.text.toString())

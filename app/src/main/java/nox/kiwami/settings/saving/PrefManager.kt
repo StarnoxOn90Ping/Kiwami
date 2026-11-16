@@ -141,7 +141,7 @@ object PrefManager {
     fun <T> getNullableVal(
         prefName: PrefName,
         default: T?
-    ): T? {  //Strings don't necessarily need to use this one
+    ): T? {
         return try {
             val pref = getPrefLocation(prefName.data.prefLocation)
             when (prefName.data.type) {
@@ -291,7 +291,6 @@ object PrefManager {
 
     @Suppress("UNCHECKED_CAST")
     fun <T> setCustomVal(key: String, value: T?) {
-        //for custom force irrelevant
         with(irrelevantPreferences!!.edit()) {
             when (value) {
                 is Boolean -> putBoolean(key, value as Boolean)
@@ -308,19 +307,12 @@ object PrefManager {
     }
 
     fun removeCustomVal(key: String) {
-        //for custom force irrelevant
         with(irrelevantPreferences!!.edit()) {
             remove(key)
             apply()
         }
     }
 
-    /**
-     * Retrieves all SharedPreferences entries with keys starting with the specified prefix.
-     *
-     * @param prefix The prefix to filter keys.
-     * @return A map containing key-value pairs that match the prefix.
-     */
     fun getAllCustomValsForMedia(prefix: String): Map<String, Any?> {
         val prefs = irrelevantPreferences ?: return emptyMap()
         val allEntries = mutableMapOf<String, Any?>()
@@ -412,7 +404,7 @@ object PrefManager {
             ?: throw ClassCastException("Cannot cast to SharedPreferenceLiveData<T>")
 
     fun getAnimeDownloadPreferences(): SharedPreferences =
-        animeDownloadsPreferences!!  //needs to be used externally
+        animeDownloadsPreferences!!
 
     fun exportAllPrefs(prefLocation: List<Location>): String {
         val nonExtensionLocations = prefLocation.filter { it != Location.ExtensionSettings }
@@ -422,12 +414,6 @@ object PrefManager {
         )
     }
 
-
-    /**
-     * @param prefs Map of preferences to import
-     * @param prefLocation Location to import to
-     * @return true if successful, false if error
-     */
 
     @Suppress("UNCHECKED_CAST")
     fun importAllPrefs(prefs: Map<String, *>, prefLocation: Location): Boolean {

@@ -13,11 +13,6 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import nox.kiwami.plainHttpClient
 
-/**
- * Local SQLite fallback for AniSkip skip times, automatically synced in the background
- * every 7 days from the public dump at:
- * https://raw.githubusercontent.com/aniskip/sanitize_db_dump/refs/heads/main/skip_times_public.csv
- */
 class AniskipCsvFallback(context: Context) {
 
     companion object {
@@ -39,7 +34,7 @@ class AniskipCsvFallback(context: Context) {
 
         private const val BATCH_SIZE = 2000
         private const val PREF_LAST_UPDATED = "aniskip_csv_last_updated"
-        private const val SYNC_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000L // 7 days
+        private const val SYNC_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000L
 
         private val VALID_TYPES = setOf("op", "ed", "recap", "mixed-op", "mixed-ed")
 

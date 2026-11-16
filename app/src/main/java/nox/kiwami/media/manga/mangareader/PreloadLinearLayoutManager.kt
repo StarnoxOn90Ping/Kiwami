@@ -13,10 +13,6 @@ class PreloadLinearLayoutManager(context: Context, orientation: Int, reverseLayo
     private val mOrientationHelper: OrientationHelper =
         OrientationHelper.createOrientationHelper(this, orientation)
 
-    /**
-     * As [LinearLayoutManager.collectAdjacentPrefetchPositions] will prefetch one view for us,
-     * we only need to prefetch additional ones.
-     */
     var preloadItemCount = 1
         set(count) {
             require(count >= 1) { "preloadItemCount must not be smaller than 1!" }

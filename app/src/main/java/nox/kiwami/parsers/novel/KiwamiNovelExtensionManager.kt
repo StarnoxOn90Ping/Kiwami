@@ -18,11 +18,6 @@ import kotlinx.coroutines.launch
 import rx.Observable
 import tachiyomi.core.util.lang.withUIContext
 
-/**
- * Dedicated manager for APK-based Kiwami Novel extensions.
- * Handles scanning installed APKs, fetching available APK extensions from GitHub,
- * and installing/updating/uninstalling APK packages.
- */
 class KiwamiNovelExtensionManager(private val context: Context) {
 
     var isInitialized = false

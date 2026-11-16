@@ -34,14 +34,11 @@ class MangaChapterAdapter(
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
-        /** Partial bind: only refresh the selected/unselected look of a card. */
         private const val PAYLOAD_SELECTION = "selection"
 
-        /** Partial bind: read / unread look, animated only when it actually changed. */
         private const val PAYLOAD_READ = "read_state"
     }
 
-    /** Chapters picked in multi-select mode, keyed by uniqueNumber() (number + scanlator). */
     val selectedChapters = LinkedHashSet<String>()
     var onSelectionChanged: ((Int) -> Unit)? = null
 
@@ -285,7 +282,6 @@ class MangaChapterAdapter(
         downloadedBytes: Long,
         estimatedTotalBytes: Long
     ) {
-        // Find the position of the chapter and notify only that item
         val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber }
         if (position != -1) {
             arr[position].progress = buildDownloadProgressText(
@@ -315,17 +311,14 @@ class MangaChapterAdapter(
     }
 
     fun downloadNChaptersFrom(position: Int, n: Int) {
-        //download next n chapters
         if (position < 0 || position >= arr.size) return
         for (i in 0..<n) {
             if (position + i < arr.size) {
                 val chapter = arr[position + i]
                 val chapterNumber = chapter.uniqueNumber()
                 if (activeDownloads.contains(chapterNumber)) {
-                    //do nothing
                     continue
                 } else if (isDownloaded(chapter)) {
-                    //do nothing
                     continue
                 } else {
                     fragment.onMangaChapterDownloadClick(chapter)
@@ -335,7 +328,6 @@ class MangaChapterAdapter(
     }
 
     fun deleteNChaptersFrom(position: Int, n: Int){
-        //delete next n chapters
         if (position < 0 || position >= arr.size) return
         for (i in 0..<n) {
             if (position + i < arr.size) {
@@ -371,17 +363,14 @@ class MangaChapterAdapter(
             binding.itemDownload.visibility = View.VISIBLE
 
             if (activeDownloads.contains(chapterNumber) || activeDownloads.contains(chapter.number)) {
-                // Show spinner
                 binding.itemDownload.setImageResource(R.drawable.ic_sync)
                 startOrContinueRotation(chapter) {
                     binding.itemDownload.rotation = 0f
                 }
             } else if (isDownloaded(chapter)) {
-                // Show delete icon
                 binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
                 binding.itemDownload.rotation = 0f
             } else {
-                // Show download icon
                 binding.itemDownload.setImageResource(R.drawable.ic_download_24)
                 binding.itemDownload.rotation = 0f
             }
@@ -475,7 +464,6 @@ class MangaChapterAdapter(
                         }
                     }
                     else{
-                        //Alert dialog asking for the number of chapters to download
                         it.context.customAlertDialog().apply {
                             setTitle("Multi Chapter Downloader")
                             setMessage("Enter the number of chapters to download")
@@ -546,11 +534,11 @@ class MangaChapterAdapter(
     }
 
     fun formatDate(timestamp: Long?): String {
-        timestamp ?: return "" // Return empty string if timestamp is null
+        timestamp ?: return ""
 
         val targetDate = Date(timestamp)
 
-        if (targetDate < Date(946684800000L)) { // January 1, 2000 (who want dates before that?)
+        if (targetDate < Date(946684800000L)) {
             return ""
         }
 

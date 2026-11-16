@@ -48,7 +48,6 @@ class AutoBackupWorker(appContext: Context, workerParams: WorkerParameters) :
             PrefManager.setVal(PrefName.LastAutoBackupTimestamp, System.currentTimeMillis())
             Logger.log("AutoBackupWorker: Backup saved to ${backupFile.absolutePath}")
 
-            // Pruning old auto-backups exceeding retention limit
             val maxCopies = PrefManager.getVal<Int>(PrefName.AutoBackupMaxCopies).coerceAtLeast(1)
             val autoBackups = backupDir.listFiles { file ->
                 file.isFile && file.name.startsWith("kiwami_autobackup_") && file.name.endsWith(".ani")

@@ -16,9 +16,6 @@ internal class AddonInstallReceiver : BroadcastReceiver() {
     private var listener: AddonListener? = null
     private var type: AddonType? = null
 
-    /**
-     * Registers this broadcast receiver
-     */
     fun register(context: Context) {
         ContextCompat.registerReceiver(context, this, filter, ContextCompat.RECEIVER_EXPORTED)
     }
@@ -29,10 +26,6 @@ internal class AddonInstallReceiver : BroadcastReceiver() {
         return this
     }
 
-    /**
-     * Called when one of the events of the [filter] is received. When the package is an extension,
-     * it's loaded in background and it notifies the [listener] when finished.
-     */
     @OptIn(DelicateCoroutinesApi::class)
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent == null) return

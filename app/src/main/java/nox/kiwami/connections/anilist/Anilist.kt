@@ -42,7 +42,6 @@ object Anilist {
     var chapterRead: Int? = null
     var unreadNotificationCount: Int = 0
 
-    /** Fires whenever [episodesWatched] / [chapterRead] were re-fetched, so the home header can redraw. */
     val userStatsChanged = androidx.lifecycle.MutableLiveData<Long>()
 
     // AniList recalculates profile statistics a while after a list change (sometimes minutes), so
@@ -54,7 +53,6 @@ object Anilist {
     private var chaptersOverride: StatOverride? = null
     private const val STAT_OVERRIDE_WINDOW_MS = 30 * 60 * 1000L
 
-    /** Call when the user's progress on one entry changed by [delta] (negative when lowered). */
     @Synchronized
     fun applyLocalProgressChange(isAnime: Boolean, delta: Int) {
         if (delta == 0) return
@@ -72,7 +70,6 @@ object Anilist {
         userStatsChanged.postValue(System.currentTimeMillis())
     }
 
-    /** Picks between the server's total and our own pending adjustment. */
     @Synchronized
     fun reconcileStat(isAnime: Boolean, server: Int?): Int? {
         val ov = if (isAnime) episodesOverride else chaptersOverride
@@ -102,7 +99,6 @@ object Anilist {
     var animeCustomLists: List<String>? = null
     var mangaCustomLists: List<String>? = null
 
-    /** Set to true when the AniList API reports a "disabled" error. Reset on next successful call. */
     @Volatile
     var anilistDisabledSignal: Boolean = false
     var lastError: String? = null
@@ -334,7 +330,6 @@ object Anilist {
         PrefManager.removeVal(PrefName.AnilistToken)
         PrefManager.removeVal(PrefName.AnilistUserId)
         PrefManager.removeVal(PrefName.AnilistUserName)
-        // Reset per-section notification counts
         PrefManager.setVal(PrefName.UnreadUserNotifications, 0)
         PrefManager.setVal(PrefName.UnreadMediaNotifications, 0)
         PrefManager.setVal(PrefName.UnreadSubscriptionNotifications, 0)
@@ -342,16 +337,10 @@ object Anilist {
         Anilist.unreadNotificationCount = 0
         Anilist.query.invalidateHomePageCache()
         Anilist.query.invalidateUserStatusCache()
-        //logout from comments api
         CommentsAPI.logout()
 
     }
 
-    /**
-     * Decodes the JWT token and returns the number of days until expiry.
-     * Returns null if the token is missing or cannot be decoded.
-     * Returns a negative number if the token is already expired.
-     */
     fun getTokenExpiryDays(): Long? {
         val t = token ?: return null
         return try {

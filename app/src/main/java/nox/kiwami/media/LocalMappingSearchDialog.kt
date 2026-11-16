@@ -34,8 +34,8 @@ class LocalMappingSearchDialog : BottomSheetDialogFragment() {
     private var searched = false
 
     var folderName: String? = null
-    var searchType: String = "ANIME" // ANIME or MANGA
-    var searchFormat: String? = null // NOVEL for local novels
+    var searchType: String = "ANIME"
+    var searchFormat: String? = null
     var onMappingSelected: ((Int) -> Unit)? = null
 
     override fun onCreateView(
@@ -82,7 +82,6 @@ class LocalMappingSearchDialog : BottomSheetDialogFragment() {
                     binding.searchProgress.visibility = View.GONE
                     binding.searchRecyclerView.adapter =
                         LocalMappingResultAdapter(results.results) { selectedMedia ->
-                            // Save the mapping
                             val mapKey = folderName ?: return@LocalMappingResultAdapter
                             PrefManager.setCustomVal("local_mapping_$mapKey", selectedMedia.id)
                             snackString("Mapped to: ${selectedMedia.userPreferredName}")

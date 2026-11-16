@@ -61,7 +61,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
         lifecycleScope.launch {
             var detectedText = ""
             try {
-                // 1. Recognize text using ML Kit on-device recognizer
                 detectedText = recognizeText(bitmap)
 
                 if (!isAdded) return@launch
@@ -75,12 +74,10 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
                     return@launch
                 }
 
-                // 2. Check if text is already Latin/English (all ASCII ≤ 127)
-                //    If so, skip translation — just show the detected text directly.
                 val isLikelyLatin = detectedText.all { it.code <= 127 }
 
                 val translatedText = if (isLikelyLatin) {
-                    detectedText  // Don't translate English → English
+                    detectedText
                 } else {
                     binding.ocrStatusText.text = "Translating text..."
                     translateText(detectedText)
@@ -88,7 +85,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
 
                 if (!isAdded) return@launch
 
-                // 3. Update UI
                 binding.ocrProgressBar.visibility = View.GONE
                 binding.ocrStatusText.visibility = View.GONE
                 binding.ocrResultsContainer.visibility = View.VISIBLE
@@ -109,7 +105,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 if (!isAdded) return@launch
-                // Don't dismiss — show whatever we detected so user can still copy it
                 binding.ocrProgressBar.visibility = View.GONE
                 binding.ocrStatusText.visibility = View.GONE
                 binding.ocrResultsContainer.visibility = View.VISIBLE
@@ -151,7 +146,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
             val image = InputImage.fromBitmap(safeBitmap, 0)
             val ctx = context?.applicationContext
 
-            // 1. Attempt Japanese text recognition first
             var text = ""
             try {
                 val jpRecognizer = TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())
@@ -220,7 +214,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
                 text = ""
             }
 
-            // 2. Fallback to default Latin recognizer if Japanese produces blank text or fails
             if (text.isBlank()) {
                 withContext(Dispatchers.Main) {
                     if (isAdded) binding.ocrStatusText.text = "Recognizing text (Latin fallback)..."
@@ -242,11 +235,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    /**
-     * Translate [text] to English using a fallback chain:
-     *   1. Google Translate (client=dict-chrome-ex, unauthenticated & unblocked)
-     *   2. MyMemory         (free, 5 000 chars/day, with detected language)
-     */
     private suspend fun translateText(text: String): String = withContext(Dispatchers.IO) {
         translateWithGoogle(text)
             ?: translateWithMyMemory(text)
@@ -262,7 +250,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    /** Returns null on rate-limit or any error, so the caller can fall through. */
     private fun translateWithGoogle(text: String): String? = try {
         val encoded = URLEncoder.encode(text, "UTF-8")
         val response = httpGet(
@@ -276,7 +263,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
         result.toString().takeIf { it.isNotBlank() }
     } catch (_: Exception) { null }
 
-    /** MyMemory free tier — 5 000 chars/day, no API key required. */
     private fun translateWithMyMemory(text: String): String? = try {
         val encoded = URLEncoder.encode(text, "UTF-8")
         val sourceLang = detectLanguage(text)
@@ -291,7 +277,6 @@ class OcrTranslationBottomSheet : BottomSheetDialogFragment() {
             .takeIf { it.isNotBlank() && !it.equals(text, ignoreCase = true) }
     } catch (_: Exception) { null }
 
-    /** Shared GET helper — throws on non-2xx or network error. */
     private fun httpGet(urlString: String): String {
         val connection = URL(urlString).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"

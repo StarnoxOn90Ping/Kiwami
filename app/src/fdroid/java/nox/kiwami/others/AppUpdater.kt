@@ -8,7 +8,6 @@ import java.util.Locale
 
 object AppUpdater {
     suspend fun check(activity: FragmentActivity, post: Boolean = false) {
-        // no-op
     }
 
     @Serializable

@@ -26,11 +26,6 @@ import nox.kiwami.getThemeColor
 import kotlin.math.abs
 import kotlin.math.max
 
-/**
- * Floating "wheel" of list categories. The selected category always rests in the middle, inside a
- * pill that morphs to fit its label; neighbours shrink and fade away from the centre, and the
- * carousel snaps (with a haptic tick) to whatever is closest to the middle when you let go.
- */
 class CategoryCarousel @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -51,7 +46,6 @@ class CategoryCarousel @JvmOverloads constructor(
     private var closest = -1
     private var pillAnimator: ValueAnimator? = null
 
-    /** called when the user picks a different category */
     var onSelected: ((Int) -> Unit)? = null
 
     init {
@@ -87,8 +81,6 @@ class CategoryCarousel @JvmOverloads constructor(
                     selected = pos
                     commitSelection(pos)
                 }
-                // Once everything has really stopped (the snap helper may start one more settle),
-                // nudge the selected label onto the exact middle using the views' real positions.
                 rv.post { if (rv.scrollState == RecyclerView.SCROLL_STATE_IDLE) alignSelectedToCenter() }
             }
         })
@@ -99,8 +91,6 @@ class CategoryCarousel @JvmOverloads constructor(
         recycler.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateAll() }
     }
 
-    // region public api
-
     fun setItems(newLabels: List<String>, selectedIndex: Int) {
         labels = newLabels
         widths = IntArray(newLabels.size) { measureLabel(newLabels[it]) }
@@ -110,14 +100,11 @@ class CategoryCarousel @JvmOverloads constructor(
         post { centerNow() }
     }
 
-    /** moves the carousel to [index] without reporting it back (used when the page was swiped) */
     fun select(index: Int) {
         if (index !in labels.indices || index == selected) return
         selected = index
         smoothCenter(index)
     }
-
-    // endregion
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -126,8 +113,6 @@ class CategoryCarousel @JvmOverloads constructor(
 
     private fun centerNow() {
         if (labels.isEmpty() || width == 0) return
-        // half-width padding on both sides lets every category (first and last included) reach the
-        // exact middle, without depending on pre-measured label widths being pixel perfect
         val half = width / 2
         recycler.setPadding(half, 0, half, 0)
         layoutManager.scrollToPositionWithOffset(selected, (width - widths[selected]) / 2 - recycler.paddingLeft)
@@ -138,10 +123,6 @@ class CategoryCarousel @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Moves the selected label so that its real, laid-out centre sits exactly on the carousel's centre
-     * and sizes the pill from the real view width. Measured widths are only a first guess.
-     */
     private fun alignSelectedToCenter() {
         val child = layoutManager.findViewByPosition(selected) ?: return
         val dx = (child.left + child.right) / 2 - recycler.width / 2
@@ -169,8 +150,6 @@ class CategoryCarousel @JvmOverloads constructor(
         }.start()
         onSelected?.invoke(index)
     }
-
-    // region visual effects
 
     private fun updateAll() {
         var best = -1
@@ -231,10 +210,6 @@ class CategoryCarousel @JvmOverloads constructor(
         (Color.blue(from) * (1 - t) + Color.blue(to) * t).toInt()
     )
 
-    // endregion
-
-    // region items
-
     private fun newItem(): TextView = TextView(context).apply {
         typeface = ResourcesCompat.getFont(context, R.font.poppins_bold)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
@@ -280,6 +255,4 @@ class CategoryCarousel @JvmOverloads constructor(
 
         override fun getItemCount() = labels.size
     }
-
-    // endregion
 }

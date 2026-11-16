@@ -17,7 +17,7 @@ object VideoCache {
                 File(
                     context.cacheDir,
                     "exoplayer"
-                ).also { it.deleteOnExit() }, // Ensures always fresh file
+                ).also { it.deleteOnExit() },
                 LeastRecentlyUsedCacheEvictor(300L * 1024L * 1024L),
                 databaseProvider
             )

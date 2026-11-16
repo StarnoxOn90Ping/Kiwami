@@ -90,7 +90,6 @@ class AnimeDownloaderService : Service() {
     private val ffExtension = Injekt.get<DownloadAddonManager>().extension?.extension
 
     override fun onBind(intent: Intent?): IBinder? {
-        // This is only required for bound services.
         return null
     }
 
@@ -231,7 +230,6 @@ class AnimeDownloaderService : Service() {
         tasks.addAll(AnimeServiceDataSingleton.downloadQueue.filter { it.getTaskName() == taskName })
         tasks.addAll(currentTasks.filter { it.getTaskName() == taskName })
 
-        // Mark canceled first so any in-flight publishProgress is dropped
         tasks.forEach { it.cancelled = true }
 
         tasks.forEach { task ->
@@ -239,7 +237,6 @@ class AnimeDownloaderService : Service() {
                 AnimeDownloader.stopDownload(mediaId, task.episode)
                 broadcastDownloadFailed(task.episode, mediaId)
             }
-            // Cancel engine session (may still be -1 if cancel raced before executeFFMpeg)
             if (task.sessionId != -1L) {
                 runCatching { ffExtension?.cancelDownload(task.sessionId) }
             }
@@ -254,7 +251,6 @@ class AnimeDownloaderService : Service() {
                 downloadJobs[taskName]?.cancel()
                 downloadJobs.remove(taskName)
             }
-            // Dismiss notification when nothing is left
             val stillBusy = currentTasks.isNotEmpty() ||
                 AnimeServiceDataSingleton.downloadQueue.isNotEmpty() ||
                 downloadJobs.isNotEmpty()
@@ -347,7 +343,6 @@ class AnimeDownloaderService : Service() {
                         scheme = drm.scheme,
                         outputDir = outputDir,
                     ) { percent ->
-                        // Fires once per segment, and an episode has hundreds of them.
                         if (task.cancelled || lastPercent.getAndSet(percent) == percent) {
                             return@download
                         }
@@ -393,10 +388,8 @@ class AnimeDownloaderService : Service() {
                 }
 
                 fun publishProgress(force: Boolean = false) {
-                    // Drop all UI/notification updates after user cancel
                     if (task.cancelled) return
                     val p = percent.get().coerceIn(0, 99)
-                    // Broadcast to UI only when percent changes (or forced on complete)
                     if (!force && p == lastPublishedPercent.get()) return
                     lastPublishedPercent.set(p)
                     lastUiMs.set(SystemClock.elapsedRealtime())
@@ -426,14 +419,12 @@ class AnimeDownloaderService : Service() {
                         try {
                             notificationManager.notify(NOTIFICATION_ID, builder.build())
                         } catch (_: SecurityException) {
-                            // POST_NOTIFICATIONS may be missing on some devices mid-download
                         }
                     }
                 }
 
                 if (task.cancelled) return@withContext
 
-                // Downloader sends percent * 1000 via statCallback
                 ffTask = ffExtension.executeFFMpeg(
                     task.video.file.url,
                     path,
@@ -448,7 +439,6 @@ class AnimeDownloaderService : Service() {
                     }
                 }
                 task.sessionId = ffTask
-                // If canceled while executeFFMpeg was starting, stop engine immediately
                 if (task.cancelled) {
                     ffExtension.cancelDownload(ffTask)
                     return@withContext
@@ -458,7 +448,6 @@ class AnimeDownloaderService : Service() {
 
                 saveMediaInfo(task, baseOutputDir)
 
-                // Wait for completion; UI progress only on percent change via statCallback
                 while (!task.cancelled && ffExtension.getState(ffTask) != "COMPLETED") {
                     if (ffExtension.getState(ffTask) == "FAILED") {
                         Logger.log("Download failed")
@@ -566,7 +555,6 @@ class AnimeDownloaderService : Service() {
                     }
                 }
             } finally {
-                // Stop orphan engine work after user cancel
                 if (task.cancelled && task.sessionId != -1L) {
                     runCatching { ffExtension?.cancelDownload(task.sessionId) }
                 }
@@ -616,13 +604,13 @@ class AnimeDownloaderService : Service() {
 
                 val gson = GsonBuilder()
                     .registerTypeAdapter(SChapter::class.java, InstanceCreator<SChapter> {
-                        SChapterImpl() // Provide an instance of SChapterImpl
+                        SChapterImpl()
                     })
                     .registerTypeAdapter(SAnime::class.java, InstanceCreator<SAnime> {
-                        SAnimeImpl() // Provide an instance of SAnimeImpl
+                        SAnimeImpl()
                     })
                     .registerTypeAdapter(SEpisode::class.java, InstanceCreator<SEpisode> {
-                        SEpisodeImpl() // Provide an instance of SEpisodeImpl
+                        SEpisodeImpl()
                     })
                     .create()
                 val mediaJson = gson.toJson(task.sourceMedia)
@@ -668,10 +656,6 @@ class AnimeDownloaderService : Service() {
         }
     }
 
-    /**
-     * Reuse an existing image on disk when present; only hit the network if missing.
-     * Avoids re-downloading cover/banner for every episode of the same title.
-     */
     private suspend fun ensureImage(
         url: String,
         directory: DocumentFile,

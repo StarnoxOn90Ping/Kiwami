@@ -18,13 +18,6 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withC
 import kotlin.math.ceil
 import kotlin.math.hypot
 
-/**
- * A tilted wall of poster tiles. Neighbouring columns drift in opposite directions forever
- * (seamless marquee) and every tile is blurred by [SoftBlurTransformation].
- *
- * Only the [TILE_COUNT] webp tiles bundled in the app (res/drawable-nodpi/onb_tile_01..32) are
- * shown. Nothing is downloaded, so the wall looks the same online and offline.
- */
 class AnimeTileWall @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -32,7 +25,7 @@ class AnimeTileWall @JvmOverloads constructor(
 
     private val container = FrameLayout(context)
     private val animators = mutableListOf<ValueAnimator>()
-    private val tiles = mutableListOf<Pair<ImageView, Int>>() // tile, source index
+    private val tiles = mutableListOf<Pair<ImageView, Int>>()
     private var built = false
     private var wantRunning = false
     private var tileWidth = 0
@@ -70,7 +63,6 @@ class AnimeTileWall @JvmOverloads constructor(
                 leftMargin = gap + c * (tileWidth + gap)
             }
             for (i in 0 until perColumn * 2) {
-                // the second half repeats the first so the loop is seamless
                 val sourceIndex = (c * perColumn + i % perColumn) % TILE_COUNT
                 val tile = ImageView(context).apply {
                     scaleType = ImageView.ScaleType.CENTER_CROP
@@ -96,7 +88,6 @@ class AnimeTileWall @JvmOverloads constructor(
     }
 
     private fun bindImages() {
-        // Decode at half size: it gets blurred anyway and the upscale of a blurred image is smooth
         val w = (tileWidth / 2).coerceAtLeast(16)
         val h = (tileHeight / 2).coerceAtLeast(16)
         tiles.forEach { (view, index) ->
@@ -109,7 +100,6 @@ class AnimeTileWall @JvmOverloads constructor(
         }
     }
 
-    /** Horizontal shift of the whole wall, used for a parallax effect while paging. */
     fun setParallax(px: Float) {
         container.translationX = px
     }
@@ -139,11 +129,9 @@ class AnimeTileWall @JvmOverloads constructor(
                 interpolator = LinearInterpolator()
                 addUpdateListener {
                     val f = it.animatedValue as Float
-                    // upward columns: 0 -> -distance, downward columns: -distance -> 0
                     column.translationY = if (goesUp) -distance * f else -distance * (1f - f)
                 }
                 start()
-                // de-sync the columns so tiles never line up in rows
                 currentPlayTime = (periodMs * (0.17f * (i + 1) % 1f)).toLong()
             })
         }
@@ -155,13 +143,10 @@ class AnimeTileWall @JvmOverloads constructor(
     }
 
     companion object {
-        /** Blur strength in pixels of the half-size decoded poster. Raise for blurrier tiles. */
         private const val BLUR_RADIUS = 1
 
-        /** Number of tile images in the rotation (onb_tile_01 .. onb_tile_32). */
         private const val TILE_COUNT = 32
 
-        /** The bundled webp tiles, in order. */
         private val BUNDLED: List<Int> = listOf(
             R.drawable.onb_tile_01, R.drawable.onb_tile_02, R.drawable.onb_tile_03,
             R.drawable.onb_tile_04, R.drawable.onb_tile_05, R.drawable.onb_tile_06,

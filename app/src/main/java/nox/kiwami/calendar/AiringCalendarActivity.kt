@@ -45,18 +45,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-/**
- * Personal airing calendar.
- *
- * Shows when the anime on your AniList (watching / planning / completed …) air, from a few days back
- * to a month ahead, as a swipeable day strip on top of an agenda. Everything about it can be tuned
- * from the customise sheet (see [CalendarPrefs]).
- */
 class AiringCalendarActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAiringCalendarBinding
     private val adapter = CalendarAdapter { openMedia(it.media) }
 
-    /** everything fetched for [fetchKey], before the local filters are applied */
     private var raw: List<CalendarEntry> = emptyList()
     private var fetchKey: String? = null
     private var loadJob: Job? = null
@@ -84,7 +76,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
         binding.calendarList.setPadding(0, 0, 0, navBarHeight + (24 * resources.displayMetrics.density).toInt())
 
-        // fancy heading: gradient text that drops in, plus springy buttons
         binding.calendarTitle.setGradientText(
             getThemeColor(androidx.appcompat.R.attr.colorPrimary),
             getThemeColor(com.google.android.material.R.attr.colorTertiary)
@@ -123,7 +114,6 @@ class AiringCalendarActivity : AppCompatActivity() {
 
         load()
 
-        // keep countdowns + the summary fresh
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
@@ -136,8 +126,6 @@ class AiringCalendarActivity : AppCompatActivity() {
             }
         }
     }
-
-    // region loading
 
     private fun load(force: Boolean = false) {
         val key = "${CalendarPrefs.source}|${CalendarPrefs.aheadDays}|${CalendarPrefs.pastDays}"
@@ -181,7 +169,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         val to = startOfDay(toCal.timeInMillis) / 1000
 
         if (source == CalendarPrefs.SOURCE_ALL) {
-            // the global schedule is big – keep it to a week ahead
             val cappedTo = minOf(to, startOfDay(Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, 8)
             }.timeInMillis) / 1000)
@@ -198,7 +185,6 @@ class AiringCalendarActivity : AppCompatActivity() {
             .also { libraryCache = it }
         val byId = library.associateBy { it.id }
 
-        // only shows that can still air are worth asking the schedule about
         val ids = library.filter {
             val st = it.status?.uppercase() ?: return@filter true
             st.contains("RELEASING") || st.contains("NOT")
@@ -210,10 +196,6 @@ class AiringCalendarActivity : AppCompatActivity() {
             CalendarEntry(media, ep, at, own?.userStatus ?: media.userStatus, own?.userProgress ?: media.userProgress)
         }
     }
-
-    // endregion
-
-    // region presenting
 
     private fun showLoading() {
         binding.calendarProgress.visibility = View.VISIBLE
@@ -243,7 +225,6 @@ class AiringCalendarActivity : AppCompatActivity() {
 
         buildStrip(entries)
 
-        // group by local day
         val byDay = entries.groupBy { startOfDay(it.airingAt * 1000) }
         val rows = mutableListOf<CalendarRow>()
         val positions = mutableMapOf<Long, Int>()
@@ -265,7 +246,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
         updateSummary()
 
-        // land on today (or the first day that has something)
         val today = startOfDay(System.currentTimeMillis())
         val target = when {
             dayStarts.contains(today) && (byDay.containsKey(today) || byDay.isEmpty()) -> dayStarts.indexOf(today)
@@ -360,10 +340,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         null -> null
     }
 
-    // endregion
-
-    // region day strip
-
     private fun buildStrip(entries: List<CalendarEntry>) {
         val past = CalendarPrefs.pastDays
         val ahead = if (CalendarPrefs.source == CalendarPrefs.SOURCE_ALL) minOf(CalendarPrefs.aheadDays, 7)
@@ -405,7 +381,6 @@ class AiringCalendarActivity : AppCompatActivity() {
             val selected = i == index
             val isToday = dayStarts[i] == today
             cell.root.setBackgroundResource(if (selected) R.drawable.bg_day_cell_selected else R.drawable.bg_day_cell)
-            // lift the chosen day instead of scaling it, so nothing is ever clipped
             cell.root.animate().setStartDelay(0)
                 .translationZ(if (selected) 8f * resources.displayMetrics.density else 0f)
                 .setDuration(180).start()
@@ -419,7 +394,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         binding.calendarMonth.text =
             SimpleDateFormat("LLLL yyyy", Locale.getDefault()).format(dayStarts[index])
 
-        // keep the chosen cell centred in the strip
         val cell = dayCells[index].root
         binding.calendarStripScroll.post {
             val target = cell.left - (binding.calendarStripScroll.width - cell.width) / 2
@@ -430,7 +404,6 @@ class AiringCalendarActivity : AppCompatActivity() {
     }
 
     private fun scrollListToDay(day: Long) {
-        // an empty day jumps to the next day that has something
         val pos = headerPositions[day]
             ?: headerPositions.filterKeys { it > day }.minByOrNull { it.key }?.value
             ?: return
@@ -441,10 +414,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         scroller.targetPosition = pos
         binding.calendarList.layoutManager?.startSmoothScroll(scroller)
     }
-
-    // endregion
-
-    // region customise sheet
 
     private fun showCustomizeSheet() {
         val sheet = BottomSheetDialog(this)
@@ -543,8 +512,6 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
         sheet.show()
     }
-
-    // endregion
 
     private fun openMedia(media: Media) {
         startActivity(

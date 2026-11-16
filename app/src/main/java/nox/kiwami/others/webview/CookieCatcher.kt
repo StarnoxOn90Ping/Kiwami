@@ -24,7 +24,6 @@ class CookieCatcher : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
 
-        //get url from intent
         val url = intent.getStringExtra("url") ?: getString(R.string.cursed_yt)
         val headers = intent
             .getSerializableExtraCompat<HashMap<String, String>>("headers")

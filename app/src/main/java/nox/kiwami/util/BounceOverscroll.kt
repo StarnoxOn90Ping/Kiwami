@@ -17,10 +17,6 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.min
 
-/**
- * Damped-spring curve: goes 0 -> 1, overshoots past 1 and rings out.
- * Used both for the overscroll "snap back" and for the synopsis expand / collapse.
- */
 class SpringInterpolator(
     private val damping: Float = 4.2f,
     private val cycles: Float = 1.35f
@@ -33,14 +29,12 @@ class SpringInterpolator(
 
 private const val SPRING_MS = 650L
 
-/** Maps raw finger travel (px) to a rubber-band offset (px) that never exceeds [max]. */
 private fun rubber(pull: Float, max: Float): Float {
     if (max <= 0f) return 0f
     val s = if (pull < 0) -1f else 1f
     return s * max * (1f - exp(-0.55f * abs(pull) / max))
 }
 
-/** Inverse of [rubber]. */
 private fun unrubber(offset: Float, max: Float): Float {
     if (max <= 0f) return 0f
     val s = if (offset < 0) -1f else 1f
@@ -48,7 +42,6 @@ private fun unrubber(offset: Float, max: Float): Float {
     return s * (-max / 0.55f) * ln(1f - r)
 }
 
-/** Moves the content of a list back to rest with a springy overshoot, or kicks it on a fling. */
 private class Mover(private val apply: (Float) -> Unit, private val get: () -> Float) {
     private var anim: ValueAnimator? = null
     val running get() = anim?.isRunning == true
@@ -74,11 +67,6 @@ private class Mover(private val apply: (Float) -> Unit, private val get: () -> F
         }
     }
 
-    /**
-     * A fling hit the edge: content is thrown past it by [peak] px, then eases back.
-     * One smooth lobe that starts and ends at rest (it never swings to the other side
-     * and never gets cut off at the end).
-     */
     fun kick(peak: Float) {
         cancel()
         anim = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -87,8 +75,8 @@ private class Mover(private val apply: (Float) -> Unit, private val get: () -> F
             addUpdateListener {
                 val t = it.animatedFraction
                 val rise = 0.2f
-                val lobe = (t / rise) * exp(1f - t / rise)       // 0 -> 1 at t = rise, long soft tail
-                val tail = (1f - t) * (1f - t)                   // forces the end to exactly 0, with zero slope
+                val lobe = (t / rise) * exp(1f - t / rise)
+                val tail = (1f - t) * (1f - t)
                 apply(peak * lobe * tail * 1.15f)
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
@@ -99,11 +87,6 @@ private class Mover(private val apply: (Float) -> Unit, private val get: () -> F
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// RecyclerView
-// ---------------------------------------------------------------------------------------------
-
-/** A RecyclerView that bounces (rubber-band + spring) at both ends instead of glowing / stretching. */
 class BounceRecyclerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -165,27 +148,20 @@ private class BounceEdgeEffect(private val rv: RecyclerView, private val sign: F
         mover.kick(sign * peak)
     }
 
-    // the built-in glow / stretch is never drawn, the content itself moves
     override fun draw(canvas: Canvas): Boolean = false
 }
 
-// ---------------------------------------------------------------------------------------------
-// NestedScrollView
-// ---------------------------------------------------------------------------------------------
-
-/** A NestedScrollView that bounces at both ends. Still cooperates with the collapsing header. */
 class BounceNestedScrollView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = androidx.core.R.attr.nestedScrollViewStyle
 ) : NestedScrollView(context, attrs, defStyleAttr) {
 
-    private var pull = 0f // raw finger travel past the edge: > 0 top, < 0 bottom
+    private var pull = 0f
     private val maxOffset get() = height * 0.2f
     private val mover = Mover(::move) { content()?.translationY ?: 0f }
 
     init {
-        // the stock glow / stretch is replaced by the bounce
         overScrollMode = OVER_SCROLL_NEVER
     }
 
@@ -197,7 +173,6 @@ class BounceNestedScrollView @JvmOverloads constructor(
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
-            // caught mid-bounce: carry on from where the content currently is
             mover.cancel()
             pull = unrubber(content()?.translationY ?: 0f, maxOffset)
         }
@@ -239,7 +214,6 @@ class BounceNestedScrollView @JvmOverloads constructor(
         }
         var used = 0
         if (type == ViewCompat.TYPE_TOUCH && pull != 0f && pull * dy > 0f) {
-            // finger is travelling back towards the content: unwind the bounce first
             val c = if (pull > 0) min(dy.toFloat(), pull) else maxOf(dy.toFloat(), pull)
             pull -= c
             move(rubber(pull, maxOffset))
@@ -257,14 +231,13 @@ class BounceNestedScrollView @JvmOverloads constructor(
         super.dispatchNestedScroll(
             dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, offsetInWindow, type, consumed
         )
-        val rest = dyUnconsumed - consumed[1] // what neither the list nor the header could take
+        val rest = dyUnconsumed - consumed[1]
         if (rest == 0) return
         if (type == ViewCompat.TYPE_TOUCH) {
             mover.cancel()
             pull = (pull - rest).coerceIn(-maxOffset * 6f, maxOffset * 6f)
             move(rubber(pull, maxOffset))
         } else if (!mover.running && pull == 0f) {
-            // a fling ran into the edge: throw the content past it and let it ring back
             val peak = min(abs(rest) * 1.6f, maxOffset * 0.6f)
             mover.kick(if (rest < 0) peak else -peak)
         }

@@ -16,7 +16,6 @@ object Kitsu {
         Logger.log("Kitsu : title=${media.mainName()}")
         return try {
             tryWithSuspend {
-                // 1. Try GraphQL Method (Primary Priority)
                 var returnedEpisodes: Map<String, Episode>? = null
                 try {
                     val query =
@@ -80,8 +79,6 @@ object Kitsu {
                     return@tryWithSuspend returnedEpisodes
                 }
 
-                // 2. Fallback to REST API Method (Secondary Priority)
-                // Search for Anime by Title
                 val title = URLEncoder.encode(media.mainName(), "utf-8")
                 val searchUrl = "https://kitsu.io/api/edge/anime?filter[text]=$title&page[limit]=1"
                 val searchRes = client.get(searchUrl).parsed<KitsuAnimeSearch>()
@@ -91,7 +88,6 @@ object Kitsu {
                 
                 Logger.log("Kitsu : Used REST API Method (2nd Priority)")
 
-                // Fetch Episodes with Pagination
                 val allEpisodes = mutableMapOf<String, Episode>()
                 var offset = 0
                 val limit = 20

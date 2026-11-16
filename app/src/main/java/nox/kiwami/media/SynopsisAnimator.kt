@@ -12,15 +12,6 @@ import nox.kiwami.util.SpringInterpolator
 import kotlin.math.PI
 import kotlin.math.sin
 
-/**
- * Synopsis expand / collapse.
- *
- * The text box physically grows and shrinks (a real height animation, not a line-by-line jump):
- *  - expanding rides a soft spring, so it swells open and settles with a tiny overshoot
- *  - collapsing glides shut with a gentle overshoot
- *  - while it moves, the faded lower edge widens into a curtain that sweeps the text in or out
- *  - the "Read more / Read less" label drops out and springs back in with the new wording
- */
 object SynopsisAnimator {
 
     private const val REST_FADE_SPAN = 0.85f
@@ -38,14 +29,13 @@ object SynopsisAnimator {
         swapLabel(readMore, newLabel)
 
         val width = tv.width
-        if (width <= 0) { // not laid out yet, nothing to animate
+        if (width <= 0) {
             tv.maxLines = if (expand) Int.MAX_VALUE else collapsedLines
             tv.fadeAmount = if (expand) 0f else 1f
             return
         }
 
         val startH = tv.height
-        // where we are heading
         tv.maxLines = if (expand) Int.MAX_VALUE else collapsedLines
         tv.measure(
             View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -58,7 +48,6 @@ object SynopsisAnimator {
             return
         }
 
-        // every line stays laid out while the box moves; the box height clips them
         tv.maxLines = Int.MAX_VALUE
         tv.layoutParams = tv.layoutParams.apply { height = startH }
 
@@ -75,7 +64,6 @@ object SynopsisAnimator {
                 val lp = tv.layoutParams
                 lp.height = (startH + (endH - startH) * v).toInt().coerceAtLeast(1)
                 tv.layoutParams = lp
-                // curtain: the soft edge widens mid-motion, then tightens back up
                 val p = v.coerceIn(0f, 1f)
                 tv.fadeSpan = REST_FADE_SPAN + (CURTAIN_LINES - REST_FADE_SPAN) * sin(PI * t).toFloat()
                 tv.fadeAmount = fadeFrom + (fadeTo - fadeFrom) * p

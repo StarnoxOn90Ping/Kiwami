@@ -323,7 +323,7 @@ abstract class BaseImageAdapter(
         suspend fun Context.loadBitmapOld(
             link: FileUrl,
             transforms: List<BitmapTransformation>
-        ): Bitmap? { //still used in some places
+        ): Bitmap? {
             return tryWithSuspend {
                 withContext(Dispatchers.IO) {
                     Glide.with(this@loadBitmapOld)
@@ -409,7 +409,6 @@ abstract class BaseImageAdapter(
                                     null
                                 }
                                 glideBitmap ?: run {
-                                    // Fallback to native libvips over network for unsupported/exotic formats (e.g. JXL / AVIF / HEIF)
                                     try {
                                         val okHttpClient = uy.kohesive.injekt.Injekt.get<OkHttpClient>()
                                         val requestBuilder = Request.Builder().url(link.url)
@@ -468,10 +467,6 @@ abstract class BaseImageAdapter(
             return newBitmap
         }
 
-        /**
-         * Decode image using native libvips engine (ca.mpreg:imagedecoder).
-         * Supports modern formats like AVIF, JXL, HEIF, JP2, and standard formats.
-         */
         fun decodeWithLibvips(inputStream: InputStream): Bitmap? {
             return try {
                 ImageDecoder.open(inputStream).use { decoder ->
@@ -491,13 +486,6 @@ abstract class BaseImageAdapter(
             }
         }
 
-        /**
-         * Scale [src] to [dstWidth]×[dstHeight] using the algorithm selected in
-         * [CurrentReaderSettings.ImageQuality]:
-         *  - FAST      → Android's Bitmap.createScaledBitmap (bilinear, hardware-accelerated)
-         *  - BALANCED  → Two-pass box filter (area averaging) – sharper than bilinear on downscales
-         *  - LANCZOS   → Lanczos-3 sinc-windowed resampling – best quality for line art / text
-         */
         fun scaleBitmap(
             src: Bitmap,
             dstWidth: Int,
@@ -518,13 +506,10 @@ abstract class BaseImageAdapter(
             }
         }
 
-        // ── Box filter (area averaging) ──────────────────────────────────────────
         private fun scaleBoxFilter(src: Bitmap, dstW: Int, dstH: Int): Bitmap {
-            // Two-step: first coarse bilinear, then 1-pass box average when downscaling > 2×
             val scaleX = src.width.toFloat() / dstW
             val scaleY = src.height.toFloat() / dstH
             val step = if (scaleX > 2f || scaleY > 2f) {
-                // Coarse bilinear pass to bring close to target, then box-average
                 val mid = Bitmap.createScaledBitmap(
                     src,
                     (dstW * 1.5f).toInt().coerceAtLeast(dstW),
@@ -538,7 +523,6 @@ abstract class BaseImageAdapter(
             return out
         }
 
-        // ── Lanczos-3 resampling ─────────────────────────────────────────────────
         private const val LANCZOS_A = 3
 
         private fun lanczosKernel(x: Double): Double {
@@ -563,7 +547,6 @@ abstract class BaseImageAdapter(
             val srcW = effectiveSrc.width
             val srcH = effectiveSrc.height
 
-            // Read source pixels into an int array once – avoids per-pixel JNI calls
             val srcPixels = IntArray(srcW * srcH)
             effectiveSrc.getPixels(srcPixels, 0, srcW, 0, 0, srcW, srcH)
             if (effectiveSrc !== src) {
@@ -574,7 +557,6 @@ abstract class BaseImageAdapter(
             val scaleX = srcW.toDouble() / dstW
             val scaleY = srcH.toDouble() / dstH
 
-            // Horizontal pass into intermediate 1D float buffer (RGBA)
             val intermediate = FloatArray(dstW * srcH * 4)
             for (x in 0 until dstW) {
                 val srcXf = (x + 0.5) * scaleX - 0.5
@@ -601,7 +583,6 @@ abstract class BaseImageAdapter(
                 }
             }
 
-            // Vertical pass from intermediate into dst
             for (y in 0 until dstH) {
                 val srcYf = (y + 0.5) * scaleY - 0.5
                 val start = (floor(srcYf).toInt() - LANCZOS_A + 1).coerceAtLeast(0)

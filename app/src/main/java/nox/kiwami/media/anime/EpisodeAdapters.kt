@@ -64,17 +64,12 @@ class EpisodeAdapter(
     val context = fragment.requireContext()
 
     companion object {
-        /** Partial bind: update download status text only (no Glide / animation). */
         private const val PAYLOAD_PROGRESS = "download_progress"
-        /** Partial bind: update download chrome (icon/state) without full card rebind. */
         private const val PAYLOAD_DOWNLOAD_STATE = "download_state"
-        /** Partial bind: only refresh the selected/unselected look of a card. */
         private const val PAYLOAD_SELECTION = "selection"
-        /** Partial bind: watched / unwatched look and resume bar, animated, nothing else is touched. */
         private const val PAYLOAD_WATCHED = "watched_state"
     }
 
-    /** Episodes picked in multi-select mode (long-press an episode to start). */
     val selectedEpisodes = LinkedHashSet<String>()
     var onSelectionChanged: ((Int) -> Unit)? = null
 
@@ -174,7 +169,6 @@ class EpisodeAdapter(
                 listHolder.bindProgressText(ep.downloadProgress)
             }
             payloads.contains(PAYLOAD_DOWNLOAD_STATE) -> {
-                // Icon / downloaded / failed — still skip Glide + setAnimation
                 listHolder.bind(ep.number, ep.downloadProgress, ep.desc)
             }
             else -> super.onBindViewHolder(holder, position, payloads)
@@ -247,7 +241,6 @@ class EpisodeAdapter(
                     } else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
                         binding.itemEpisodeViewed.visibility = View.GONE
-                        // long-press now selects the episode (see the view holders)
                     }
                 } else {
                     binding.itemEpisodeViewedCover.visibility = View.GONE
@@ -311,7 +304,6 @@ class EpisodeAdapter(
                     } else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
                         binding.itemEpisodeViewed.visibility = View.GONE
-                        // long-press now selects the episode (see the view holders)
                     }
                 } else {
                     binding.itemEpisodeViewedCover.visibility = View.GONE
@@ -337,7 +329,6 @@ class EpisodeAdapter(
                         binding.itemEpisodeViewedCover.visibility = View.VISIBLE
                     else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
-                        // long-press now selects the episode (see the view holders)
                     }
                 }
                 handleProgress(
@@ -357,11 +348,6 @@ class EpisodeAdapter(
 
     val currentType: Int get() = type
 
-    // ---------------------------------------------------------------------------------------
-    // In-place updates: the list is never torn down for things that only changed a little
-    // ---------------------------------------------------------------------------------------
-
-    /** What each episode looked like the last time it was fully bound (number -> content key). */
     private val boundKeys = HashMap<String, String>()
 
     private fun contentKey(ep: Episode): String =
@@ -373,11 +359,6 @@ class EpisodeAdapter(
         return epNum <= progress.toFloat()
     }
 
-    /**
-     * Same episodes as before (same order, same layout): swap the data in place. Episodes whose
-     * details changed (title, thumbnail, description...) are rebound; every other visible tile only
-     * refreshes its watched look and resume bar, which animates if it actually changed.
-     */
     fun softUpdate(newArr: List<Episode>) {
         arr = newArr
         if (newArr.isEmpty()) return
@@ -389,12 +370,10 @@ class EpisodeAdapter(
         }
     }
 
-    /** Progress changed (marked watched / unwatched, returned from the player, ...). */
     fun refreshWatchState() {
         if (arr.isNotEmpty()) notifyItemRangeChanged(0, arr.size, PAYLOAD_WATCHED)
     }
 
-    /** Brings the downloaded set in line with [current] (episode -> size in MB) without clearing it first. */
     fun syncDownloaded(current: Map<String, Double>) {
         downloadedEpisodes.toList().filter { it !in current }.forEach { deleteDownload(it) }
         current.forEach { (number, size) ->
@@ -431,7 +410,6 @@ class EpisodeAdapter(
         else -> null
     }
 
-    /** A recycled tile must never carry half an animation over to another episode. */
     private fun resetWatchAnim(holder: RecyclerView.ViewHolder) {
         val v = watchViews(holder) ?: return
         v.cover.animate().cancel()
@@ -446,11 +424,10 @@ class EpisodeAdapter(
 
     private fun bindWatchState(holder: RecyclerView.ViewHolder, ep: Episode) {
         val v = watchViews(holder) ?: return
-        // the resume bar (how far into the episode you are) follows along too
         handleProgress(v.cont, v.bar, v.empty, media.id, ep.number)
         val watched = isWatched(ep)
         val shown = v.cover.visibility == View.VISIBLE
-        if (watched == shown) return // already looks right, leave the tile completely alone
+        if (watched == shown) return
 
         val card = holder.itemView as? ViewGroup ?: return
         val pop = android.view.animation.OvershootInterpolator(2.4f)
@@ -516,7 +493,6 @@ class EpisodeAdapter(
         }
     }
 
-    /** User cancel: back to idle (not "Failed"). */
     fun clearDownloadState(episodeNumber: String) {
         AnimeDownloader.stopDownload(media.id, episodeNumber)
         downloadedEpisodes.remove(episodeNumber)
@@ -527,7 +503,6 @@ class EpisodeAdapter(
         }
     }
 
-    /** Real download failure from the service. */
     fun purgeDownload(episodeNumber: String) {
         AnimeDownloader.stopDownload(media.id, episodeNumber)
         downloadedEpisodes.remove(episodeNumber)
@@ -548,12 +523,10 @@ class EpisodeAdapter(
         downloadedBytes: Long,
         estimatedTotalBytes: Long
     ) {
-        // Ignore stale progress after cancel (engine may still emit briefly)
         if (!AnimeDownloader.isDownloading(media.id, episodeNumber)) return
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position == -1) return
         val text = buildDownloadProgressText(progress, downloadedBytes, estimatedTotalBytes)
-        // Skip no-op updates (same label) to avoid any rebind work
         if (arr[position].downloadProgress == text) return
         arr[position].downloadProgress = text
         notifyItemChanged(position, PAYLOAD_PROGRESS)
@@ -654,7 +627,6 @@ class EpisodeAdapter(
                 if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size) {
                     val episodeNumber = arr[bindingAdapterPosition].number
                     if (downloadedEpisodes.contains(episodeNumber)) {
-                        //fragment.fixDownload(episodeNumber)
                         fragment.requireContext().customAlertDialog().apply {
                             setTitle("Multi Episode Deleter")
                             setMessage("Enter the number of episodes to delete")
@@ -714,13 +686,11 @@ class EpisodeAdapter(
             }
         }
 
-        /** Stop spin animator so cancel doesn't leave the icon tilted. */
         private fun stopDownloadAnimation() {
             binding.itemDownload.animate().cancel()
             binding.itemDownload.rotation = 0f
         }
 
-        /** Remove the double gap between the status line and description when status is shown. */
         private fun updateDescSpacing() {
             val d = binding.itemEpisodeDesc
             val top = if (binding.itemDownloadStatus.isVisible) {
@@ -731,7 +701,6 @@ class EpisodeAdapter(
             if (d.paddingTop != top) d.setPadding(d.paddingLeft, top, d.paddingRight, d.paddingBottom)
         }
 
-        /** Progress-only update: status text, no icon/animation/Glide side effects. */
         fun bindProgressText(progress: String?) {
             if (progress.isNullOrEmpty()) {
                 binding.itemDownloadStatus.visibility = View.GONE
@@ -744,7 +713,6 @@ class EpisodeAdapter(
         }
 
         fun bind(episodeNumber: String, progress: String?, desc: String?) {
-            // Keep the description visible while downloading and after the download finishes
             binding.itemEpisodeDesc.visibility =
                 if (!desc.isNullOrBlank()) View.VISIBLE else View.GONE
             if (progress != null) {
@@ -800,7 +768,6 @@ class EpisodeAdapter(
                         }
                     } finally {
                         activeCoroutines.remove(episodeNumber)
-                        // Cancel in-flight ViewPropertyAnimator so icon isn't left mid-spin
                         stopDownloadAnimation()
                     }
                 }

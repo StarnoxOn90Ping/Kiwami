@@ -317,14 +317,12 @@ class NovelReadFragment : Fragment(),
 
         val parser = model.novelSources[source] as? nox.kiwami.parsers.novel.LnReaderNovelParser
         if (parser != null) {
-            // LNReader handling
             headerAdapter.progress?.visibility = View.VISIBLE
             lifecycleScope.launch(Dispatchers.IO) {
                 model.overrideNovelChapters(source, novel, media.id)
                 model.loadNovelChapters(media, source, invalidate = true)
             }
         } else {
-            // EPUB source
             val bookDialog = BookDialog.newInstance(novelName, novel, source)
             bookDialog.setCallback(object : BookDialog.Callback {
                 override fun onDownloadTriggered(link: String) {
@@ -727,7 +725,6 @@ class NovelReadFragment : Fragment(),
         super.onDestroy()
     }
 
-    // ---------------- Multi-select (long-press a novel) ----------------
     private var selectionBar: EpisodeSelectionBar? = null
     private val selectionBackCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -737,7 +734,6 @@ class NovelReadFragment : Fragment(),
     private var recyclerBasePaddingBottom = -1
     private var selectionInset = 0
 
-    // Novels have no per-item read progress, so the bar only has Info / Download / Delete.
     private fun setupSelectionUi() {
         val root = _binding?.root as? ViewGroup ?: return
         if (selectionBar == null) {
@@ -763,7 +759,6 @@ class NovelReadFragment : Fragment(),
         }
     }
 
-    /** Leaves room under the list (and lifts the scroll-to-top button) while the bar is showing. */
     private fun applySelectionInsets(show: Boolean) {
         val b = _binding ?: return
         val bar = selectionBar ?: return

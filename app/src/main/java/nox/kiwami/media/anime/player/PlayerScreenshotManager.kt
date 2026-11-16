@@ -98,7 +98,6 @@ class PlayerScreenshotManager(
                 }
             }
 
-            // Fallback: draw view hierarchy if supported
             if (surface.width > 0 && surface.height > 0) {
                 val bmp = Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bmp)

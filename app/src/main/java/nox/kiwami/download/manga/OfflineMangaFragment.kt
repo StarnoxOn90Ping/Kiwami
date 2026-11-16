@@ -96,7 +96,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
         textInputLayout.boxBackgroundColor = semiTransparentColor
         val materialCardView = view.findViewById<MaterialCardView>(R.id.offlineMangaAvatarContainer)
 
-        // Embedded in the Downloads hub: the hub already owns the header/settings, so slim this one down
         if (arguments?.getBoolean(nox.kiwami.download.hub.DownloadsActivity.ARG_EMBEDDED, false) == true) {
             materialCardView.visibility = View.GONE
             view.findViewById<View>(R.id.animeTitleContainer).apply {
@@ -203,10 +202,8 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
     private fun grid() {
         gridView.visibility = View.VISIBLE
         val fadeIn = AlphaAnimation(0f, 1f)
-        fadeIn.duration = 300 // animations  pog
+        fadeIn.duration = 300
         gridView.layoutAnimation = LayoutAnimationController(fadeIn)
-        // The adapter (and the list it holds) survives view-style switches, so changing the layout
-        // just re-binds what is already loaded instead of reloading every download.
         if (!::adapter.isInitialized) {
             adapter = OfflineMangaAdapter(requireContext(), downloads, this)
             getDownloads()
@@ -216,7 +213,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
         gridView.adapter = adapter
         gridView.scheduleLayoutAnimation()
         gridView.setOnItemClickListener { _, _, position, _ ->
-            // Get the OfflineMangaModel that was clicked
             val item = adapter.getItem(position) as OfflineMangaModel
             val media =
                 downloadManager.mangaDownloadedTypes.firstOrNull { it.titleName.compareName(item.title) }
@@ -241,7 +237,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
         }
 
         gridView.setOnItemLongClickListener { _, _, position, _ ->
-            // Get the OfflineMangaModel that was clicked
             val item = adapter.getItem(position) as OfflineMangaModel
             val type: MediaType =
                 if (downloadManager.mangaDownloadedTypes.any { it.titleName == item.title }) {
@@ -249,7 +244,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
                 } else {
                     MediaType.NOVEL
                 }
-            // Alert dialog to confirm deletion
             requireContext().customAlertDialog().apply {
                 setTitle("Delete ${item.title}?")
                 setMessage("Are you sure you want to delete ${item.title}?")
@@ -276,7 +270,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
             gridView.smoothScrollToPositionFromTop(0, 0)
         }
 
-        // Assuming 'scrollTop' is a view that you want to hide/show
         scrollTop.visibility = View.GONE
 
         gridView.setOnScrollListener(object : AbsListView.OnScrollListener {
@@ -306,11 +299,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
     }
 
 
-    /**
-     * Shows the downloaded manga and novels. Cards that were built before come straight from the
-     * cache, so the page appears at once; only titles without a card are loaded (a few at a time, in
-     * parallel) and show up as they finish. [force] throws the cache away first (pull-to-refresh).
-     */
     private fun getDownloads(force: Boolean = false) {
         if (downloadsJob.isActive) {
             downloadsJob.cancel()
@@ -321,7 +309,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
             try {
                 OfflineLibraryCache.ensureLoaded(appContext)
                 if (force) OfflineLibraryCache.clearManga()
-                // manga first, then novels, same order as before
                 val entries = (downloadManager.mangaDownloadedTypes + downloadManager.novelDownloadedTypes)
                     .groupBy { it.type to it.titleName.findValidName() }
                     .map { (key, list) -> Triple(key.first.name, key.second, list.first()) }
@@ -366,7 +353,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
 
     private fun showDownloads(list: List<OfflineMangaModel>, loading: Boolean) {
         if (!isAdded || view == null) return
-        // unchanged list: leave the grid alone so scroll position and images aren't disturbed
         if (list != downloads) {
             downloads = list
             adapter.setItems(list)
@@ -382,11 +368,6 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
         }
     }
 
-    /**
-     * Load media.json file from the directory and convert it to Media class
-     * @param downloadedType DownloadedType object
-     * @return Media object
-     */
     private suspend fun getMedia(downloadedType: DownloadedType): Media? {
         return try {
             val directory = getSubDirectory(

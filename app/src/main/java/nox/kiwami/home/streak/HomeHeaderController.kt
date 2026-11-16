@@ -25,21 +25,6 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 import kotlin.random.Random
 
-/**
- * Drives the streak shown in the left of the Home header:
- *
- *   [big fire]  [number on fire]  [short funny line]            [search] [pfp]
- *
- * It also sets the Anime / Manga list buttons on fire once the streak reaches stage
- * [StreakManager.BUTTON_FIRE_STAGE]: flames growing out of the top edge of each card, following
- * its rounded corners. They are added from code, so the list buttons' own layout stays exactly
- * as it was.
- *
- * The fire stays invisible while the buttons slide in. Once both are in place it ignites (see
- * [CardFireView]): the whole button burns for a moment, then only the flames on top are left.
- *
- * Everything here reads local data only, so it works the same in Pre-cached (offline) mode.
- */
 class HomeHeaderController(private val b: FragmentHomeBinding) {
 
     private val ctx = b.root.context
@@ -69,20 +54,15 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
     private var inPlaceSince = 0L
     private val ignitionCheck = Runnable { checkIgnition() }
 
-    // ---- setup --------------------------------------------------------------------------------
-
     fun start() {
         b.homeUserDataProgressBar.visibility = View.GONE
         b.homeUserDataContainer.visibility = View.VISIBLE
         b.homeUserDataContainer.setOnClickListener {
-            // tapping only flares the fire now; the message changes when you come back to Home
             if (PrefManager.getVal<Boolean>(PrefName.StreakHaptics)) {
                 it.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             }
             b.homeStreakFire.flare()
         }
-        // Number and line are nudged so the *visible* glyphs sit on the same centre line as the
-        // fire icon, the search button and the avatar, whatever the font's own metrics are.
         centerOnRow(b.homeStreakCount, "0123456789")
         centerOnRow(b.homeStreakLine, null)
         refresh()
@@ -108,12 +88,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         b.homeStreakCount.paint.shader = null
     }
 
-    // ---- refresh ------------------------------------------------------------------------------
-
-    /**
-     * Called from Home's onResume. The first call (Home just opened) keeps the message that start()
-     * picked; every later call means you went somewhere and came back, so the message changes.
-     */
     fun onReturn() {
         if (released) return
         if (!resumedOnce) {
@@ -134,22 +108,18 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
             else -> 1f
         }
 
-        // user settings (Settings > Streak)
         val showStreak = PrefManager.getVal<Boolean>(PrefName.StreakShow)
         val animated = PrefManager.getVal<Boolean>(PrefName.StreakFireAnimated)
         val sparks = PrefManager.getVal<Boolean>(PrefName.StreakSparks)
         val showLines = PrefManager.getVal<Boolean>(PrefName.StreakLines)
         val boost = StreakManager.intensityBoost()
 
-        // Hiding the streak only hides its parts; the container keeps its weight so the search
-        // button and the avatar stay on the right.
         val vis = if (showStreak) View.VISIBLE else View.GONE
         b.homeStreakFire.visibility = vis
         b.homeStreakNumberBox.visibility = vis
         b.homeStreakLineBox.visibility = if (showStreak && showLines) View.VISIBLE else View.GONE
         b.homeUserDataContainer.isClickable = showStreak
 
-        // the campfire on the left: logs only at stage 0, then it grows with the stage
         b.homeStreakFire.apply {
             setStage(stage)
             setBoost(boost)
@@ -158,13 +128,11 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
             setDim(dim)
         }
 
-        // no flames behind the number any more
         b.homeStreakNumFire.visibility = View.GONE
 
         styleNumber(snap.status, stage)
         setCount(snap.count)
 
-        // funny line (re-rolled when the situation changes, on a new day, or when you come back to Home)
         val key = "${snap.status}-${band(snap.count)}-${StreakManager.today()}"
         if (forceNewLine || key != lastLineKey) {
             lastLineKey = key
@@ -175,12 +143,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         updateButtonFire(snap, stage, boost, animated, sparks)
     }
 
-    // ---- the number ---------------------------------------------------------------------------
-
-    /**
-     * Fire-coloured gradient that slowly rises through the digits, plus a pulsing orange glow.
-     * Muted when the streak is waiting for today's episode, grey when there is no streak.
-     */
     private fun styleNumber(status: StreakManager.Status, stage: Int) {
         if (status == styledStatus && stage == styledStage) return
         styledStatus = status
@@ -242,7 +204,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         countAnim?.cancel()
         val tv = b.homeStreakCount
         if (lastCount in 0 until count) {
-            // the streak just grew: count up and flare
             countAnim = ValueAnimator.ofInt(lastCount, count).apply {
                 duration = 800L
                 interpolator = DecelerateInterpolator()
@@ -255,8 +216,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         }
         lastCount = count
     }
-
-    // ---- the line -----------------------------------------------------------------------------
 
     private fun band(count: Int) = when {
         count <= 0 -> 0
@@ -271,7 +230,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         else -> 9
     }
 
-    /** A random message for the situation, never the same one twice in a row. {n} = the streak. */
     private fun pickLine(s: StreakManager.Snapshot): String {
         val res = when (s.status) {
             StreakManager.Status.NONE -> R.array.streak_lines_none
@@ -297,8 +255,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         return raw.replace("{n}", s.count.toString())
     }
 
-    // ---- fire on the Anime / Manga list buttons ----------------------------------------------
-
     private fun updateButtonFire(
         snap: StreakManager.Snapshot, stage: Int, boost: Float, animated: Boolean, sparks: Boolean
     ) {
@@ -314,7 +270,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         }
         val dimmed = if (snap.status == StreakManager.Status.ACTIVE) 0f else 0.35f
 
-        // flames on the top edge of each card
         listOfNotNull(animeAura, mangaAura).forEach { f ->
             if (burning) {
                 f.setStage(stage)
@@ -329,15 +284,9 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         }
     }
 
-    /**
-     * Adds the flames around a list card. The view is a sibling of the card with exactly the
-     * card's bounds (so a card can keep clipping its own content to its rounded corners) and it
-     * draws outside them. It sits above the card, and touches pass straight through it.
-     */
     private fun addAura(card: View): CardFireView {
         val parent = card.parent as ConstraintLayout
         val fire = CardFireView(ctx).apply {
-            // the fire follows the card's real rounded corners
             setCornerRadius((card as? MaterialCardView)?.radius ?: (16f * d))
         }
         parent.addView(
@@ -352,11 +301,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         return fire
     }
 
-    /**
-     * The fire waits (invisible) until the buttons have finished sliding in, and then ignites on
-     * both buttons together. This watches the two cards every frame: they must be visible, laid
-     * out and not animating any more, and stay that way for a moment.
-     */
     private fun scheduleIgnition() {
         if (ignitionPending || ignitionDone || released) return
         ignitionPending = true
@@ -389,11 +333,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         b.homeListContainer.postOnAnimation(ignitionCheck)
     }
 
-    /**
-     * The flames above a card may only use the free space between the card and the header row
-     * above it (streak, search button, avatar). That space is measured here, so the flames reach
-     * as high as they can without touching or covering any of it.
-     */
     private fun hookHeadroom() {
         if (headroomHooked) return
         headroomHooked = true
@@ -413,8 +352,6 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
         list.post { update() }
     }
 
-    // ---- one centre line for everything ------------------------------------------------------
-
     /**
      * Moves [tv] vertically so the part of its text you actually see is centred in the view, which
      * is itself centred on the header row (like the fire icon, search button and avatar).
@@ -432,12 +369,11 @@ class HomeHeaderController(private val b: FragmentHomeBinding) {
             if (layout == null || t.lineCount == 0 || t.height == 0) return@addOnLayoutChangeListener
             val text = sample ?: "H"
             t.paint.getTextBounds(text, 0, text.length, r)
-            val glyphTop = r.top.toFloat() // negative: above the baseline
+            val glyphTop = r.top.toFloat()
             val firstBaseline = t.getLineBounds(0, null).toFloat()
             val lastBaseline = t.getLineBounds(t.lineCount - 1, null).toFloat()
             val visibleCentre = ((firstBaseline + glyphTop) + lastBaseline) / 2f
             val shift = t.height / 2f - visibleCentre
-            // ignore silly values (e.g. before the font has loaded)
             if (kotlin.math.abs(shift) < 12f * d) t.translationY = shift
         }
     }

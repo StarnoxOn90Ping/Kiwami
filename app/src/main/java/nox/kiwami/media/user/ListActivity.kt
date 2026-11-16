@@ -61,8 +61,6 @@ class ListActivity : AppCompatActivity() {
         binding.listTitle.setTextColor(primaryTextColor)
         binding.listTabLayout.setTabTextColors(secondaryTextColor, primaryTextColor)
         binding.listTabLayout.setSelectedTabIndicatorColor(primaryTextColor)
-        // the stock tab strip is replaced by the floating carousel at the bottom; it stays only as the
-        // bookkeeping that keeps the pager and the selected category in sync
         binding.listTabLayout.visibility = View.GONE
         if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
             this.window.statusBarColor =
@@ -84,7 +82,6 @@ class ListActivity : AppCompatActivity() {
             R.string.user_list, intent.getStringExtra("username"),
             if (anime) getString(R.string.anime) else getString(R.string.manga)
         )
-        // heading: line 1 = "name's" (ellipsised if long), line 2 = "Anime List" / "Manga List"
         val owner = intent.getStringExtra("username")?.takeIf { it.isNotBlank() }
         val kind = getString(if (anime) R.string.anime_list else R.string.manga_list)
         binding.listTitle.visibility = View.GONE
@@ -103,7 +100,6 @@ class ListActivity : AppCompatActivity() {
         }
         (binding.listActionsRow as LinearLayout).gravity = Gravity.CENTER
 
-        // floating category carousel
         val density = resources.displayMetrics.density
         val extraBottom = if (PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) navBarHeight else 0
         binding.listCategoryBar.apply {
@@ -243,7 +239,6 @@ class ListActivity : AppCompatActivity() {
         }
 
         binding.random.setOnClickListener {
-            //get the current tab
             val currentTab =
                 binding.listTabLayout.getTabAt(binding.listTabLayout.selectedTabPosition)
             val currentFragment =

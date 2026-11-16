@@ -11,21 +11,6 @@ import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.util.Logger
 import org.json.JSONObject
 
-/**
- * Time spent watching anime and reading manga, kept per day on the device only.
- *
- *  - Anime: [tickAnime] is called by the player's progress loop (every ~2.5 s). Only time during
- *    which the video is actually playing counts (wall-clock time, not scaled by playback speed).
- *  - Manga: counted while the reader is on screen (see [install]); one stretch is capped so a
- *    reader left open on the table does not add hours.
- *
- * Days use [StreakManager.today] (so the 04:00 rollover matches the streak). The data is a JSON
- * string in [PrefName.WatchTimeData], so it is part of the normal backup / restore.
- * Nothing is recorded in Incognito.
- *
- * The Home pill reads it through [todayMinutes] only, so this is the one place to adapt if the
- * per-day minutes ever live somewhere else.
- */
 object WatchTimeTracker {
 
     data class Minutes(val anime: Int, val manga: Int) {
@@ -37,7 +22,6 @@ object WatchTimeTracker {
     private const val MAX_ANIME_GAP_MS = 6_000L
     private const val MAX_MANGA_STRETCH_MS = 45 * 60_000L
 
-    // not yet written to the preferences
     private var pendingAnimeMs = 0L
     private var pendingMangaMs = 0L
     private var pendingDay = -1L
@@ -46,9 +30,6 @@ object WatchTimeTracker {
     private var mangaStart = 0L
     private var installed = false
 
-    // ---- recording ----------------------------------------------------------------------------
-
-    /** Call on every player progress tick. [playing] = the video is currently playing. */
     @Synchronized
     fun tickAnime(playing: Boolean) {
         val now = SystemClock.elapsedRealtime()
@@ -58,7 +39,6 @@ object WatchTimeTracker {
         lastAnimeTick = if (playing) now else 0L
     }
 
-    /** The player stopped tracking (left the player). */
     @Synchronized
     fun stopAnime() {
         lastAnimeTick = 0L
@@ -69,14 +49,13 @@ object WatchTimeTracker {
     private fun addPending(anime: Long, manga: Long) {
         if (anime <= 0L && manga <= 0L) return
         val day = StreakManager.today()
-        if (pendingDay != -1L && pendingDay != day) flush() // day rolled over: bank yesterday first
+        if (pendingDay != -1L && pendingDay != day) flush()
         pendingDay = day
         pendingAnimeMs += anime
         pendingMangaMs += manga
         if (pendingAnimeMs + pendingMangaMs >= FLUSH_AFTER_MS) flush()
     }
 
-    /** Writes whatever is waiting to the preferences. */
     @Synchronized
     fun flush() {
         if (pendingDay == -1L || (pendingAnimeMs <= 0L && pendingMangaMs <= 0L)) return
@@ -86,7 +65,6 @@ object WatchTimeTracker {
             val old = root.optJSONArray(key)
             val a = (old?.optLong(0) ?: 0L) + pendingAnimeMs / 1000
             val m = (old?.optLong(1) ?: 0L) + pendingMangaMs / 1000
-            // keep the sub-second remainder so short ticks never get lost
             pendingAnimeMs %= 1000
             pendingMangaMs %= 1000
             root.put(key, org.json.JSONArray().put(a).put(m))
@@ -100,10 +78,6 @@ object WatchTimeTracker {
         }
     }
 
-    /**
-     * Hooks the manga reader through the activity lifecycle, so the reader itself needs no changes.
-     * Safe to call more than once. Call from Application.onCreate.
-     */
     fun install(app: Application) {
         if (installed) return
         installed = true
@@ -140,9 +114,6 @@ object WatchTimeTracker {
         false
     }
 
-    // ---- reading ------------------------------------------------------------------------------
-
-    /** Whole minutes watched / read today (includes what has not been written yet). */
     @Synchronized
     fun todayMinutes(): Minutes {
         val today = StreakManager.today()
@@ -159,7 +130,6 @@ object WatchTimeTracker {
             a += pendingAnimeMs / 1000
             m += pendingMangaMs / 1000
         }
-        // a stretch that is still running counts too
         if (mangaStart > 0L && !incognito()) {
             m += (SystemClock.elapsedRealtime() - mangaStart).coerceIn(0L, MAX_MANGA_STRETCH_MS) / 1000
         }

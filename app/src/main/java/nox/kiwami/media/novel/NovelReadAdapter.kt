@@ -135,7 +135,6 @@ class NovelReadAdapter(
                     binding.chaptersHeaderRow.visibility = View.VISIBLE
                 }
 
-                // novel ext setting
                 binding.mediaSourceSettings.visibility = if (isDynamic) View.VISIBLE else View.GONE
                 if (isDynamic) {
                     binding.mediaSourceSettings.setOnClickListener {
@@ -148,7 +147,6 @@ class NovelReadAdapter(
             }
             updateLayoutForSource(source)
 
-            // menu
             binding.mediaNestedButton.setOnClickListener {
                 showFilterDialog()
             }

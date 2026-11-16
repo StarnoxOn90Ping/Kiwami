@@ -224,10 +224,6 @@ class SubscriptionHelper {
             updateAiringAlarm(media, subscribed)
         }
 
-        /**
-         * Anime are notified from the airing countdown (an alarm that fires at the exact release time),
-         * so every (un)subscription has to arm or cancel that alarm too.
-         */
         private fun updateAiringAlarm(media: Media, subscribed: Boolean) {
             val context = currContext()?.applicationContext ?: return
             val anime = media.anime ?: return
@@ -245,13 +241,11 @@ class SubscriptionHelper {
                         name = media.userPreferredName,
                         image = media.cover,
                         banner = media.banner,
-                        // nextAiringEpisode holds the last aired episode, same as the info page countdown
                         episode = next + 1,
                         airingAtSec = airingAt
                     )
                 )
             }
-            // AniList is the source of truth for the exact time, so always verify it too
             AiringAlarmScheduler.enqueueSync(context, media.id)
         }
     }

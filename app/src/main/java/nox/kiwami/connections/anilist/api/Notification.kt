@@ -23,7 +23,6 @@ enum class NotificationType(val value: String) {
     MEDIA_MERGE("MEDIA_MERGE"),
     MEDIA_DELETION("MEDIA_DELETION"),
 
-    //custom
     COMMENT_REPLY("COMMENT_REPLY"),
     COMMENT_WARNING("COMMENT_WARNING"),
     KIWAMI_UPDATE("KIWAMI_UPDATE"),

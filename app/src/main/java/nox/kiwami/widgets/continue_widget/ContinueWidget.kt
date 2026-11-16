@@ -79,7 +79,6 @@ class ContinueWidget : AppWidgetProvider() {
                 editor.putString(KEY_ACTIVE_HEADER, "CURRENTLY WATCHING")
                 editor.putInt(KEY_ACTIVE_ICON_RES, R.drawable.ic_round_play_circle_24)
 
-                // Update Last Watched
                 editor.putString(KEY_LAST_WATCHED_TITLE, title)
                 editor.putString(KEY_LAST_WATCHED_COVER, coverUrl)
                 editor.putString(KEY_LAST_WATCHED_DETAIL, detail ?: "Resume Episode")
@@ -107,7 +106,6 @@ class ContinueWidget : AppWidgetProvider() {
                 editor.putString(KEY_ACTIVE_HEADER, "CURRENTLY READING")
                 editor.putInt(KEY_ACTIVE_ICON_RES, R.drawable.ic_round_menu_book_24)
 
-                // Update Last Read
                 editor.putString(KEY_LAST_READ_TITLE, title)
                 editor.putString(KEY_LAST_READ_COVER, coverUrl)
                 editor.putString(KEY_LAST_READ_DETAIL, detail ?: "Resume Chapter")

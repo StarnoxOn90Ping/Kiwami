@@ -107,7 +107,6 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        // Font Size
         val currentFontSize = PrefManager.getCustomVal(ExtraNovelReaderPrefs.PREF_FONT_SIZE_PX, 100)
         binding.fontSize.setText(currentFontSize.toString())
         binding.fontSize.setOnFocusChangeListener { _, hasFocus ->

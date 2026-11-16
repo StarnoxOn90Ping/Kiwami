@@ -59,7 +59,6 @@ class ChartBuilder {
             var aaChartType = passedAaChartType
             var categories = passedCategories
             if (chartType == ChartType.OneDimensional && chartPackets.size != 1) {
-                //need to convert to 2D
                 chartType = ChartType.TwoDimensional
                 aaChartType = AAChartType.Column
                 categories = chartPackets[0].names.map { it.toString() }

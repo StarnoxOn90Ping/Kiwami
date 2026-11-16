@@ -123,7 +123,7 @@ class TorrentServerService : Service() {
 
         fun isRunning(): Boolean {
             with(Injekt.get<Application>().getSystemService(ACTIVITY_SERVICE) as ActivityManager) {
-                @Suppress("DEPRECATION") // We only need our services
+                @Suppress("DEPRECATION")
                 getRunningServices(Int.MAX_VALUE).forEach {
                     if (TorrentServerService::class.java.name.equals(it.service.className)) {
                         return true

@@ -85,7 +85,6 @@ class MangaDownloaderService : Service() {
     private val queueMutex = Mutex()
 
     override fun onBind(intent: Intent?): IBinder? {
-        // This is only required for bound services.
         return null
     }
 
@@ -429,7 +428,7 @@ class MangaDownloaderService : Service() {
                 ?: throw Exception("File not created")
             val gson = GsonBuilder()
                 .registerTypeAdapter(SChapter::class.java, InstanceCreator<SChapter> {
-                    SChapterImpl() // Provide an instance of SChapterImpl
+                    SChapterImpl()
                 })
                 .create()
             val mediaJson = gson.toJson(task.sourceMedia)

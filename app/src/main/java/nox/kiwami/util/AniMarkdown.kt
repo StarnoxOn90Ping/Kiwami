@@ -3,7 +3,7 @@ package nox.kiwami.util
 import nox.kiwami.getYoutubeId
 import nox.kiwami.util.ColorEditor.Companion.toCssColor
 
-class AniMarkdown { //istg anilist has the worst api
+class AniMarkdown {
     companion object {
         private fun String.convertNestedImageToHtml(): String {
             val regex = """\[!\[(.*?)]\((.*?)\)]\((.*?)\)""".toRegex()

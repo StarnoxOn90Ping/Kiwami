@@ -3,12 +3,7 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Activity payload for Discord Headless Sessions API.
- * POST https://discord.com/api/v10/users/@me/headless-sessions
- *
- * Modelled on brahmkshatriya/echo-discord Activity.kt
- */
+/** Modelled on brahmkshatriya/echo-discord Activity.kt */
 @Serializable
 data class DiscordActivity(
     @SerialName("application_id")
@@ -18,7 +13,6 @@ data class DiscordActivity(
     val platform: String? = "android",
     val type: Int? = null,
 
-    /** 0 = activity name, 1 = artist name, 2 = track name */
     @SerialName("status_display_type")
     val statusDisplayType: Int? = null,
 
@@ -70,12 +64,8 @@ data class DiscordActivity(
     )
 }
 
-/**
- * Wrapper for the headless sessions POST body.
- */
 @Serializable
 data class DiscordSession(
     val activities: List<DiscordActivity>? = null,
-    /** Session token returned by a previous call; null for first call */
     val token: String? = null,
 )

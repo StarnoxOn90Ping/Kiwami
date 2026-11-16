@@ -45,7 +45,6 @@ internal object EpisodeWatchAnimator {
         running.remove(card)?.invoke()
     }
 
-    /** Returns the delay the caller should give any extra animation of the same tile. */
     fun markWatched(card: ViewGroup, cover: View, anchor: View?): Long {
         cancel(card)
 
@@ -276,12 +275,6 @@ internal object EpisodeWatchAnimator {
         }
     }
 
-    /**
-     * One dust field shared by every tile. Each particle is a pure function of the sweep progress
-     * (spawn point, lifetime, drift), so nothing is simulated or allocated per frame and a tile only
-     * picks its own starting offset into the field. Positions go into a few buckets by size and
-     * brightness, and each bucket is drawn with a single drawPoints call.
-     */
     private object DustField {
         const val MAX = 700
         const val LEVELS = 4

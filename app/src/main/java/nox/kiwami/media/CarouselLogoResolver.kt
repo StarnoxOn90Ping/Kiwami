@@ -30,19 +30,16 @@ object CarouselLogoResolver {
         }
 
         var logo: String? = null
-        // 1. Try AniZip mapping by Anilist ID
         if (media.id > 0) {
             logo = fromAniZip("anilist_id", media.id.toString())
                 ?: fromAniZip("anilistId", media.id.toString())
         }
 
-        // 2. Try AniZip mapping by MAL ID
         if (logo == null && media.idMAL != null && media.idMAL!! > 0) {
             logo = fromAniZip("mal_id", media.idMAL.toString())
                 ?: fromAniZip("malId", media.idMAL.toString())
         }
 
-        // 3. Fallback: try IdMappers to resolve MAL ID
         if (logo == null && media.id > 0) {
             val ids = runCatching { IdMappers.getIds(media.id) }.getOrNull()
             if (ids?.malId != null && ids.malId != media.idMAL) {
@@ -51,7 +48,6 @@ object CarouselLogoResolver {
             }
         }
 
-        // 4. TMDB Fallback
         if (logo == null && media.id > 0) {
             val tmdbId = media.idTMDB?.toIntOrNull()
                 ?: runCatching { IdMappers.getIds(media.id)?.tmdbId }.getOrNull()

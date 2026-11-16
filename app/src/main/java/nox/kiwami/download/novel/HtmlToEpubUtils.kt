@@ -37,7 +37,6 @@ object HtmlToEpubUtils {
         val baos = ByteArrayOutputStream()
         val zos = ZipOutputStream(baos)
         
-        // uncompress
         val mimeType = "application/epub+zip".toByteArray(Charsets.UTF_8)
         val mimeEntry = ZipEntry("mimetype")
         mimeEntry.method = ZipEntry.STORED

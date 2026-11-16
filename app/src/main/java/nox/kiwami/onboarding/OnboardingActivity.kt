@@ -56,11 +56,6 @@ import nox.kiwami.util.LauncherWrapper
 import nox.kiwami.util.StoragePermissions
 import kotlin.math.abs
 
-/**
- * First launch experience: a paged, animated tour that also asks for everything the app needs
- * to work properly in the background (notifications, battery optimisation exemption, exact
- * alarms and a download folder).
- */
 class OnboardingActivity : AppCompatActivity() {
 
     private enum class Kind { INFO, RESTORE, DISCLAIMER, PERMISSIONS, THEMES, DONE }
@@ -88,11 +83,9 @@ class OnboardingActivity : AppCompatActivity() {
             R.string.onboarding_perm_storage_desc, R.string.onboarding_perm_choose
         );
 
-        /** Exact alarms only need a grant on Android 12+. */
         fun isRelevant() = this != ALARMS || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     }
 
-    /** The idle animation of an icon; picked to match what the icon means. */
     private enum class Motion { FLOAT, BELL, SHAKE, PULSE, HOP, SPIN, SPIN_CCW }
 
     private data class Page(
@@ -103,7 +96,6 @@ class OnboardingActivity : AppCompatActivity() {
         @StringRes val description: Int,
         val motion: Motion,
         val tintIcon: Boolean = true,
-        /** Size of the icon and of its glow container, in dp. */
         val iconDp: Int = 128,
         val containerDp: Int = 240
     )
@@ -147,7 +139,6 @@ class OnboardingActivity : AppCompatActivity() {
 
     private val disclaimerIndex = pages.indexOfFirst { it.kind == Kind.DISCLAIMER }
 
-    /** Accent colour shown for each theme in the picker. */
     private val themeSwatches = mapOf(
         "BLUE" to R.color.md_theme_dark_1_primary,
         "GREEN" to R.color.md_theme_dark_2_primary,
@@ -187,7 +178,6 @@ class OnboardingActivity : AppCompatActivity() {
                     return@registerForActivityResult
                 }
                 if (PreferencePackager.unpack(bytes.toString(Charsets.UTF_8))) {
-                    // The backup replaces every preference, including this flag
                     PrefManager.setVal(PrefName.OnboardingDone, true)
                     startActivity(
                         Intent(this, MainActivity::class.java)
@@ -222,7 +212,6 @@ class OnboardingActivity : AppCompatActivity() {
 
         folderLauncher = LauncherWrapper(this, ActivityResultContracts.OpenDocumentTree())
 
-        // Neutral dark wash: keeps text readable without tinting the artwork with an accent colour
         binding.scrim.background = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
             intArrayOf(0x8C080814.toInt(), 0x59080814, 0xD9080814.toInt())
@@ -261,7 +250,6 @@ class OnboardingActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // The user may just have come back from a system settings screen
         refreshStatuses()
     }
 
@@ -270,14 +258,11 @@ class OnboardingActivity : AppCompatActivity() {
         binding.tileWall.stop()
     }
 
-    // region setup
-
     private fun setupPager() {
         val pager = binding.onboardingPager
         pager.adapter = pageAdapter
         pager.offscreenPageLimit = 1
 
-        // Parallax: icon slides slower than text, everything fades out towards the edges
         pager.setPageTransformer { page, position ->
             val width = page.width.toFloat()
             page.findViewById<View>(R.id.iconContainer)?.translationX = -position * width * 0.35f
@@ -300,7 +285,6 @@ class OnboardingActivity : AppCompatActivity() {
             }
         })
 
-        // initial state
         updateButtons(0)
         pager.post { playEntrance(0) }
     }
@@ -338,7 +322,6 @@ class OnboardingActivity : AppCompatActivity() {
             else pager.setCurrentItem(pager.currentItem + 1, true)
         }
         binding.skipButton.setOnClickListener {
-            // Skips the intro, but never the disclaimer
             binding.onboardingPager.setCurrentItem(disclaimerIndex, true)
         }
     }
@@ -358,10 +341,6 @@ class OnboardingActivity : AppCompatActivity() {
             }
         )
     }
-
-    // endregion
-
-    // region permission state / actions
 
     private fun relevantPerms() = Perm.entries.filter { it.isRelevant() }
 
@@ -440,7 +419,6 @@ class OnboardingActivity : AppCompatActivity() {
                     .setData(Uri.parse("package:$packageName"))
             )
         } catch (e: Exception) {
-            // nothing else to try
         }
     }
 
@@ -452,8 +430,6 @@ class OnboardingActivity : AppCompatActivity() {
         updateButtons(binding.onboardingPager.currentItem)
     }
 
-    // endregion
-
     private fun finishOnboarding() {
         PrefManager.setVal(PrefName.OnboardingDone, true)
         startActivity(
@@ -462,8 +438,6 @@ class OnboardingActivity : AppCompatActivity() {
         )
         finish()
     }
-
-    // region page animations
 
     private fun currentHolder(position: Int): PageViewHolder? {
         val recycler = binding.onboardingPager.getChildAt(0) as? RecyclerView ?: return null
@@ -479,7 +453,6 @@ class OnboardingActivity : AppCompatActivity() {
         )
             .forEachIndexed { index, view ->
                 if (!view.isVisible) return@forEachIndexed
-                // alpha is already handled by the pager transformer while swiping
                 view.animate().cancel()
                 view.translationY = dp(28).toFloat()
                 view.animate()
@@ -504,11 +477,8 @@ class OnboardingActivity : AppCompatActivity() {
         b.iconGlow.scaleY = 0.5f
         b.iconGlow.animate().scaleX(1f).scaleY(1f).setDuration(700)
             .setInterpolator(DecelerateInterpolator()).start()
-        // start the idle motion once the pop-in has settled
         holder.startIdle(pages[position])
     }
-
-    // endregion
 
     private inner class PageViewHolder(val b: ItemOnboardingPageBinding) :
         RecyclerView.ViewHolder(b.root) {
@@ -617,7 +587,6 @@ class OnboardingActivity : AppCompatActivity() {
                     }
                     contentDescription = label(key)
                     setOnClickListener {
-                        // A hand-picked theme should win over Material You / custom colours
                         PrefManager.setVal(PrefName.Theme, key)
                         PrefManager.setVal(PrefName.UseMaterialYou, false)
                         PrefManager.setVal(PrefName.UseCustomTheme, false)
@@ -632,7 +601,6 @@ class OnboardingActivity : AppCompatActivity() {
             b.themeName.text = label(if (current in themeSwatches) current else "BLUE")
         }
 
-        /** Soft light behind the icon that slowly breathes. */
         fun startGlow() {
             glowAnimator?.cancel()
             glowAnimator = ObjectAnimator.ofPropertyValuesHolder(
@@ -685,7 +653,6 @@ class OnboardingActivity : AppCompatActivity() {
                 )
 
                 Motion.BELL -> {
-                    // swings from the top like a real bell, then rests
                     icon.pivotY = icon.height * 0.14f
                     play(
                         keyframes(
@@ -723,7 +690,6 @@ class OnboardingActivity : AppCompatActivity() {
                 )
 
                 Motion.SPIN, Motion.SPIN_CCW -> {
-                    // SPIN_CCW (restore page) turns anti-clockwise, like the arrow on its icon
                     val end = if (page.motion == Motion.SPIN_CCW) -360f else 360f
                     play(PropertyValuesHolder.ofFloat(View.ROTATION, 0f, end), ms = 8000)
                     play(
@@ -741,7 +707,6 @@ class OnboardingActivity : AppCompatActivity() {
             b.pageIcon.rotation = 0f
             b.pageIcon.translationY = 0f
             b.pageIcon.alpha = 1f
-            // scale is left alone: the pop-in animation owns it
         }
 
         fun stopAnimations() {

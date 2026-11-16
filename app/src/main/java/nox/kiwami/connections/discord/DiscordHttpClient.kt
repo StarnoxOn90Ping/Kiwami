@@ -4,12 +4,6 @@ import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import nox.kiwami.plainHttpClient
 
-/**
- * Shared OkHttpClient for all Discord network calls.
- *
- * Uses a single connection pool, DNS cache, and SSL session cache
- * instead of creating separate clients in TokenManager, HeadlessRPC, and Login.
- */
 object DiscordHttpClient {
     val instance: OkHttpClient by lazy {
         plainHttpClient.newBuilder()

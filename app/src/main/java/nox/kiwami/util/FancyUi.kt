@@ -11,11 +11,6 @@ import android.view.animation.OvershootInterpolator
 import android.widget.TextView
 import androidx.core.view.doOnLayout
 
-/**
- * Springy press feedback: the view squishes in when touched and bounces back past its size on release.
- * Always clears any start delay left behind by earlier animations on the same view, which would
- * otherwise make the press feel late or invisible.
- */
 @SuppressLint("ClickableViewAccessibility")
 fun View.setPressBounce(scaleDown: Float = 0.86f) {
     setOnTouchListener { v, event ->
@@ -28,7 +23,6 @@ fun View.setPressBounce(scaleDown: Float = 0.86f) {
                 .start()
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                // even a quick tap stays squished long enough to be seen before springing back
                 val held = event.eventTime - event.downTime
                 v.animate()
                     .setStartDelay((150L - held).coerceAtLeast(0L))
@@ -42,7 +36,6 @@ fun View.setPressBounce(scaleDown: Float = 0.86f) {
     }
 }
 
-/** Paints the text with a horizontal two-colour gradient that follows the (centred) glyphs. */
 fun TextView.setGradientText(startColor: Int, endColor: Int) {
     doOnLayout {
         val textWidth = paint.measureText(text.toString())
@@ -55,7 +48,6 @@ fun TextView.setGradientText(startColor: Int, endColor: Int) {
     }
 }
 
-/** Slides + fades the view in from slightly above. */
 fun View.fadeInDown(delay: Long = 0L, distanceDp: Float = 18f) {
     alpha = 0f
     translationY = -distanceDp * resources.displayMetrics.density

@@ -47,17 +47,16 @@ class DownloadCompat {
                 currContext()?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                 "Kiwami/$type/${downloadedType.titleName}"
             )
-            //load media.json and convert to media class with gson
             return try {
                 val gson = GsonBuilder()
                     .registerTypeAdapter(SChapter::class.java, InstanceCreator<SChapter> {
-                        SChapterImpl() // Provide an instance of SChapterImpl
+                        SChapterImpl()
                     })
                     .registerTypeAdapter(SAnime::class.java, InstanceCreator<SAnime> {
-                        SAnimeImpl() // Provide an instance of SAnimeImpl
+                        SAnimeImpl()
                     })
                     .registerTypeAdapter(SEpisode::class.java, InstanceCreator<SEpisode> {
-                        SEpisodeImpl() // Provide an instance of SEpisodeImpl
+                        SEpisodeImpl()
                     })
                     .create()
                 val media = File(directory, "media.json")
@@ -82,7 +81,6 @@ class DownloadCompat {
                 currContext()?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                 "Kiwami/$type/${downloadedType.titleName}"
             )
-            //load media.json and convert to media class with gson
             try {
                 val mediaModel = loadMediaCompat(downloadedType)!!
                 val cover = File(directory, "cover.jpg")
@@ -151,7 +149,6 @@ class DownloadCompat {
                 currContext()?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                 "Kiwami/$type/${downloadedType.titleName}"
             )
-            //load media.json and convert to media class with gson
             try {
                 val mediaModel = loadMediaCompat(downloadedType)!!
                 val cover = File(directory, "cover.jpg")
@@ -213,11 +210,9 @@ class DownloadCompat {
                 currContext()?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                 "${animeLocation}/$animeLink"
             )
-            //get all of the folder names and add them to the list
             val episodes = mutableListOf<Episode>()
             if (directory.exists()) {
                 directory.listFiles()?.forEach {
-                    //put the title and episdode number in the extra data
                     val extraData = mutableMapOf<String, String>()
                     extraData["title"] = animeLink
                     extraData["episode"] = it.name
@@ -250,7 +245,6 @@ class DownloadCompat {
                 currContext()?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                 "Kiwami/Manga/$mangaLink"
             )
-            //get all of the folder names and add them to the list
             val chapters = mutableListOf<MangaChapter>()
             if (directory.exists()) {
                 directory.listFiles()?.forEach {
@@ -365,7 +359,6 @@ class DownloadCompat {
                 )
             }
 
-            // Check if the directory exists and delete it recursively
             if (directory.exists()) {
                 val deleted = directory.deleteRecursively()
                 if (toast) {

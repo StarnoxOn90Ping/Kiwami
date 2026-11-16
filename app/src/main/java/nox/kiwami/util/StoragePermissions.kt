@@ -117,8 +117,6 @@ class LauncherWrapper(
                     PrefManager.setVal(PrefName.DownloadsDir, uri.toString())
                     DownloadsManager.addNoMedia(activity)
                     if (previous != uri.toString()) {
-                        // New download location: rebuild the index from what is in the new folder.
-                        // (Flows that also move the old downloads rebuild once more after the move.)
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 Injekt.get<DownloadsManager>().rebuildIndexFromDisk(replace = true)

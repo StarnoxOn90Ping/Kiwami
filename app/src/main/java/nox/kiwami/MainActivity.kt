@@ -94,7 +94,6 @@ class MainActivity : AppCompatActivity() {
     private var offlineScreen: OfflineScreen? = null
     private var offlineModeChosen = false
 
-    /** True when the app was launched without internet: only Home (cached) is available. */
     private var offlineMode = false
 
 
@@ -109,7 +108,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // First launch: show the animated intro + permission setup before anything else
         if (!PrefManager.getVal<Boolean>(PrefName.OnboardingDone)) {
             startActivity(
                 Intent(this, nox.kiwami.onboarding.OnboardingActivity::class.java)
@@ -120,7 +118,6 @@ class MainActivity : AppCompatActivity() {
 
         ThemeManager(this).applyTheme()
 
-        //get FRAGMENT_CLASS_NAME from intent
         val fragment = intent.getStringExtra("FRAGMENT_CLASS_NAME")
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -286,8 +283,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 PrefManager.getVal(PrefName.DefaultStartUpTab)
             }
-            // launched without internet -> no Anime/Manga pages (they would just load forever),
-            // the pill becomes an "Offline" badge and only the cached Home page is shown
             offlineMode = !isOnline(this)
             if (offlineMode) selectedOption = 1
             // The token used to be loaded only by loadMain() on a background thread, so the pager
@@ -301,7 +296,6 @@ class MainActivity : AppCompatActivity() {
                 bottomBar = navbar
                 navbar.visibility = View.VISIBLE
             }
-            // calendar (left) + downloads (right) circles that flank the pill
             sideButtons = nox.kiwami.home.HomeSideButtons(this, binding.includedNavbar).also {
                 it.attach()
                 it.reveal()
@@ -340,11 +334,9 @@ class MainActivity : AppCompatActivity() {
             binding.includedNavbar.navbarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 bottomMargin = navBarHeight
             }
-            // offline at launch: ask whether to retry, use the cached Home, or open Downloads.
-            // Only once per launch (not again after a rotation / recreate).
             if (offlineMode) {
                 if (savedInstanceState?.getBoolean(KEY_OFFLINE_CHOSEN) == true) {
-                    showOfflineBanner() // rotated while in Offline mode: keep the banner
+                    showOfflineBanner()
                 } else if (savedInstanceState == null) {
                     offlineDialog = OfflineLaunchDialog(this) { showOfflineBanner() }
                         .also { it.show() }
@@ -385,7 +377,6 @@ class MainActivity : AppCompatActivity() {
         }
         val model: AnilistHomeViewModel by viewModels()
 
-        //Load Data
         if (!load && !launched) {
             scope.launch(Dispatchers.IO) {
                 model.loadMain(this@MainActivity)
@@ -478,15 +469,9 @@ class MainActivity : AppCompatActivity() {
     override fun onRestart() {
         super.onRestart()
         window.navigationBarColor = ContextCompat.getColor(this, android.R.color.transparent)
-        // back from Downloads / Calendar / etc. while in Offline mode: show a fresh line
         offlineScreen?.nextLine()
     }
 
-    /**
-     * "Offline mode" from the launch popup: the cached Home is covered by an empty, fancy offline
-     * screen. It is inserted right above the pager, so the pill and the calendar/downloads buttons
-     * (in the navbar include, added after it) stay on top and keep working.
-     */
     private fun showOfflineBanner() {
         if (offlineScreen != null || !::binding.isInitialized) return
         offlineModeChosen = true
@@ -494,7 +479,6 @@ class MainActivity : AppCompatActivity() {
         val screenBinding = nox.kiwami.databinding.ViewOfflineScreenBinding
             .inflate(layoutInflater, root, false)
         root.addView(screenBinding.root, root.indexOfChild(binding.viewpager) + 1)
-        // keep the centred content clear of the pill / buttons at the bottom
         screenBinding.offlineScreenContent.setPadding(
             screenBinding.offlineScreenContent.paddingLeft,
             screenBinding.offlineScreenContent.paddingTop,
@@ -574,7 +558,6 @@ class MainActivity : AppCompatActivity() {
                     ?: throw Exception("Error reading file")
             val name =
                 DocumentFile.fromSingleUri(this, uri)?.name ?: "settings"
-            //.sani is encrypted, .ani is not
             if (name.endsWith(".sani")) {
                 passwordAlertDialog { password ->
                     if (password != null) {
@@ -618,7 +601,6 @@ class MainActivity : AppCompatActivity() {
     private fun passwordAlertDialog(callback: (CharArray?) -> Unit) {
         val password = CharArray(16).apply { fill('0') }
 
-        // Inflate the dialog layout
         val dialogView = DialogUserAgentBinding.inflate(layoutInflater).apply {
             userAgentTextBox.hint = "Password"
             subtitle.visibility = View.VISIBLE
@@ -644,14 +626,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //ViewPager
     private class ViewPagerAdapter(
         fragmentManager: FragmentManager,
         lifecycle: Lifecycle,
         private val offline: Boolean
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
 
-        // offline: a single page (Home, served from the local cache)
         override fun getItemCount(): Int = if (offline) 1 else 3
 
         // Offline and online pages get different ids. Otherwise, after recreate() on reconnect,

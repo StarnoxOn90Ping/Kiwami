@@ -15,7 +15,7 @@ enum class Location(val location: String, val exportable: Boolean) {
     Reader("nox.kiwami.reader", true),
     NovelReader("nox.kiwami.novelReader", true),
     Irrelevant("nox.kiwami.irrelevant", false),
-    AnimeDownloads("animeDownloads", false),  //different for legacy reasons
+    AnimeDownloads("animeDownloads", false),
     Protected("nox.kiwami.protected", true),
     ExtensionSettings("nox.kiwami.extensionSettings", true);
 }

@@ -19,19 +19,16 @@ import uy.kohesive.injekt.api.get
 class SubtitleDownloader {
 
     companion object {
-        //doesn't really download the subtitles -\_(o_o)_/-
         suspend fun loadSubtitleType(url: String): SubtitleType =
             withContext(Dispatchers.IO) {
                 return@withContext try {
                     if (!url.startsWith("file")) {
-                        // Initialize the NetworkHelper instance. Replace this line based on how you usually initialize it
                         val networkHelper = Injekt.get<NetworkHelper>()
                         val request = Request.Builder()
                             .url(url)
                             .build()
 
                         val responseBody = networkHelper.client.newCall(request).execute().use { response ->
-                            // Check if response is successful
                             if (!response.isSuccessful) return@withContext SubtitleType.UNKNOWN
                             response.peekBody(8192).string()
                         }
@@ -63,7 +60,6 @@ class SubtitleDownloader {
             }
         }
 
-        //actually downloads lol
         @Deprecated("handled externally")
         suspend fun downloadSubtitle(
             context: Context,

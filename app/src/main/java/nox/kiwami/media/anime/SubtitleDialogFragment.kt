@@ -52,7 +52,6 @@ import java.util.Locale
 @OptIn(UnstableApi::class)
 class SubtitleDialogFragment : BottomSheetDialogFragment() {
 
-    // Models for subtitle list items
     object NoneSubtitleOption
     data class ActiveOnlineSubtitle(val title: String, val provider: String, val idOrUrl: String, val format: String? = null)
     data class OtherServerSubtitle(val serverName: String, val subtitle: Subtitle, val suffix: String = "")
@@ -67,10 +66,8 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
     private var currentSeasonEpisode: EpisodeMapper.SeasonEpisode? = null
     private var searchJob: Job? = null
 
-    // Tab state: 0 = Subtitles, 1 = Online, 2 = Local, 3 = Sync
     private var currentTab = 0
 
-    // Filter states for online tab
     private var selectedProviderFilter = "All"
     private var selectedLanguageFilter = "All"
     private var currentOnlineResults: List<Any> = emptyList()
@@ -194,7 +191,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                 ?: 1
             val episodeId = "${media.id}-${episode.number}"
 
-            // Pre-fill search input
             val animeTitleText = media.userPreferredName
             if (binding.onlineSearchEditText.text.isNullOrBlank()) {
                 binding.onlineSearchEditText.setText("$animeTitleText Episode $actualEpisodeNum")
@@ -204,14 +200,12 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             loadSubtitlesTab(episodeId)
             loadLocalTab(episodeId)
 
-            // Online cached results check
             val cachedOnline = model.getFetchedSubtitles(episodeId)
             if (cachedOnline != null && cachedOnline.isNotEmpty()) {
                 currentOnlineResults = cachedOnline
                 filterAndDisplayOnlineResults()
             }
 
-            // Background metadata & IMDB mapping
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 if (media.idIMDB == null) {
                     try {
@@ -270,7 +264,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             ContextCompat.getColor(requireContext(), R.color.grey_60)
         }
 
-        // Subtitles Tab
         if (currentTab == 0) {
             binding.tabSubtitlesBtn.setBackgroundResource(R.drawable.badge_bg_rounded)
             binding.tabSubtitlesBtn.backgroundTintList = ColorStateList.valueOf(selectedBgColor)
@@ -281,7 +274,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             binding.tabSubtitlesBtn.setTextColor(unselectedTextColor)
         }
 
-        // Online Tab
         if (currentTab == 1) {
             binding.tabOnlineBtn.setBackgroundResource(R.drawable.badge_bg_rounded)
             binding.tabOnlineBtn.backgroundTintList = ColorStateList.valueOf(selectedBgColor)
@@ -292,7 +284,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             binding.tabOnlineBtn.setTextColor(unselectedTextColor)
         }
 
-        // Local Tab
         if (currentTab == 2) {
             binding.tabLocalBtn.setBackgroundResource(R.drawable.badge_bg_rounded)
             binding.tabLocalBtn.backgroundTintList = ColorStateList.valueOf(selectedBgColor)
@@ -303,7 +294,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             binding.tabLocalBtn.setTextColor(unselectedTextColor)
         }
 
-        // Sync Tab
         if (currentTab == 3) {
             binding.tabSyncBtn.setBackgroundResource(R.drawable.badge_bg_rounded)
             binding.tabSyncBtn.backgroundTintList = ColorStateList.valueOf(selectedBgColor)
@@ -340,7 +330,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             } else false
         }
 
-        // Provider chips
         binding.chipProviderAll.setOnClickListener {
             selectedProviderFilter = "All"
             uncheckOtherProviderChips(binding.chipProviderAll.id)
@@ -362,7 +351,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             filterAndDisplayOnlineResults()
         }
 
-        // Language filter chips
         setupLanguageChips()
     }
 
@@ -446,10 +434,8 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
         val items = mutableListOf<Any>()
         val savedLang: String? = PrefManager.getNullableCustomVal("subLang_${media.id}", null, String::class.java)
 
-        // 1. None Option
         items.add(NoneSubtitleOption)
 
-        // 2. Active External Subtitle (Online or Local) in Tab 0
         val exoActivity = activity as? ExoplayerView
         val subManager = exoActivity?.subtitleManager
         val isOnlineActive = subManager?.activeSubtitleId != null &&
@@ -469,13 +455,11 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             items.add(Subtitle(language = savedLang, url = ""))
         }
 
-        // 3. Current Server's Extractor Subtitles
         val currentExtractor = episode.extractors?.find { it.server.name == episode.selectedExtractor }
         if (currentExtractor != null && currentExtractor.subtitles.isNotEmpty()) {
             items.addAll(currentExtractor.subtitles)
         }
 
-        // 4. Embedded Player Tracks
         val trackGroups = exoActivity?.currentSubTrackGroups
         if (trackGroups != null && trackGroups.isNotEmpty()) {
             val periodPrefix = Regex("^\\d+:")
@@ -496,7 +480,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             }
         }
 
-        // 5. Other Servers' Subtitles for this Episode (Cross-server extraction)
         episode.extractors?.forEach { extractor ->
             if (extractor.server.name != episode.selectedExtractor && extractor.subtitles.isNotEmpty()) {
                 val langCounts = mutableMapOf<String, Int>()
@@ -557,7 +540,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
 
                 val onlineSubs = mutableListOf<Any>()
                 if (imdbId != null) {
-                    // 1. Fetch Wyzie Subtitles
                     try {
                         val wyzieSubs = WyzieSubtitles.getWyzieSubtitles(imdbId, seasonEpisode.season, seasonEpisode.episode)
                         onlineSubs.addAll(wyzieSubs)
@@ -565,7 +547,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                         e.printStackTrace()
                     }
 
-                    // 2. Fetch SubSource Subtitles (from AnymeX / CloudStream)
                     try {
                         val subSourceSubs = SubSourceSubtitles.getSubtitles(imdbId, targetEpisodeNum, seasonEpisode.season)
                         onlineSubs.addAll(subSourceSubs)
@@ -573,7 +554,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                         e.printStackTrace()
                     }
 
-                    // 3. Fetch OpenSubtitles REST API (from CloudStream)
                     try {
                         val openSubRest = OpenSubtitlesRestApi.search(imdbId, targetEpisodeNum, seasonEpisode.season, queryText)
                         onlineSubs.addAll(openSubRest)
@@ -581,7 +561,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                         e.printStackTrace()
                     }
 
-                    // 4. Fetch Stremio / OpenSubtitles (filter out mismatched S1E1 files)
                     try {
                         val fetchedStremio = StremioSubtitles.getSubtitles(media, seasonEpisode.season, seasonEpisode.episode)
                         val existingUrls = onlineSubs.mapNotNull {
@@ -619,7 +598,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
     private fun filterAndDisplayOnlineResults() {
         var filtered = currentOnlineResults
 
-        // Provider Filter
         if (selectedProviderFilter == "Wyzie") {
             filtered = filtered.filterIsInstance<WyzieSub>()
         } else if (selectedProviderFilter == "OpenSubtitles" || selectedProviderFilter == "Stremio") {
@@ -628,7 +606,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             filtered = filtered.filterIsInstance<SubSourceSub>()
         }
 
-        // Language Filter
         if (selectedLanguageFilter != "All") {
             filtered = filtered.filter { item ->
                 when (item) {
@@ -642,7 +619,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             }
         }
 
-        // Text Search Filter if user entered custom text
         val queryText = binding.onlineSearchEditText.text?.toString()?.trim() ?: ""
         if (queryText.isNotEmpty() && !queryText.startsWith(model.getMedia().value?.userPreferredName ?: "", ignoreCase = true)) {
             filtered = filtered.filter { item ->
@@ -666,9 +642,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
         binding.onlineSubtitlesRecycler.adapter = SubtitleAdapter(filtered, TabType.ONLINE)
     }
 
-    // ==========================================
-    // TAB 4: SYNC CONTROLS
-    // ==========================================
     private var audioCapturedTime: Long? = null
     private var subCapturedTime: Long? = null
 
@@ -717,7 +690,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             }
         }
 
-        // Subtitle Delay chips
         binding.subDelayMinus500.setOnClickListener {
             val current = subtitleManager?.subtitleDelayMs ?: 0L
             subtitleManager?.setSubtitleDelay(current - 500L)
@@ -743,7 +715,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             updateSubDelayDisplay()
         }
 
-        // Audio Delay chips
         binding.audioDelayMinus500.setOnClickListener {
             val current = subtitleManager?.audioDelayMs ?: 0L
             subtitleManager?.setAudioDelay(current - 500L)
@@ -769,7 +740,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             updateAudioDelayDisplay()
         }
 
-        // Live Sync Helper
         fun formatTime(ms: Long): String {
             val totalSec = ms / 1000
             val m = totalSec / 60
@@ -811,9 +781,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
         updateAudioDelayDisplay()
     }
 
-    // ==========================================
-    // RECYCLER VIEW ADAPTER
-    // ==========================================
     inner class SubtitleAdapter(
         private val items: List<Any>,
         private val tabType: TabType
@@ -858,7 +825,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             val effectiveOnlineId = activeOnlineId ?: savedEpSub?.id
             val savedLang: String? = PrefManager.getNullableCustomVal("subLang_${mediaId}", null, String::class.java)
 
-            // Reset visibility
             itemBinding.formatBadge.isVisible = false
             itemBinding.hiBadge.isVisible = false
             itemBinding.deleteButton.isVisible = false
@@ -867,7 +833,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
             itemBinding.subtitleCardRoot.strokeColor = normalBorderColor
 
             when (item) {
-                // --- 1. NONE / OFF OPTION ---
                 is NoneSubtitleOption -> {
                     itemBinding.subtitleIcon.setImageResource(R.drawable.ic_round_subtitles_off_24)
                     itemBinding.subtitleTitle.text = getString(R.string.subtitles_off)
@@ -893,7 +858,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                 // --- 2. CURRENT SERVER SUBTITLES ---
                 is ActiveOnlineSubtitle -> {
                     itemBinding.subtitleIcon.setImageResource(R.drawable.ic_globe_24)
                     itemBinding.subtitleTitle.text = item.title
@@ -918,13 +882,11 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
 
                 is Subtitle -> {
                     if (item.language.startsWith("[Local]")) {
-                        // Local Subtitle from storage
                         val fileName = item.language.removePrefix("[Local]").trim()
                         itemBinding.subtitleIcon.setImageResource(R.drawable.ic_round_folder_24)
                         itemBinding.subtitleTitle.text = fileName
                         itemBinding.subtitleDetails.text = "Local Storage Subtitle"
                         
-                        // Format Badge
                         val ext = fileName.substringAfterLast('.', "").uppercase(Locale.ROOT)
                         if (ext.isNotBlank()) {
                             itemBinding.formatBadge.text = ext
@@ -938,7 +900,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                             itemBinding.selectedCheckmark.isVisible = true
                         }
 
-                        // Delete button (only visible in Local tab)
                         itemBinding.deleteButton.isVisible = tabType == TabType.LOCAL
                         itemBinding.deleteButton.setOnClickListener {
                             val epId = "${mediaId}-${episode.number}"
@@ -961,14 +922,12 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                             dismiss()
                         }
                     } else {
-                        // Regular Server Subtitle
                         val langName = mapLanguageCode(item.language)
                         itemBinding.subtitleIcon.setImageResource(R.drawable.ic_round_subtitles_24)
                         itemBinding.subtitleTitle.text = langName
                         val currentServerName = episode.selectedExtractor ?: getString(R.string.current_server_subs)
                         itemBinding.subtitleDetails.text = "$currentServerName • ${item.language}"
 
-                        // Format Tag
                         val formatTag = when (item.type) {
                             SubtitleType.ASS -> "ASS"
                             SubtitleType.VTT -> "VTT"
@@ -1017,7 +976,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                // --- 3. OTHER SERVER SUBTITLES (Cross-server) ---
                 is OtherServerSubtitle -> {
                     val langName = mapLanguageCode(item.subtitle.language)
                     itemBinding.subtitleIcon.setImageResource(R.drawable.ic_round_subtitles_24)
@@ -1045,7 +1003,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                // --- 4. EMBEDDED STREAM TRACKS ---
                 is EmbeddedSubtitleTrack -> {
                     val langName = item.language?.let { mapLanguageCode(it) } ?: "Stream Track ${item.flatIndex + 1}"
                     val accurateName = when {
@@ -1083,7 +1040,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                // --- 5. ONLINE SUBTITLE (WYZIE) ---
                 is WyzieSub -> {
                     val langName = mapLanguageCode(item.language)
                     val displayTitle = item.displayLabel.ifBlank { langName }
@@ -1114,7 +1070,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                // --- 6. ONLINE SUBTITLE (SUBSOURCE) ---
                 is SubSourceSub -> {
                     val langName = mapLanguageCode(item.lang)
                     val releaseTitle = item.releaseName.ifBlank { langName }
@@ -1142,7 +1097,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                // --- 7. ONLINE SUBTITLE (OPEN SUBTITLES REST) ---
                 is OpenSubRestItem -> {
                     val langName = mapLanguageCode(item.language)
                     val displayTitle = item.fileName.ifBlank { langName }
@@ -1174,7 +1128,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
-                // --- 8. ONLINE SUBTITLE (STREMIO / OPEN SUBTITLES) ---
                 is StremioSub -> {
                     val langName = mapLanguageCode(item.lang)
                     itemBinding.subtitleIcon.setImageResource(R.drawable.ic_globe_24)

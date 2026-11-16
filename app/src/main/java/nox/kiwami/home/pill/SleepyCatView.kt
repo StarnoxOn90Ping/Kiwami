@@ -16,27 +16,12 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.sin
 
-/**
- * A tiny Nyan cat that sleeps on the top edge of the info pill (see [InfoPillController]).
- *
- *  - asleep: slow breathing, the rainbow lies almost still, a little "z" drifts up now and then
- *  - [nudge] (the pill was tapped / swiped): an ear flick, the eyes open, the head lifts
- *  - nudged 4 times within about 1.5 s: it is startled ("!", fur puffs up, a small hop, the
- *    rainbow flashes), then glares for a moment, yawns and goes back to sleep
- *  - a few seconds without a nudge: yawn, back to sleep
- *
- * Everything is drawn with the canvas (no assets). The view is 56 x 32dp; the cat stands on the
- * bottom of it, the rest is headroom for the hop, the "!" and the "z"s. It never takes touches.
- * The clock only runs while the view is on screen and animations are enabled; otherwise the cat
- * just sleeps, still.
- */
 class SleepyCatView(context: Context) : View(context) {
 
     private enum class Mood { SLEEP, AWAKE, STARTLED, GRUMPY, SETTLE }
 
     private val d = resources.displayMetrics.density
 
-    // classic Nyan colours
     private val cOutline = 0xFF2B2B2B.toInt()
     private val cFur = 0xFF9E9E9E.toInt()
     private val cTartEdge = 0xFFFFCC99.toInt()
@@ -66,21 +51,18 @@ class SleepyCatView(context: Context) : View(context) {
     private val path = Path()
     private val overshoot = OvershootInterpolator(3f)
 
-    // ---- state --------------------------------------------------------------------------------
-
     private var mood = Mood.SLEEP
     private var moodSince = 0L
     private var lastNudge = 0L
     private var startledAt = 0L
     private val nudges = ArrayDeque<Long>()
 
-    // smoothed look values
-    private var lid = 0f      // 0 closed ... 1 open ... >1 wide
-    private var lift = 0f     // head stretched up
-    private var brow = 0f     // grumpy eyebrows
-    private var mouth = 0f    // yawn / gasp
+    private var lid = 0f
+    private var lift = 0f
+    private var brow = 0f
+    private var mouth = 0f
     private var amp = 0.25f * d
-    private var phase = 0f    // rainbow wave
+    private var phase = 0f
     private var breath = 0f
     private var earFlick = 0f
 
@@ -98,11 +80,8 @@ class SleepyCatView(context: Context) : View(context) {
         elevation = 6f * d
     }
 
-    // ---- api ----------------------------------------------------------------------------------
-
-    /** The pill was cycled (or poked). Wakes the cat; too many in a row startle it. */
     fun nudge() {
-        if (clock == null) return // off screen, or animations are off: stay asleep
+        if (clock == null) return
         val now = SystemClock.uptimeMillis()
         lastNudge = now
         earFlick = 1f
@@ -131,8 +110,6 @@ class SleepyCatView(context: Context) : View(context) {
         moodSince = now
     }
 
-    // ---- clock --------------------------------------------------------------------------------
-
     private fun startClock() {
         if (clock != null) return
         if (!ValueAnimator.areAnimatorsEnabled()) return
@@ -150,7 +127,6 @@ class SleepyCatView(context: Context) : View(context) {
     private fun stopClock() {
         clock?.cancel()
         clock = null
-        // back to a still, sleeping pose
         mood = Mood.SLEEP
         lid = 0f; lift = 0f; brow = 0f; mouth = 0f; earFlick = 0f
         amp = 0.25f * d
@@ -184,7 +160,6 @@ class SleepyCatView(context: Context) : View(context) {
             Mood.STARTLED -> { tLid = 1.5f; tLift = 1.4f; tMouth = 0.55f; tAmp = 2.0f * d; speed = 16f }
             Mood.GRUMPY -> { tLid = 0.45f; tLift = 0.7f; tBrow = 1f; tAmp = 0.8f * d; speed = 3f }
             Mood.SETTLE -> {
-                // a yawn: the mouth opens and closes once while the eyes squeeze shut
                 val t = ((now - moodSince) / 650f).coerceIn(0f, 1f)
                 tMouth = sin(PI.toFloat() * t)
                 tLid = 0.25f * (1f - t)
@@ -201,10 +176,9 @@ class SleepyCatView(context: Context) : View(context) {
         mouth += (tMouth - mouth) * (1f - exp(-dt * 22f))
         amp += (tAmp - amp) * (1f - exp(-dt * 6f))
         phase += dt * speed
-        breath += dt * 2.1f // about a 3 s breath
+        breath += dt * 2.1f
         earFlick = (earFlick - dt * 4f).coerceAtLeast(0f)
 
-        // a "z" every few seconds while asleep
         zs.removeAll { now - it > Z_LIFE_MS }
         if (mood == Mood.SLEEP && now - zLast > 2800L) {
             zs.add(now)
@@ -213,15 +187,12 @@ class SleepyCatView(context: Context) : View(context) {
         invalidate()
     }
 
-    // ---- drawing ------------------------------------------------------------------------------
-    // Facing left. x grows to the right, g is the ground (the top edge of the pill).
-
     override fun onDraw(canvas: Canvas) {
         val now = SystemClock.uptimeMillis()
         val g = height - 1f * d
         val breathe = sin(breath) * (1f - 0.6f * lift.coerceIn(0f, 1f))
 
-        val ts = (now - startledAt) / 1000f // huge when never startled, so everything below is off
+        val ts = (now - startledAt) / 1000f
         val hop = if (ts < 0.42f) sin(PI.toFloat() * ts / 0.42f) * 5f * d else 0f
         val poof = exp(-ts * 3.2f)
         val s = 1f + 0.10f * poof
@@ -300,7 +271,6 @@ class SleepyCatView(context: Context) : View(context) {
         val hw = hr - hl
         val hh = hb - ht
 
-        // ears (the right one flicks when the cat is nudged)
         val tipUp = (3.2f + 0.8f * lift) * d
         val flick = earFlick * 1.6f * d * abs(sin(now / 45f))
         fill.color = cFur
@@ -319,12 +289,10 @@ class SleepyCatView(context: Context) : View(context) {
         c.drawPath(path, fill)
         c.drawPath(path, line)
 
-        // head
         rect.set(hl, ht, hr, hb)
         c.drawRoundRect(rect, 3.2f * d, 3.2f * d, fill)
         c.drawRoundRect(rect, 3.2f * d, 3.2f * d, line)
 
-        // cheeks
         val ey = ht + hh * 0.50f
         fill.color = cCheek
         fill.alpha = 200
@@ -332,13 +300,11 @@ class SleepyCatView(context: Context) : View(context) {
         c.drawCircle(hr - 1.9f * d, ey + 1.9f * d, 1.0f * d, fill)
         fill.alpha = 255
 
-        // eyes
         val ex1 = hl + hw * 0.30f
         val ex2 = hl + hw * 0.72f
         drawEye(c, ex1, ey)
         drawEye(c, ex2, ey)
 
-        // grumpy eyebrows, slanting down towards the middle
         if (brow > 0.05f) {
             line.alpha = (255 * brow).toInt()
             c.drawLine(ex1 - 1.5f * d, ey - 2.1f * d, ex1 + 1.2f * d, ey - 1.3f * d, line)
@@ -346,7 +312,6 @@ class SleepyCatView(context: Context) : View(context) {
             line.alpha = 255
         }
 
-        // mouth (yawn / gasp)
         if (mouth > 0.05f) {
             fill.color = cOutline
             val mx = hl + hw * 0.51f
@@ -359,7 +324,6 @@ class SleepyCatView(context: Context) : View(context) {
 
     private fun drawEye(c: Canvas, x: Float, y: Float) {
         if (lid < 0.3f) {
-            // asleep: a little closed-eye curve
             rect.set(x - 1.3f * d, y - 1.0f * d, x + 1.3f * d, y + 1.0f * d)
             c.drawArc(rect, 20f, 140f, false, line)
             return
@@ -386,7 +350,6 @@ class SleepyCatView(context: Context) : View(context) {
         }
     }
 
-    /** The red "!" that pops up above the head when the cat is startled. */
     private fun drawBang(c: Canvas, g: Float, ts: Float) {
         if (ts < 0f || ts > 0.9f) return
         val p = (ts / 0.12f).coerceIn(0f, 1f)
@@ -405,8 +368,6 @@ class SleepyCatView(context: Context) : View(context) {
         c.restore()
     }
 
-    // ---- lifecycle ----------------------------------------------------------------------------
-
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         startClock()
@@ -422,7 +383,6 @@ class SleepyCatView(context: Context) : View(context) {
         if (visibility == VISIBLE) startClock() else stopClock()
     }
 
-    // also fires when an ancestor (the pill's holder) goes GONE / VISIBLE
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (visibility == VISIBLE) startClock() else stopClock()
@@ -434,7 +394,6 @@ class SleepyCatView(context: Context) : View(context) {
         const val AWAKE_MS = 3200L
         const val Z_LIFE_MS = 2600L
 
-        /** Sprinkles on the pop-tart: x / y as a fraction of the body. */
         val SPRINKLES = arrayOf(
             floatArrayOf(0.22f, 0.32f), floatArrayOf(0.50f, 0.22f), floatArrayOf(0.78f, 0.40f),
             floatArrayOf(0.38f, 0.68f), floatArrayOf(0.66f, 0.74f)

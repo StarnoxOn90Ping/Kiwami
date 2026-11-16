@@ -41,9 +41,9 @@ class OfflineAnimeAdapter(
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
 
         val view: View = convertView ?: when (style) {
-            0 -> inflater.inflate(R.layout.item_media_large, parent, false) // large view
-            1 -> inflater.inflate(R.layout.item_media_compact, parent, false) // compact view
-            else -> inflater.inflate(R.layout.item_media_compact, parent, false) // compact view
+            0 -> inflater.inflate(R.layout.item_media_large, parent, false)
+            1 -> inflater.inflate(R.layout.item_media_compact, parent, false)
+            else -> inflater.inflate(R.layout.item_media_compact, parent, false)
         }
 
         val item = getItem(position) as OfflineAnimeModel
@@ -57,14 +57,14 @@ class OfflineAnimeAdapter(
         val typeView = view.findViewById<LinearLayout>(R.id.itemCompactType)
 
         if (style == 0) {
-            val bannerView = view.findViewById<ImageView>(R.id.itemCompactBanner) // for large view
+            val bannerView = view.findViewById<ImageView>(R.id.itemCompactBanner)
             val episodes = view.findViewById<TextView>(R.id.itemTotal)
             episodes.text = item.episodes
             bannerView.loadImage(item.banner?.toString() ?: item.image?.toString())
             totalEpisodes.text = item.totalEpisodeList
         } else if (style == 1) {
             val watchedEpisodes =
-                view.findViewById<TextView>(R.id.itemCompactUserProgress) // for compact view
+                view.findViewById<TextView>(R.id.itemCompactUserProgress)
             watchedEpisodes.text = item.watchedEpisode
             totalEpisodes.text = context.getString(R.string.total_divider, item.totalEpisode)
         }
@@ -102,7 +102,6 @@ class OfflineAnimeAdapter(
         applyFilter()
     }
 
-    // a refreshed list keeps whatever the user typed in the search bar
     private fun applyFilter() {
         items = if (query.isEmpty()) originalItems
         else originalItems.filter { it.title.contains(query, ignoreCase = true) }

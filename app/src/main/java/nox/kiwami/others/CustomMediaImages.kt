@@ -14,13 +14,6 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
 
-/**
- * User-picked covers and banners for the media info page.
- *
- * These live only on the device, keyed by the AniList/MAL media id. The [nox.kiwami.media.Media]
- * object itself is never touched, so list entries, progress and every tracking call keep using the
- * real id and are unaffected by a custom picture.
- */
 object CustomMediaImages {
     enum class Kind(val tag: String, val maxEdge: Int) {
         COVER("cover", 1600),
@@ -47,7 +40,6 @@ object CustomMediaImages {
         dir(ctx).listFiles()?.filter { it.isFile && it.length() > 0 }
             ?.sortedBy { it.lastModified() }
             ?.forEach { f ->
-                // name: <id>_<kind>_<timestamp>.jpg ; newest wins because of the sort above
                 val parts = f.name.split("_")
                 if (parts.size >= 3) found["${parts[0]}_${parts[1]}"] = f
             }
@@ -59,7 +51,6 @@ object CustomMediaImages {
         index = null
     }
 
-    /** The custom picture that should replace [url], or null. Cheap enough for every image load. */
     fun overrideFor(url: String?): File? {
         if (url.isNullOrEmpty() || !url.startsWith("http")) return null
         val map = index ?: try {
@@ -74,18 +65,15 @@ object CustomMediaImages {
         return map["${id}_$kind"]?.takeIf { it.exists() }
     }
 
-    /** The media id encoded in an AniList image URL, if it has one. */
     fun idFromUrl(url: String?): Int? =
         url?.let { urlRegex.find(it)?.groupValues?.get(2)?.toIntOrNull() }
 
-    /** Custom images are tied to AniList image URLs, so only media that has one can use them. */
     fun canCustomize(mediaId: Int, cover: String?, banner: String?): Boolean =
         mediaId != 0 && (idFromUrl(cover) == mediaId || idFromUrl(banner) == mediaId)
 
     // Files get a unique name on every save so Glide never serves a stale cached copy.
     private fun prefix(mediaId: Int, kind: Kind) = "${mediaId}_${kind.tag}_"
 
-    /** The custom image for this media, or null if the user hasn't set one. */
     fun get(context: Context, mediaId: Int, kind: Kind): File? {
         if (mediaId == 0) return null
         return dir(context).listFiles { f -> f.isFile && f.name.startsWith(prefix(mediaId, kind)) && f.length() > 0 }
@@ -99,7 +87,6 @@ object CustomMediaImages {
         invalidate()
     }
 
-    /** Copies [uri] into app storage (downscaled, rotation fixed). Returns true on success. */
     suspend fun save(context: Context, mediaId: Int, kind: Kind, uri: Uri): Boolean =
         withContext(Dispatchers.IO) {
             if (mediaId == 0) return@withContext false
@@ -141,7 +128,6 @@ object CustomMediaImages {
                     target.delete()
                     return@withContext false
                 }
-                // Keep only the newest copy.
                 dir(context).listFiles { f -> f.name.startsWith(prefix(mediaId, kind)) && f != target }
                     ?.forEach { it.delete() }
                 invalidate()

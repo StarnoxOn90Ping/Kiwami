@@ -25,7 +25,7 @@ class AnilistNotificationTask : Task {
     override suspend fun execute(context: Context): Boolean {
         try {
             withContext(Dispatchers.IO) {
-                PrefManager.init(context) //make sure prefs are initialized
+                PrefManager.init(context)
                 val userId = PrefManager.getVal<String>(PrefName.AnilistUserId)
                 if (userId.isNotEmpty()) {
                     Anilist.getSavedToken()
@@ -69,17 +69,14 @@ class AnilistNotificationTask : Task {
                                             notification
                                         )
                                 }
-                                // Track counts per section
                                 if (it.notificationType in mediaSectionTypes) {
                                     mediaCount++
                                 } else {
-                                    // User section displays all notifications that are not in the media section.
                                     userCount++
                                 }
                             }
                         }
                         
-                        // Update per-section counts
                         if (userCount > 0) {
                             val currentUserCount = PrefManager.getVal<Int>(PrefName.UnreadUserNotifications)
                             PrefManager.setVal(PrefName.UnreadUserNotifications, currentUserCount + userCount)

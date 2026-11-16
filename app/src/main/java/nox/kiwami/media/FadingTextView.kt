@@ -10,11 +10,6 @@ import android.graphics.Shader
 import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatTextView
 
-/**
- * A TextView whose last visible line can be faded out from the bottom (instead of ending in "...").
- * [fadeAmount] goes from 0 (no fade) to 1 (full fade). The bottom half of the last line is erased
- * with a soft gradient, so it works on any background colour.
- */
 class FadingTextView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -24,14 +19,12 @@ class FadingTextView @JvmOverloads constructor(
     private val fadePaint = Paint().apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
     }
-    /** Animators currently driving this view, so a re-bind can stop them. */
     var fadeAnimator: android.animation.Animator? = null
     var heightAnimator: android.animation.Animator? = null
 
     private var shaderTop = Float.NaN
     private var shaderBottom = Float.NaN
 
-    /** How tall the soft edge is, in text lines. Grows while the synopsis is unfolding. */
     var fadeSpan: Float = 0.85f
         set(value) {
             if (value != field) {

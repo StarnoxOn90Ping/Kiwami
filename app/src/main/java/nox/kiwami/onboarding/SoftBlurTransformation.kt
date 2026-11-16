@@ -6,10 +6,6 @@ import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import java.security.MessageDigest
 
-/**
- * Pure-Kotlin box blur (two passes ~ gaussian). Needs no RenderScript / RenderEffect, so a poster
- * looks exactly the same blurred on every Android version.
- */
 class SoftBlurTransformation(private val radius: Int = 4) : BitmapTransformation() {
 
     override fun transform(
@@ -28,7 +24,6 @@ class SoftBlurTransformation(private val radius: Int = 4) : BitmapTransformation
         val dst = IntArray(src.size)
         val div = 2 * r + 1
 
-        // horizontal pass
         for (y in 0 until h) {
             val row = y * w
             var rs = 0
@@ -47,7 +42,6 @@ class SoftBlurTransformation(private val radius: Int = 4) : BitmapTransformation
                 bs += (add and 0xFF) - (sub and 0xFF)
             }
         }
-        // vertical pass
         for (x in 0 until w) {
             var rs = 0
             var gs = 0

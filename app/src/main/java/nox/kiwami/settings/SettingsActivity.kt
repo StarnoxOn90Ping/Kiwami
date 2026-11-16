@@ -178,18 +178,6 @@ class SettingsActivity : AppCompatActivity() {
                         },
                         isActivity = true
                     ),
-                    /*
-                    Settings(
-                        type = 1,
-                        name = getString(R.string.addons),
-                        desc = getString(R.string.addons_desc),
-                        icon = R.drawable.ic_round_restaurant_24,
-                        onClick = {
-                            startActivity(Intent(context, SettingsAddonActivity::class.java))
-                        },
-                        isActivity = true
-                    ),
-                    */
                     Settings(
                         type = 1,
                         name = getString(R.string.torrent_settings),
@@ -335,7 +323,6 @@ class SettingsActivity : AppCompatActivity() {
         val lParts = latestBase.split(".").mapNotNull { it.toIntOrNull() }
         val cParts = currentBase.split(".").mapNotNull { it.toIntOrNull() }
 
-        // Compare semantic version numbers only when both versions actually supply them
         if (lParts.isNotEmpty() && cParts.isNotEmpty()) {
             val maxLen = maxOf(lParts.size, cParts.size)
             for (i in 0 until maxLen) {

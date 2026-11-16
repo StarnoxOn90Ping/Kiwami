@@ -90,7 +90,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     lateinit var launcher: LauncherWrapper
     lateinit var binding: ActivityMediaBinding
 
-    /** False while the activity is bailing out of [onCreate] without any media. */
     val bindingReady get() = ::binding.isInitialized
     val safeBinding get() = if (::binding.isInitialized) binding else null
     private val scope = lifecycleScope
@@ -101,14 +100,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     private var adult = false
     lateinit var media: Media
 
-    // New episode / chapter alert button (next to the favourite button)
     private var notifyButton: PopImageButton? = null
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) snackString(getString(R.string.notifications_permission_denied))
         }
 
-    // Custom cover/banner (kept on-device only; the Media object and tracking are never touched)
     private var pendingImageKind: nox.kiwami.others.CustomMediaImages.Kind? = null
     private var pendingImageDialog: ImageViewDialog? = null
     private var applyMediaImages: (() -> Unit)? = null
@@ -207,23 +204,17 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             syncExtensionPrefsUi()
         }
 
-        // Ui init
-
 
         binding.mediaBottomBarContainer?.setPadding(0, 0, 0, navBarHeight)
 
         AndroidBug5497Workaround.assistActivity(this) { keyboardVisible ->
-            // Optionally hide nav bar when keyboard is visible
             navBar.visibility = if (keyboardVisible) View.GONE else View.VISIBLE
         }
-        // Header geometry: cover/title sit 1.5x as far from the top as before, banner is a full backdrop behind them
         val density = resources.displayMetrics.density
         val coverTop = ((statusBarHeight + 58 * density) * 1.5f).toInt()
         binding.mediaCollapseContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = coverTop }
         binding.mediaBannerHolder.updateLayoutParams { height = coverTop + (72 * density).toInt() }
         setupBannerFade()
-        // One flat colour for the whole header: no Material elevation tint, lift colour, scrim or
-        // shadow, so nothing lighter or darker shows above or below the small title when collapsed.
         binding.mediaAppBar.apply {
             background = android.graphics.drawable.ColorDrawable(getThemeColor(android.R.attr.colorBackground))
             setLiftOnScroll(false)
@@ -234,7 +225,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         binding.mediaAppBar.setStatusBarForeground(null)
         binding.mediaAppBar.backgroundTintList = null
         run {
-            // flat page colour behind the small title, reaching up under the status bar
             val bg = getThemeColor(android.R.attr.colorBackground)
             binding.mediaBarBackdrop.setBackgroundColor(bg)
             (binding.mediaBarBackdrop.layoutParams as FrameLayout.LayoutParams).topMargin = -statusBarHeight
@@ -246,7 +236,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         binding.mediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
         binding.mediaHome.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
         binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
-        // the pinned small-title row overlaps the bottom 64dp of the collapsing header (see layout)
         binding.mediaCollapsing.minimumHeight = statusBarHeight + (64 * density).toInt()
 
         binding.mediaTitle.isSelected = true
@@ -287,10 +276,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             binding.mediaCoverImage.loadImage(customCover ?: media.cover)
             val realBanner = customBanner ?: media.banner
             if (!realBanner.isNullOrEmpty()) {
-                // Real banner: shown whole, sharp and unanimated
                 showSharpBanner(realBanner)
             } else {
-                // No banner at all: fall back to the (blurred) cover so the strip is never empty
                 showStaticBanner()
                 blurImage(banner, customCover ?: media.cover)
             }
@@ -333,7 +320,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         binding.mediaStatus.text = media.status ?: ""
 
         fun fav(media: Media):  PopImageButton? {
-            //Fav Button
             return if (Anilist.userid != null) {
                 if (media.isFav) binding.mediaFav.setImageDrawable(
                     AppCompatResources.getDrawable(
@@ -409,7 +395,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
         }
 
-        // "WATCHING • 10/13": the count only makes sense while the entry is in progress
         fun statusLabel(userStatus: String): CharSequence {
             val showCount = when (media.userStatus) {
                 "CURRENT", "REPEATING", "PAUSED", "DROPPED" -> true
@@ -477,7 +462,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 val oldId = media.id
                 media = it
 
-                // mapping button for LOCAL media
                 if (media.format?.startsWith("LOCAL") == true) {
                     binding.mediaMapping?.visibility = View.VISIBLE
                     binding.mediaMapping?.setOnClickListener {
@@ -489,7 +473,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             isAnime = isAnime,
                             isNovel = isNovel
                         ) { _ ->
-                            // Re-trigger it
                             val updatedMedia = media.copy(id = 0)
                             model.loading = false
                             model.loadMedia(updatedMedia)
@@ -539,7 +522,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             )
             anime = false
         }
-        // always open on the Info tab, whatever tab was used last
         selected = 0
         applyCollapseProgress(0f)
 
@@ -567,7 +549,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
         binding.commentInputLayout.isVisible = selected == 2
 
-        // Ensure that if we are returning from the comments tab, we go back to the media content tab
         if (selected == 2 && (PrefManager.getVal<Int>(PrefName.CommentsEnabled) != 1)) {
             selected = 1
         }
@@ -618,7 +599,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             snackString(getString(R.string.unsubscribed_notification))
             return
         }
-        // Without these the alert could not reach the user while the app is closed
         if (!nox.kiwami.hasNotificationPermission(this) &&
             android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
         ) {
@@ -683,7 +663,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         ANIME, MANGA, NOVEL
     }
 
-    // ViewPager
     private class ViewPagerAdapter(
         fragmentManager: FragmentManager,
         lifecycle: Lifecycle,
@@ -703,7 +682,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 SupportedMedia.NOVEL -> NovelReadFragment()
             }
 
-            2 -> { // Index 2
+            2 -> {
                 if (PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1) {
                     val fragment = CommentsFragment()
                     val bundle = Bundle()
@@ -714,7 +693,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     fragment.arguments = bundle
                     fragment
                 } else {
-                    MediaInfoFragment() // Fallback to Info tab if comments are disabled
+                    MediaInfoFragment()
                 }
             }
 
@@ -722,14 +701,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
     }
 
-    //Collapsing UI Stuff
     private var isCollapsed = false
     private var mMaxScrollSize = 0
 
     private var bannerPan: ObjectAnimator? = null
     private var screenWidth: Float = 0f
 
-    /** Page-background fade at the bottom of the banner so it melts into the content (no blur involved). */
     private fun setupBannerFade() {
         val bg = getThemeColor(android.R.attr.colorBackground)
         val colors = intArrayOf(
@@ -738,8 +715,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             bg
         )
         val stops = floatArrayOf(0f, 0.45f, 1f)
-        // same as Dartotsu: the page colour covers the whole banner, 10% at the top,
-        // 50% at 45% of the way down and solid at the bottom
         binding.mediaBannerFade.background = android.graphics.drawable.PaintDrawable().apply {
             shape = android.graphics.drawable.shapes.RectShape()
             shaderFactory = object : android.graphics.drawable.ShapeDrawable.ShaderFactory() {
@@ -751,7 +726,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
     }
 
-    /** Fallback (no banner): the image just fills the backdrop, no panning. */
     private fun showStaticBanner() {
         bannerPan?.cancel()
         bannerPan = null
@@ -762,10 +736,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
     }
 
-    /**
-     * Scales the banner to the backdrop's height (so it is never zoomed beyond what's needed to fill it),
-     * then slowly glides it left <-> right across the extra width, starting from the middle.
-     */
     private fun layoutBannerPan(imageW: Int, imageH: Int) {
         if (!::binding.isInitialized || imageW <= 0 || imageH <= 0) return
         binding.mediaBannerHolder.doOnLayout { holder ->
@@ -791,8 +761,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 return@doOnLayout
             }
             val speed = PrefManager.getVal(PrefName.AnimationSpeed) as Float
-            // Start in the middle of the banner and head off to the left or right (50/50),
-            // then glide end to end like before.
             banner.translationX = -range / 2f
             bannerPan = ObjectAnimator.ofFloat(banner, "translationX", 0f, -range).apply {
                 duration = (10000 + 15000 * speed).toLong()
@@ -800,8 +768,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 repeatCount = ObjectAnimator.INFINITE
                 repeatMode = ObjectAnimator.REVERSE
                 start()
-                // Half way through the first sweep is the middle, moving one way; half way
-                // through the second (reversed) sweep is the middle, moving the other way.
                 currentPlayTime =
                     if (kotlin.random.Random.nextBoolean()) duration / 2 else duration + duration / 2
                 if (isCollapsed) pause()
@@ -820,7 +786,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         showStaticBanner()
         Glide.with(this)
             .load(source)
-            .override(Target.SIZE_ORIGINAL) // full resolution: it is shown wider than the screen, so it must stay crisp
+            .override(Target.SIZE_ORIGINAL)
             .transition(withCrossFade(400))
             .listener(object : RequestListener<Drawable> {
                 override fun onResourceReady(
@@ -859,13 +825,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         if (percentage == 0 && model.scrolledToTop.value != true) model.scrolledToTop.postValue(true)
     }
 
-    /**
-     * Drives the whole header transition straight from the scroll position (t = 0 expanded, 1 collapsed),
-     * so it follows the finger and reverses exactly, with no timed animations or thresholds:
-     *  - cover, title, buttons and stats slide out to the left and fade over the first ~62% of the scroll
-     *  - the small title fades in and glides in from the right over the second half
-     *  - the banner fades out evenly across the whole scroll
-     */
     private fun applyCollapseProgress(t: Float) {
         val slideP = (t * 1.6f).coerceIn(0f, 1f)
         val labelP = ((t - 0.5f) * 2f).coerceIn(0f, 1f)
@@ -876,14 +835,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         binding.mediaCollapseContainer.alpha = slideAlpha
         binding.mediaCover.translationX = slideX
         binding.mediaCover.alpha = slideAlpha
-        // the banner is completely gone by the time the small title starts to appear
         binding.mediaBannerHolder.alpha = 1f - slideP
         binding.mediaBarBackdrop.alpha = labelP
 
         val title = binding.mediaTitle
         title.alpha = labelP
         title.translationX = 48f * resources.displayMetrics.density * (1f - labelP)
-        // the hidden title must not catch touches meant for the header underneath
         val titleActive = labelP > 0.5f
         if (title.isLongClickable != titleActive) {
             title.isLongClickable = titleActive

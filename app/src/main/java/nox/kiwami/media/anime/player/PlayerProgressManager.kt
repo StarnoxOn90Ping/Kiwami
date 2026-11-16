@@ -38,7 +38,6 @@ class PlayerProgressManager(
     private val progressRunnable = object : Runnable {
         override fun run() {
             checkAndPreloadProgress()
-            // Home pill: time actually spent watching today
             nox.kiwami.home.pill.WatchTimeTracker.tickAnime(
                 isTrackingProgress && getPlayer()?.isPlaying == true
             )
@@ -128,8 +127,6 @@ class PlayerProgressManager(
                 (duration > 0f && player.currentPosition.toFloat() / duration > PrefManager.getVal<Float>(PrefName.WatchPercentage))
         val episode0 = currentEpisodeIndex == 0 && PrefManager.getVal<Boolean>(PrefName.ChapterZeroPlayer)
 
-        // Streak: an episode counts once it is watched far enough (Settings > Streak, 80% by default;
-        // independent of the Anilist threshold)
         if (!incognito && (forceComplete ||
                     player.playbackState == Player.STATE_ENDED ||
                     (duration > 0f && player.currentPosition.toFloat() / duration >= nox.kiwami.home.streak.StreakManager.episodeThreshold()))

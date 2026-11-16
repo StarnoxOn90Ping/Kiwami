@@ -67,7 +67,7 @@ class NovelExtensionsFragment : Fragment(),
             novelExtensionManager.findAvailableExtensions()
         }
 
-        viewModel.invalidatePager() // Force a refresh of the pager
+        viewModel.invalidatePager()
         return binding.root
     }
 
