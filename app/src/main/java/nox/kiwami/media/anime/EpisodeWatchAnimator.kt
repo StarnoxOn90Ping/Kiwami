@@ -3,14 +3,19 @@ package nox.kiwami.media.anime
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.PixelFormat
+import android.graphics.RadialGradient
 import android.graphics.Rect
+import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -20,6 +25,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import java.util.Random
 import java.util.WeakHashMap
+import kotlin.math.pow
 import kotlin.math.sin
 
 internal object EpisodeWatchAnimator {
@@ -61,9 +67,9 @@ internal object EpisodeWatchAnimator {
         val animators = ArrayList<Animator>(3)
         var pending = 0
 
-        val glitter = if (fancy) GlitterTrail(card, if (index == 0) 14 else 7) else null
+        val shimmer = if (fancy) Shimmer(card, if (index == 0) 5 else 3) else null
         val burst = if (fancy) CheckBurst(card, anchor) else null
-        glitter?.let { card.overlay.add(it) }
+        shimmer?.let { card.overlay.add(it) }
         burst?.let { card.overlay.add(it) }
 
         val cleanup = {
@@ -71,7 +77,7 @@ internal object EpisodeWatchAnimator {
                 it.removeAllListeners()
                 it.cancel()
             }
-            glitter?.let { card.overlay.remove(it) }
+            shimmer?.let { card.overlay.remove(it) }
             burst?.let { card.overlay.remove(it) }
             cover.scaleX = 1f
             card.animate().cancel()
@@ -102,7 +108,7 @@ internal object EpisodeWatchAnimator {
             addUpdateListener {
                 val f = it.animatedValue as Float
                 cover.scaleX = f
-                glitter?.progress = f
+                shimmer?.progress = f
             }
         })
 
@@ -160,7 +166,7 @@ internal object EpisodeWatchAnimator {
         animator.start()
     }
 
-    private class GlitterTrail(card: ViewGroup, count: Int) : Drawable() {
+    private class Shimmer(card: ViewGroup, stars: Int) : Drawable() {
 
         var progress = 0f
             set(value) {
@@ -169,12 +175,20 @@ internal object EpisodeWatchAnimator {
             }
 
         private val density = card.resources.displayMetrics.density
-        private val trail = 64 * density
+        private val dust = DustTexture.get(density)
+        private val bandWidth = minOf(dust.width.toFloat(), card.width * 0.45f)
+        private val drift = 26 * density
+        private val matrix = Matrix()
+        private val shaderA = BitmapShader(dust, Shader.TileMode.CLAMP, Shader.TileMode.REPEAT)
+        private val shaderB = BitmapShader(dust, Shader.TileMode.CLAMP, Shader.TileMode.REPEAT)
+        private val paintA = Paint().apply { shader = shaderA }
+        private val paintB = Paint().apply { shader = shaderB }
+
         private val random = Random(card.hashCode().toLong())
-        private val lag = FloatArray(count) { random.nextFloat() }
-        private val row = FloatArray(count) { random.nextFloat() }
-        private val size = FloatArray(count) { (0.8f + random.nextFloat() * 1.5f) * density }
-        private val phase = FloatArray(count) { random.nextFloat() * TWO_PI }
+        private val lag = FloatArray(stars) { random.nextFloat() }
+        private val row = FloatArray(stars) { random.nextFloat() }
+        private val size = FloatArray(stars) { (1.6f + random.nextFloat() * 1f) * density }
+        private val phase = FloatArray(stars) { random.nextFloat() * TWO_PI }
         private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
         private val core = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
         private val cross = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -191,29 +205,41 @@ internal object EpisodeWatchAnimator {
         override fun draw(canvas: Canvas) {
             val width = bounds.width().toFloat()
             val height = bounds.height().toFloat()
-            val edge = progress * (width + trail)
+            val edge = progress * (width + bandWidth)
             val ending = if (progress > 0.8f) (1f - progress) / 0.2f else 1f
 
+            canvas.save()
+            canvas.clipRect(bounds)
+
+            matrix.setTranslate(edge - dust.width, progress * drift)
+            shaderA.setLocalMatrix(matrix)
+            paintA.alpha = (255 * ending * (0.65f + 0.35f * sin(progress * 20f))).toInt()
+            canvas.drawRect(edge - bandWidth, 0f, edge, height, paintA)
+
+            matrix.setTranslate(edge - dust.width, height * 0.37f + progress * drift * 1.7f)
+            shaderB.setLocalMatrix(matrix)
+            paintB.alpha = (230 * ending * (0.65f + 0.35f * sin(progress * 20f + Math.PI.toFloat()))).toInt()
+            canvas.drawRect(edge - bandWidth, 0f, edge, height, paintB)
+
             for (i in lag.indices) {
-                val x = edge - lag[i] * trail
+                val x = edge - lag[i] * bandWidth * 0.8f
                 if (x < 0f || x > width) continue
                 val twinkle = 0.5f + 0.5f * sin(phase[i] + progress * 24f)
-                val strength = (1f - lag[i]) * twinkle * ending
+                val strength = (1f - lag[i] * 0.6f) * twinkle * ending
                 if (strength < 0.03f) continue
-                val y = row[i] * height + sin(phase[i] + progress * 7f) * 2f * density
+                val y = row[i] * height
 
-                glow.alpha = (strength * 70).toInt()
+                glow.alpha = (strength * 80).toInt()
                 canvas.drawCircle(x, y, size[i] * 2.6f, glow)
                 core.alpha = (strength * 255).toInt()
-                canvas.drawCircle(x, y, size[i], core)
-
-                if (size[i] > 1.7f * density) {
-                    val arm = size[i] * 2.4f * (0.6f + 0.4f * twinkle)
-                    cross.alpha = (strength * 200).toInt()
-                    canvas.drawLine(x - arm, y, x + arm, y, cross)
-                    canvas.drawLine(x, y - arm, x, y + arm, cross)
-                }
+                canvas.drawCircle(x, y, size[i] * 0.7f, core)
+                val arm = size[i] * 2.6f * (0.6f + 0.4f * twinkle)
+                cross.alpha = (strength * 210).toInt()
+                canvas.drawLine(x - arm, y, x + arm, y, cross)
+                canvas.drawLine(x, y - arm, x, y + arm, cross)
             }
+
+            canvas.restore()
         }
 
         override fun setAlpha(alpha: Int) = Unit
@@ -225,6 +251,68 @@ internal object EpisodeWatchAnimator {
 
         private companion object {
             const val TWO_PI = 6.2831855f
+        }
+    }
+
+    /** One small glitter image shared by every tile: sparse on the left, dense on the right (the leading edge). */
+    private object DustTexture {
+        private var bitmap: Bitmap? = null
+
+        fun get(density: Float): Bitmap = bitmap ?: build(density).also { bitmap = it }
+
+        private fun build(density: Float): Bitmap {
+            val width = (180 * density).toInt()
+            val height = (96 * density).toInt()
+            val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(result)
+            val random = Random(42)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            val tones = intArrayOf(
+                0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(),
+                0xFFD5D9E0.toInt(), 0xFFB8BEC8.toInt(), 0xFF8E95A3.toInt()
+            )
+            val centers = Array(5) {
+                floatArrayOf(width * (0.4f + random.nextFloat() * 0.6f), height * random.nextFloat())
+            }
+
+            var drawn = 0
+            var attempts = 0
+            while (drawn < 650 && attempts < 20000) {
+                attempts++
+                val x: Float
+                val y: Float
+                if (random.nextFloat() < 0.4f) {
+                    val center = centers[random.nextInt(centers.size)]
+                    x = center[0] + random.nextGaussian().toFloat() * width * 0.12f
+                    y = ((center[1] + random.nextGaussian().toFloat() * height * 0.2f) % height + height) % height
+                } else {
+                    x = random.nextFloat() * width
+                    y = random.nextFloat() * height
+                }
+                if (x < 0f || x > width) continue
+                if (random.nextFloat() > (x / width).pow(1.8f)) continue
+
+                val roll = random.nextFloat()
+                val tone = tones[random.nextInt(tones.size)]
+                if (roll < 0.95f) {
+                    val radius = if (roll < 0.7f) (0.4f + random.nextFloat() * 0.5f) * density
+                    else (0.9f + random.nextFloat() * 0.7f) * density
+                    paint.shader = null
+                    paint.color = tone
+                    paint.alpha = 150 + random.nextInt(106)
+                    canvas.drawCircle(x, y, radius, paint)
+                } else {
+                    val radius = (3f + random.nextFloat() * 2.5f) * density
+                    paint.shader = RadialGradient(
+                        x, y, radius, 0x5AFFFFFF, Color.TRANSPARENT, Shader.TileMode.CLAMP
+                    )
+                    paint.alpha = 255
+                    canvas.drawCircle(x, y, radius, paint)
+                    paint.shader = null
+                }
+                drawn++
+            }
+            return result
         }
     }
 
