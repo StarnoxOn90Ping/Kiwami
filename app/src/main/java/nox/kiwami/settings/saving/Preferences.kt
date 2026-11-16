@@ -134,6 +134,7 @@ enum class PrefName(val data: Pref) {
     ),
     BannerAnimations(Pref(Location.UI, Boolean::class, true)),
     LayoutAnimations(Pref(Location.UI, Boolean::class, true)),
+    WatchedShimmer(Pref(Location.UI, Boolean::class, true)),
     TrendingScroller(Pref(Location.UI, Boolean::class, true)),
     AnimationSpeed(Pref(Location.UI, Float::class, 1f)),
     ListGrid(Pref(Location.UI, Boolean::class, true)),

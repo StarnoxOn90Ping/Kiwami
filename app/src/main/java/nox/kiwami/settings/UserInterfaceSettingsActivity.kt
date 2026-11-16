@@ -158,6 +158,11 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
             restartApp()
         }
 
+        binding.uiSettingsWatchedShimmer.isChecked = PrefManager.getVal(PrefName.WatchedShimmer)
+        binding.uiSettingsWatchedShimmer.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.WatchedShimmer, isChecked)
+        }
+
         binding.uiSettingsTrendingScroller.isChecked = PrefManager.getVal(PrefName.TrendingScroller)
         binding.uiSettingsTrendingScroller.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.TrendingScroller, isChecked)

@@ -321,6 +321,18 @@ object SettingsRegistry {
             )
         )
 
+        list.add(
+            SearchableSetting(
+                title = context.getString(R.string.watched_shimmer),
+                desc = context.getString(R.string.watched_shimmer_desc),
+                icon = R.drawable.ic_round_animation_24,
+                category = context.getString(R.string.ui_settings),
+                breadcrumbs = "${context.getString(R.string.settings)} > ${context.getString(R.string.common)} > ${context.getString(R.string.ui_settings)}",
+                targetActivity = UserInterfaceSettingsActivity::class.java,
+                highlightKey = context.getString(R.string.watched_shimmer)
+            )
+        )
+
         // 4. Anime Settings
         list.add(
             SearchableSetting(

@@ -18,6 +18,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
+import nox.kiwami.settings.saving.PrefManager
+import nox.kiwami.settings.saving.PrefName
 import java.util.Random
 import java.util.WeakHashMap
 import kotlin.math.sin
@@ -61,7 +63,8 @@ internal object EpisodeWatchAnimator {
         val animators = ArrayList<Animator>(3)
         var pending = 0
 
-        val shimmer = if (fancy) {
+        val shimmerOn = PrefManager.getVal<Boolean>(PrefName.WatchedShimmer)
+        val shimmer = if (fancy && shimmerOn) {
             Shimmer(card, if (index == 0) 700 else 240, if (index == 0) 5 else 3)
         } else null
         val burst = if (fancy) CheckBurst(card, anchor) else null
