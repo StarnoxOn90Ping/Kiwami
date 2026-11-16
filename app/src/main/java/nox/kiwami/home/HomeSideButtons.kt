@@ -7,6 +7,7 @@ import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import nox.kiwami.calendar.AiringCalendarActivity
 import nox.kiwami.databinding.ItemNavbarBinding
 import nox.kiwami.download.hub.DownloadActivityState
@@ -44,11 +45,11 @@ class HomeSideButtons(
         adaptToScreenWidth()
         // poll the downloader singletons – cheap, and only does real work while the screen is visible
         activity.lifecycleScope.launch {
-            while (true) {
-                if (activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            activity.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
                     render(DownloadActivityState.snapshot())
+                    delay(if (wasActive) 450L else 1000L)
                 }
-                delay(if (wasActive) 450L else 1000L)
             }
         }
     }

@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
@@ -124,11 +125,13 @@ class AiringCalendarActivity : AppCompatActivity() {
 
         // keep countdowns + the summary fresh
         lifecycleScope.launch {
-            while (true) {
-                delay(30_000)
-                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && loadState == LoadState.READY) {
-                    adapter.tick()
-                    updateSummary()
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    if (loadState == LoadState.READY) {
+                        adapter.tick()
+                        updateSummary()
+                    }
+                    delay(30_000)
                 }
             }
         }

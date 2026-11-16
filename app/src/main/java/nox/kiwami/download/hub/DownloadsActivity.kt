@@ -9,6 +9,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import nox.kiwami.R
@@ -208,12 +209,12 @@ class DownloadsActivity : AppCompatActivity() {
 
     private fun startLiveUpdates() {
         lifecycleScope.launch {
-            while (true) {
-                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
                     renderState(DownloadActivityState.snapshot())
                     refreshCounts()
+                    delay(600)
                 }
-                delay(600)
             }
         }
     }
