@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.data.torrentServer.model.Torrent
 import org.libtorrent4j.*
 import java.io.File
 import java.net.URLEncoder
+import nox.kiwami.plainHttpClient
 
 @Inject
 @SingleIn(AppScope::class)
@@ -450,7 +451,7 @@ class TorrentServerManager(private val context: Context) {
 
     private fun downloadTorrentFile(url: String): File? {
         try {
-            val client = okhttp3.OkHttpClient()
+            val client = plainHttpClient
             val request = okhttp3.Request.Builder().url(url).build()
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {

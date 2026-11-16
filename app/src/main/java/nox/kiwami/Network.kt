@@ -41,6 +41,7 @@ import kotlin.reflect.KFunction
 lateinit var defaultHeaders: Map<String, String>
 
 lateinit var okHttpClient: OkHttpClient
+val plainHttpClient: OkHttpClient by lazy { OkHttpClient() }
 lateinit var client: Requests
 
 fun initializeNetwork() {

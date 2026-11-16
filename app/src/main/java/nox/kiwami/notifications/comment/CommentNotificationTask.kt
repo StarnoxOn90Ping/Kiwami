@@ -22,14 +22,14 @@ import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
+import nox.kiwami.plainHttpClient
 
 class CommentNotificationTask : Task {
     override suspend fun execute(context: Context): Boolean {
         try {
             withContext(Dispatchers.IO) {
                 PrefManager.init(context) //make sure prefs are initialized
-                val client = OkHttpClient()
+                val client = plainHttpClient
                 CommentsAPI.fetchAuthToken(context, client)
                 val notificationResponse = CommentsAPI.getNotifications(client)
                 var notifications = notificationResponse?.notifications?.toMutableList()

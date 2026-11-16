@@ -9,16 +9,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
+import nox.kiwami.plainHttpClient
 
 class LnReaderExtensionManager(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    private val http = OkHttpClient.Builder()
+    private val http = plainHttpClient.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()

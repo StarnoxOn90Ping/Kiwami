@@ -16,7 +16,7 @@ import nox.kiwami.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import okhttp3.OkHttpClient
+import nox.kiwami.plainHttpClient
 
 class CastProxyServerService : Service() {
 
@@ -34,7 +34,7 @@ class CastProxyServerService : Service() {
 
         val address = intent?.getStringExtra(EXTRA_ADDRESS) ?: CastProxyServer.getLocalIpAddress()
         server = CastProxyServer(
-            baseClient = OkHttpClient(),
+            baseClient = plainHttpClient,
             contentResolver = contentResolver,
             ipAddress = address,
             port = CastProxyServer.DEFAULT_PORT

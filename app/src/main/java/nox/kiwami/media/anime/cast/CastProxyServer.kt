@@ -24,9 +24,10 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import nox.kiwami.plainHttpClient
 
 class CastProxyServer(
-    baseClient: OkHttpClient = OkHttpClient(),
+    baseClient: OkHttpClient = plainHttpClient,
     private val contentResolver: ContentResolver,
     private val ipAddress: String,
     private val port: Int = DEFAULT_PORT,

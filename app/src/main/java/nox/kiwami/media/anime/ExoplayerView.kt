@@ -125,11 +125,11 @@ import com.google.android.material.slider.Slider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.math.max
 import kotlin.math.min
+import nox.kiwami.plainHttpClient
 
 @UnstableApi
 @SuppressLint("ClickableViewAccessibility")
@@ -223,7 +223,7 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
 
     private val handler = Handler(Looper.getMainLooper())
     val model: MediaDetailsViewModel by viewModels()
-    private val client = OkHttpClient()
+    private val client = plainHttpClient
 
     private val getContent = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         playerView.useController = true

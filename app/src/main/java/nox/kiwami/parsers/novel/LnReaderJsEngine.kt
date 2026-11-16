@@ -15,17 +15,17 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import nox.kiwami.plainHttpClient
 
 object LnReaderJsEngine {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    private val httpClient = OkHttpClient.Builder()
+    private val httpClient = plainHttpClient.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)

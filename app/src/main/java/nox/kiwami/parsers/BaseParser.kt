@@ -11,7 +11,6 @@ import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.network.NetworkHelper
 import me.xdrop.fuzzywuzzy.FuzzySearch
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -19,6 +18,7 @@ import java.io.Serializable
 import java.net.URLDecoder
 import java.net.URLEncoder
 import kotlin.system.measureTimeMillis
+import nox.kiwami.plainHttpClient
 
 
 abstract class BaseParser {
@@ -199,7 +199,7 @@ abstract class BaseParser {
      * @return Triple<Int, Int?, String> : First Int is the status code, Second Int is the response time in milliseconds, Third String is the response message.
      */
     fun ping(): Triple<Int, Int?, String> {
-        val client = OkHttpClient()
+        val client = plainHttpClient
         var statusCode = 0
         var responseTime: Int? = null
         var responseMessage = ""

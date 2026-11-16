@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import nox.kiwami.plainHttpClient
 
 /**
  * Local SQLite fallback for AniSkip skip times, automatically synced in the background
@@ -99,12 +100,11 @@ class AniskipCsvFallback(context: Context) {
         if (!isSyncing.compareAndSet(false, true)) return@withContext
 
         Logger.log("$TAG: Starting background sync of AniSkip CSV dump...")
-        var okClient: okhttp3.OkHttpClient? = null
         try {
-            val httpClient = okhttp3.OkHttpClient.Builder()
+            val httpClient = plainHttpClient.newBuilder()
                 .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                 .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .build().also { okClient = it }
+                .build()
             val request = Request.Builder().url(CSV_URL).build()
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
@@ -215,9 +215,6 @@ class AniskipCsvFallback(context: Context) {
         } catch (e: Exception) {
             Logger.log("$TAG: Sync failed: ${e.message}")
         } finally {
-            okClient?.dispatcher?.executorService?.shutdown()
-            okClient?.connectionPool?.evictAll()
-            okClient = null
             isSyncing.set(false)
         }
     }
