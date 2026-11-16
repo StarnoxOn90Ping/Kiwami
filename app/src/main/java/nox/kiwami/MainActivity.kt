@@ -4,7 +4,6 @@ import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.drawable.Animatable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -15,6 +14,7 @@ import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnticipateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.activity.viewModels
@@ -223,7 +223,16 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                 val splash = SplashScreenBinding.inflate(layoutInflater)
                 binding.root.addView(splash.root)
-                (splash.splashImage.drawable as Animatable).start()
+                splash.splashImage.apply {
+                    scaleX = 0f
+                    scaleY = 0f
+                    animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(500L)
+                        .setInterpolator(OvershootInterpolator())
+                        .start()
+                }
 
                 delay(200)
 

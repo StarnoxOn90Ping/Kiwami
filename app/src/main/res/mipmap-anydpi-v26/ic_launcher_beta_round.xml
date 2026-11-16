@@ -2,5 +2,5 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/kiwami_icon_bg" />
     <foreground android:drawable="@drawable/kiwami_icon_fg" />
-    <monochrome android:drawable="@drawable/kiwami_icon_fg" />
+    <monochrome android:drawable="@drawable/kiwami_icon_mono" />
 </adaptive-icon>

@@ -1,7 +1,6 @@
 package nox.kiwami.settings
 
 import android.content.Intent
-import android.graphics.drawable.Animatable
 import android.os.Build.BRAND
 import android.os.Build.DEVICE
 import android.os.Build.SUPPORTED_ABIS
@@ -10,6 +9,7 @@ import android.os.Build.VERSION.RELEASE
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.view.View
+import android.view.animation.OvershootInterpolator
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.activity.addCallback
@@ -259,7 +259,7 @@ class SettingsActivity : AppCompatActivity() {
             }
 
 
-            (settingsLogo.drawable as Animatable).start()
+            popLogo(settingsLogo)
             val array = resources.getStringArray(R.array.tips)
 
             settingsLogo.setOnLongClickListener {
@@ -270,7 +270,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             settingsLogo.setSafeOnClickListener {
                 cursedCounter++
-                (settingsLogo.drawable as Animatable).start()
+                popLogo(settingsLogo)
                 if (cursedCounter % 16 == 0) {
                     val oldVal: Boolean = PrefManager.getVal(PrefName.OC)
                     if (!oldVal) {
@@ -285,6 +285,17 @@ class SettingsActivity : AppCompatActivity() {
 
             }
         }
+    }
+
+    private fun popLogo(view: View) {
+        view.scaleX = 0.7f
+        view.scaleY = 0.7f
+        view.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(400L)
+            .setInterpolator(OvershootInterpolator())
+            .start()
     }
 
     private fun checkIfOutdated() {
