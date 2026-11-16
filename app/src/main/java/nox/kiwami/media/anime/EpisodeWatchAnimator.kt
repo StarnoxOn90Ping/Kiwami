@@ -3,19 +3,14 @@ package nox.kiwami.media.anime
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.PixelFormat
-import android.graphics.RadialGradient
 import android.graphics.Rect
-import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -25,7 +20,6 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import java.util.Random
 import java.util.WeakHashMap
-import kotlin.math.pow
 import kotlin.math.sin
 
 internal object EpisodeWatchAnimator {
@@ -67,7 +61,9 @@ internal object EpisodeWatchAnimator {
         val animators = ArrayList<Animator>(3)
         var pending = 0
 
-        val shimmer = if (fancy) Shimmer(card, if (index == 0) 5 else 3) else null
+        val shimmer = if (fancy) {
+            Shimmer(card, if (index == 0) 700 else 240, if (index == 0) 5 else 3)
+        } else null
         val burst = if (fancy) CheckBurst(card, anchor) else null
         shimmer?.let { card.overlay.add(it) }
         burst?.let { card.overlay.add(it) }
@@ -166,7 +162,7 @@ internal object EpisodeWatchAnimator {
         animator.start()
     }
 
-    private class Shimmer(card: ViewGroup, stars: Int) : Drawable() {
+    private class Shimmer(card: ViewGroup, count: Int, stars: Int) : Drawable() {
 
         var progress = 0f
             set(value) {
@@ -175,14 +171,15 @@ internal object EpisodeWatchAnimator {
             }
 
         private val density = card.resources.displayMetrics.density
-        private val dust = DustTexture.get(density)
-        private val bandWidth = minOf(dust.width.toFloat(), card.width * 0.45f)
-        private val drift = 26 * density
-        private val matrix = Matrix()
-        private val shaderA = BitmapShader(dust, Shader.TileMode.CLAMP, Shader.TileMode.REPEAT)
-        private val shaderB = BitmapShader(dust, Shader.TileMode.CLAMP, Shader.TileMode.REPEAT)
-        private val paintA = Paint().apply { shader = shaderA }
-        private val paintB = Paint().apply { shader = shaderB }
+        private val count = count.coerceAtMost(DustField.MAX)
+        private val offset = Math.abs(card.hashCode()) % DustField.MAX
+        private val flip = card.hashCode() % 2 == 0
+        private val trail = minOf(card.width * 0.45f, 160 * density)
+
+        private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+        }
 
         private val random = Random(card.hashCode().toLong())
         private val lag = FloatArray(stars) { random.nextFloat() }
@@ -205,26 +202,50 @@ internal object EpisodeWatchAnimator {
         override fun draw(canvas: Canvas) {
             val width = bounds.width().toFloat()
             val height = bounds.height().toFloat()
-            val edge = progress * (width + bandWidth)
-            val ending = if (progress > 0.8f) (1f - progress) / 0.2f else 1f
+            val ending = if (progress > 0.88f) (1f - progress) / 0.12f else 1f
+            val seconds = (SystemClock.uptimeMillis() % 100_000L) / 1000f
+            val buckets = DustField.scratch
+            val counts = DustField.counts
+            counts.fill(0)
 
-            canvas.save()
-            canvas.clipRect(bounds)
+            for (i in 0 until count) {
+                val j = (offset + i) % DustField.MAX
+                val age = (progress - DustField.spawn[j]) / DustField.life[j]
+                if (age < 0f || age > 1f) continue
 
-            matrix.setTranslate(edge - dust.width, progress * drift)
-            shaderA.setLocalMatrix(matrix)
-            paintA.alpha = (255 * ending * (0.65f + 0.35f * sin(progress * 20f))).toInt()
-            canvas.drawRect(edge - bandWidth, 0f, edge, height, paintA)
+                val envelope = if (age < 0.12f) age / 0.12f else 1f - age
+                val twinkle = 0.55f + 0.45f * sin(DustField.phase[j] + seconds * DustField.freq[j])
+                val strength = envelope * twinkle * ending
+                if (strength < 0.04f) continue
 
-            matrix.setTranslate(edge - dust.width, height * 0.37f + progress * drift * 1.7f)
-            shaderB.setLocalMatrix(matrix)
-            paintB.alpha = (230 * ending * (0.65f + 0.35f * sin(progress * 20f + Math.PI.toFloat()))).toInt()
-            canvas.drawRect(edge - bandWidth, 0f, edge, height, paintB)
-
-            for (i in lag.indices) {
-                val x = edge - lag[i] * bandWidth * 0.8f
+                val x = DustField.spawn[j] * width + DustField.vx[j] * density * age
                 if (x < 0f || x > width) continue
-                val twinkle = 0.5f + 0.5f * sin(phase[i] + progress * 24f)
+                val unitY = if (flip) 1f - DustField.unitY[j] else DustField.unitY[j]
+                val y = unitY * height + DustField.vy[j] * density * age +
+                        sin(DustField.phase[j] + age * 6f) * 1.5f * density
+
+                val bucket = DustField.cls[j] * DustField.LEVELS + (strength * 3.999f).toInt()
+                val slot = counts[bucket]
+                buckets[bucket][slot] = x
+                buckets[bucket][slot + 1] = y
+                counts[bucket] = slot + 2
+            }
+
+            for (bucket in counts.indices) {
+                if (counts[bucket] == 0) continue
+                val cls = bucket / DustField.LEVELS
+                val level = bucket % DustField.LEVELS
+                dot.strokeWidth = DustField.diameter[cls] * density
+                dot.color = DustField.color[cls]
+                dot.alpha = ((level + 1) * 255 / DustField.LEVELS * DustField.opacity[cls]).toInt()
+                canvas.drawPoints(buckets[bucket], 0, counts[bucket], dot)
+            }
+
+            val edge = progress * width
+            for (i in lag.indices) {
+                val x = edge - lag[i] * trail
+                if (x < 0f || x > width) continue
+                val twinkle = 0.5f + 0.5f * sin(phase[i] + seconds * 9f)
                 val strength = (1f - lag[i] * 0.6f) * twinkle * ending
                 if (strength < 0.03f) continue
                 val y = row[i] * height
@@ -238,8 +259,6 @@ internal object EpisodeWatchAnimator {
                 canvas.drawLine(x - arm, y, x + arm, y, cross)
                 canvas.drawLine(x, y - arm, x, y + arm, cross)
             }
-
-            canvas.restore()
         }
 
         override fun setAlpha(alpha: Int) = Unit
@@ -254,65 +273,53 @@ internal object EpisodeWatchAnimator {
         }
     }
 
-    /** One small glitter image shared by every tile: sparse on the left, dense on the right (the leading edge). */
-    private object DustTexture {
-        private var bitmap: Bitmap? = null
+    /**
+     * One dust field shared by every tile. Each particle is a pure function of the sweep progress
+     * (spawn point, lifetime, drift), so nothing is simulated or allocated per frame and a tile only
+     * picks its own starting offset into the field. Positions go into a few buckets by size and
+     * brightness, and each bucket is drawn with a single drawPoints call.
+     */
+    private object DustField {
+        const val MAX = 700
+        const val LEVELS = 4
+        private const val CLASSES = 4
 
-        fun get(density: Float): Bitmap = bitmap ?: build(density).also { bitmap = it }
+        val spawn = FloatArray(MAX)
+        val life = FloatArray(MAX)
+        val unitY = FloatArray(MAX)
+        val vx = FloatArray(MAX)
+        val vy = FloatArray(MAX)
+        val phase = FloatArray(MAX)
+        val freq = FloatArray(MAX)
+        val cls = IntArray(MAX)
 
-        private fun build(density: Float): Bitmap {
-            val width = (180 * density).toInt()
-            val height = (96 * density).toInt()
-            val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(result)
-            val random = Random(42)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            val tones = intArrayOf(
-                0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(),
-                0xFFD5D9E0.toInt(), 0xFFB8BEC8.toInt(), 0xFF8E95A3.toInt()
-            )
-            val centers = Array(5) {
-                floatArrayOf(width * (0.4f + random.nextFloat() * 0.6f), height * random.nextFloat())
-            }
+        val diameter = floatArrayOf(1.1f, 1.8f, 2.8f, 9f)
+        val opacity = floatArrayOf(0.9f, 1f, 1f, 0.16f)
+        val color = intArrayOf(
+            0xFFC4CAD6.toInt(), 0xFFEEF1F6.toInt(), Color.WHITE, Color.WHITE
+        )
 
-            var drawn = 0
-            var attempts = 0
-            while (drawn < 650 && attempts < 20000) {
-                attempts++
-                val x: Float
-                val y: Float
-                if (random.nextFloat() < 0.4f) {
-                    val center = centers[random.nextInt(centers.size)]
-                    x = center[0] + random.nextGaussian().toFloat() * width * 0.12f
-                    y = ((center[1] + random.nextGaussian().toFloat() * height * 0.2f) % height + height) % height
-                } else {
-                    x = random.nextFloat() * width
-                    y = random.nextFloat() * height
-                }
-                if (x < 0f || x > width) continue
-                if (random.nextFloat() > (x / width).pow(1.8f)) continue
+        val scratch = Array(CLASSES * LEVELS) { FloatArray(MAX * 2) }
+        val counts = IntArray(CLASSES * LEVELS)
 
+        init {
+            val random = Random(1337)
+            for (i in 0 until MAX) {
+                spawn[i] = random.nextFloat()
+                life[i] = 0.1f + random.nextFloat() * 0.18f
+                unitY[i] = random.nextFloat()
+                vx[i] = (random.nextFloat() - 0.6f) * 24f
+                vy[i] = -6f + random.nextFloat() * 24f
+                phase[i] = random.nextFloat() * 6.2831855f
+                freq[i] = 6f + random.nextFloat() * 10f
                 val roll = random.nextFloat()
-                val tone = tones[random.nextInt(tones.size)]
-                if (roll < 0.95f) {
-                    val radius = if (roll < 0.7f) (0.4f + random.nextFloat() * 0.5f) * density
-                    else (0.9f + random.nextFloat() * 0.7f) * density
-                    paint.shader = null
-                    paint.color = tone
-                    paint.alpha = 150 + random.nextInt(106)
-                    canvas.drawCircle(x, y, radius, paint)
-                } else {
-                    val radius = (3f + random.nextFloat() * 2.5f) * density
-                    paint.shader = RadialGradient(
-                        x, y, radius, 0x5AFFFFFF, Color.TRANSPARENT, Shader.TileMode.CLAMP
-                    )
-                    paint.alpha = 255
-                    canvas.drawCircle(x, y, radius, paint)
-                    paint.shader = null
+                cls[i] = when {
+                    roll < 0.55f -> 0
+                    roll < 0.85f -> 1
+                    roll < 0.95f -> 2
+                    else -> 3
                 }
-                drawn++
             }
-            return result
         }
     }
 
