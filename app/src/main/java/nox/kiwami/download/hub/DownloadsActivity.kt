@@ -15,8 +15,8 @@ import nox.kiwami.R
 import nox.kiwami.databinding.ActivityDownloadsBinding
 import nox.kiwami.download.DownloadsManager
 import nox.kiwami.download.anime.OfflineAnimeFragment
-import nox.kiwami.download.findValidName
 import nox.kiwami.download.manga.OfflineMangaFragment
+import nox.kiwami.media.MediaType
 import nox.kiwami.getThemeColor
 import nox.kiwami.initActivity
 import nox.kiwami.navBarHeight
@@ -48,6 +48,7 @@ class DownloadsActivity : AppCompatActivity() {
     private lateinit var bannerArrow: DownloadArrowAnimator
     private var lastAnimeCount = -1
     private var lastMangaCount = -1
+    private var lastCountsVersion = -1
     private var currentPage = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -192,8 +193,11 @@ class DownloadsActivity : AppCompatActivity() {
     }
 
     private fun refreshCounts() {
-        val anime = downloadsManager.animeDownloadedTypes.map { it.titleName.findValidName() }.distinct().size
-        val manga = downloadsManager.mangaDownloadedTypes.map { it.titleName.findValidName() }.distinct().size
+        val version = downloadsManager.version
+        if (version == lastCountsVersion) return
+        lastCountsVersion = version
+        val anime = downloadsManager.distinctTitleCount(MediaType.ANIME)
+        val manga = downloadsManager.distinctTitleCount(MediaType.MANGA)
         if (anime == lastAnimeCount && manga == lastMangaCount) return
         lastAnimeCount = anime
         lastMangaCount = manga

@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.xdrop.fuzzywuzzy.FuzzySearch
 import java.io.Serializable
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -33,6 +34,11 @@ import kotlin.math.pow
 class DownloadsManager(private val context: Context) {
     private val gson = Gson()
     private val downloadsList = loadDownloads().toMutableList()
+    private val changes = AtomicInteger()
+    private var countedVersion = -1
+    private val titleCounts = IntArray(MediaType.values().size)
+
+    val version: Int get() = changes.get()
 
     val mangaDownloadedTypes: List<DownloadedType>
         get() = downloadsList.filter { it.type == MediaType.MANGA }
@@ -44,6 +50,25 @@ class DownloadsManager(private val context: Context) {
     private fun saveDownloads() {
         val jsonString = gson.toJson(downloadsList)
         PrefManager.setVal(PrefName.DownloadsKeys, jsonString)
+        changes.incrementAndGet()
+    }
+
+    fun hasDownloads(type: MediaType): Boolean = downloadsList.any { it.type == type }
+
+    @Synchronized
+    fun distinctTitleCount(type: MediaType): Int {
+        val current = changes.get()
+        if (countedVersion != current) {
+            MediaType.values().forEach { mediaType ->
+                titleCounts[mediaType.ordinal] = downloadsList
+                    .filter { it.type == mediaType }
+                    .map { it.titleName.findValidName() }
+                    .distinct()
+                    .size
+            }
+            countedVersion = current
+        }
+        return titleCounts[type.ordinal]
     }
 
     private fun loadDownloads(): List<DownloadedType> {
@@ -513,10 +538,12 @@ class DownloadsManager(private val context: Context) {
 }
 
 private const val RESERVED_CHARS = "|\\?*<\":>+[]/'"
+private val WHITESPACE = Regex("\\s+")
+
 fun String?.findValidName(): String {
     return this?.replace("/", "_")
         ?.filterNot { RESERVED_CHARS.contains(it) }
-        ?.replace(Regex("\\s+"), " ")
+        ?.replace(WHITESPACE, " ")
         ?.trim() ?: ""
 }
 

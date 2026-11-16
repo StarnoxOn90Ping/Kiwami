@@ -51,6 +51,7 @@ class DownloadQueueActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDownloadQueueBinding
     private lateinit var adapter: DownloadsAdapter
     private var updateJob: Job? = null
+    private val downloadsManager by lazy { Injekt.get<DownloadsManager>() }
     private var selectedTabPosition = 0 // 0: Anime, 1: Manga, 2: Novel
     private val folderSizeCache = mutableMapOf<String, Long>()
     private val coverPathCache = mutableMapOf<String, String?>()
@@ -169,7 +170,7 @@ class DownloadQueueActivity : AppCompatActivity() {
                 val currentTypeActiveList = getActiveQueueTasks(currentType)
                 val activeCount = currentTypeActiveList.count { it.isActive }
                 val queuedCount = currentTypeActiveList.size - activeCount
-                binding.downloadQueueStatus.text = if (currentTypeActiveList.isNotEmpty() || getDownloadedMediaCount(currentType) > 0) {
+                binding.downloadQueueStatus.text = if (currentTypeActiveList.isNotEmpty() || downloadsManager.hasDownloads(currentType)) {
                     "Downloading: $activeCount • Queued: $queuedCount"
                 } else {
                     getString(R.string.download_queue_desc)
@@ -192,15 +193,6 @@ class DownloadQueueActivity : AppCompatActivity() {
 
         binding.downloadQueueEmptyState.visibility = if (newItems.isEmpty()) View.VISIBLE else View.GONE
         binding.downloadQueueRecyclerView.visibility = if (newItems.isEmpty()) View.GONE else View.VISIBLE
-    }
-
-    private fun getDownloadedMediaCount(type: MediaType): Int {
-        val downloadsManager = Injekt.get<DownloadsManager>()
-        return when (type) {
-            MediaType.ANIME -> downloadsManager.animeDownloadedTypes.groupBy { it.titleName }.size
-            MediaType.MANGA -> downloadsManager.mangaDownloadedTypes.groupBy { it.titleName }.size
-            MediaType.NOVEL -> downloadsManager.novelDownloadedTypes.groupBy { it.titleName }.size
-        }
     }
 
     private fun getActiveQueueTasks(type: MediaType): List<QueueItem> {
