@@ -52,6 +52,8 @@ class DownloadQueueActivity : AppCompatActivity() {
     private lateinit var adapter: DownloadsAdapter
     private var updateJob: Job? = null
     private val downloadsManager by lazy { Injekt.get<DownloadsManager>() }
+    private var mediaItemsKey: Pair<MediaType, Int>? = null
+    private var mediaItemsCache: List<DownloadsListItem.DownloadedMediaItem> = emptyList()
     private var selectedTabPosition = 0 // 0: Anime, 1: Manga, 2: Novel
     private val folderSizeCache = mutableMapOf<String, Long>()
     private val coverPathCache = mutableMapOf<String, String?>()
@@ -104,6 +106,7 @@ class DownloadQueueActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         folderSizeCache.clear()
+        mediaItemsKey = null
         coverPathCache.clear()
         updateDownloadedMediaSizes(getSelectedMediaType())
         startUpdating()
@@ -124,6 +127,7 @@ class DownloadQueueActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 selectedTabPosition = tab.position
                 folderSizeCache.clear()
+                mediaItemsKey = null
                 coverPathCache.clear()
                 updateDownloadedMediaSizes(getSelectedMediaType())
                 startUpdating()
@@ -235,22 +239,7 @@ class DownloadQueueActivity : AppCompatActivity() {
         }
 
         // 2. Downloaded Media Items (CRUD & Insights)
-        val downloadsManager = Injekt.get<DownloadsManager>()
-        val downloadedTypes = when (type) {
-            MediaType.ANIME -> downloadsManager.animeDownloadedTypes
-            MediaType.MANGA -> downloadsManager.mangaDownloadedTypes
-            MediaType.NOVEL -> downloadsManager.novelDownloadedTypes
-        }
-        val grouped = downloadedTypes.groupBy { it.titleName }
-        val mediaItems = grouped.map { (title, list) ->
-            val sizeBytes = folderSizeCache[title] ?: 0L
-            DownloadsListItem.DownloadedMediaItem(
-                title = title,
-                type = type,
-                count = list.size,
-                sizeBytes = sizeBytes
-            )
-        }.sortedBy { it.title }
+        val mediaItems = getDownloadedMediaItems(type)
 
         if (mediaItems.isNotEmpty()) {
             val totalSizeBytes = mediaItems.sumOf { it.sizeBytes }
@@ -262,6 +251,27 @@ class DownloadQueueActivity : AppCompatActivity() {
         }
 
         return listItems
+    }
+
+    private fun getDownloadedMediaItems(type: MediaType): List<DownloadsListItem.DownloadedMediaItem> {
+        val key = Pair(type, downloadsManager.version)
+        if (key == mediaItemsKey) return mediaItemsCache
+        val downloadedTypes = when (type) {
+            MediaType.ANIME -> downloadsManager.animeDownloadedTypes
+            MediaType.MANGA -> downloadsManager.mangaDownloadedTypes
+            MediaType.NOVEL -> downloadsManager.novelDownloadedTypes
+        }
+        val items = downloadedTypes.groupBy { it.titleName }.map { (title, list) ->
+            DownloadsListItem.DownloadedMediaItem(
+                title = title,
+                type = type,
+                count = list.size,
+                sizeBytes = folderSizeCache[title] ?: 0L
+            )
+        }.sortedBy { it.title }
+        mediaItemsKey = key
+        mediaItemsCache = items
+        return items
     }
 
     private fun updateDownloadedMediaSizes(type: MediaType) {
@@ -307,6 +317,7 @@ class DownloadQueueActivity : AppCompatActivity() {
             }
 
             withContext(Dispatchers.Main) {
+                mediaItemsKey = null
                 refreshUI()
             }
         }
@@ -357,6 +368,7 @@ class DownloadQueueActivity : AppCompatActivity() {
                 val downloadsManager = Injekt.get<DownloadsManager>()
                 downloadsManager.removeMedia(title, type)
                 folderSizeCache.remove(title)
+                mediaItemsKey = null
                 updateDownloadedMediaSizes(getSelectedMediaType())
                 startUpdating()
             }
