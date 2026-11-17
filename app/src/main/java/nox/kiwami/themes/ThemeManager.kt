@@ -47,7 +47,8 @@ class ThemeManager(private val context: Activity) {
             "PURPLE" -> if (useOLED) R.style.Theme_Kiwami_PurpleOLED else R.style.Theme_Kiwami_Purple
             "PINK" -> if (useOLED) R.style.Theme_Kiwami_PinkOLED else R.style.Theme_Kiwami_Pink
             "ORIAX" -> if (useOLED) R.style.Theme_Kiwami_OriaxOLED else R.style.Theme_Kiwami_Oriax
-            "SAIKOU" -> if (useOLED) R.style.Theme_Kiwami_SaikouOLED else R.style.Theme_Kiwami_Saikou
+            "SUNLIT_TERRACOTTA", "SAIKOU" ->
+                if (useOLED) R.style.Theme_Kiwami_SunlitTerracottaOLED else R.style.Theme_Kiwami_SunlitTerracotta
             "RED" -> if (useOLED) R.style.Theme_Kiwami_RedOLED else R.style.Theme_Kiwami_Red
             "LAVENDER" -> if (useOLED) R.style.Theme_Kiwami_LavenderOLED else R.style.Theme_Kiwami_Lavender
             "OCEAN" -> if (useOLED) R.style.Theme_Kiwami_OceanOLED else R.style.Theme_Kiwami_Ocean
@@ -140,13 +141,16 @@ class ThemeManager(private val context: Activity) {
 
 
     companion object {
-        enum class Theme(val theme: String) {
+        enum class Theme(
+            val theme: String,
+            val label: String = theme.substring(0, 1) + theme.substring(1).lowercase()
+        ) {
             BLUE("BLUE"),
             GREEN("GREEN"),
             PURPLE("PURPLE"),
             PINK("PINK"),
             ORIAX("ORIAX"),
-            SAIKOU("SAIKOU"),
+            SUNLIT_TERRACOTTA("SUNLIT_TERRACOTTA", "Sunlit Terracotta"),
             RED("RED"),
             LAVENDER("LAVENDER"),
             OCEAN("OCEAN"),
@@ -154,7 +158,8 @@ class ThemeManager(private val context: Activity) {
 
             companion object {
                 fun fromString(value: String): Theme {
-                    return entries.find { it.theme == value } ?: PURPLE
+                    if (value == "SAIKOU") return SUNLIT_TERRACOTTA
+                    return entries.find { it.theme == value } ?: SUNLIT_TERRACOTTA
                 }
             }
         }

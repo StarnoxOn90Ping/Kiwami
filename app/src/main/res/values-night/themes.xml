@@ -123,7 +123,7 @@
         <item name="colorPrimaryInverse">@color/md_theme_dark_4_inversePrimary</item>
     </style>
 
-    <style name="Theme.Kiwami.Saikou" parent="Theme.Base">
+    <style name="Theme.Kiwami.SunlitTerracotta" parent="Theme.Base">
         <item name="colorPrimary">@color/md_theme_dark_5_primary</item>
         <item name="colorOnPrimary">@color/md_theme_dark_5_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_dark_5_primaryContainer</item>
@@ -345,7 +345,7 @@
         <item name="colorSurfaceVariant">@color/nav_bg</item>
     </style>
 
-    <style name="Theme.Kiwami.SaikouOLED" parent="Theme.Kiwami.Saikou">
+    <style name="Theme.Kiwami.SunlitTerracottaOLED" parent="Theme.Kiwami.SunlitTerracotta">
         <item name="android:colorBackground">@color/darkest_Black</item>
         <item name="colorSurface">@color/darkest_Black</item>
         <item name="colorSurfaceVariant">@color/nav_bg</item>

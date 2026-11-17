@@ -92,18 +92,13 @@ class SettingsThemeActivity : AppCompatActivity(), SimpleDialog.OnDialogResultLi
             }
 
             val themeString: String = PrefManager.getVal(PrefName.Theme)
-            val themeText = themeString.substring(0, 1) + themeString.substring(1).lowercase()
+            val themeText = ThemeManager.Companion.Theme.fromString(themeString).label
             themeSwitcher.apply {
                 setText(themeText)
                 setAdapter(
                     ArrayAdapter(context,
                         R.layout.item_dropdown,
-                        ThemeManager.Companion.Theme.entries.map {
-                            it.theme.substring(
-                                0,
-                                1
-                            ) + it.theme.substring(1).lowercase()
-                        })
+                        ThemeManager.Companion.Theme.entries.map { it.label })
                 )
                 setOnItemClickListener { _, _, i, _ ->
                     PrefManager.setVal(

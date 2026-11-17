@@ -192,7 +192,7 @@
         <item name="colorPrimaryInverse">@color/md_theme_light_4_inversePrimary</item>
     </style>
 
-    <style name="Theme.Kiwami.Saikou" parent="Theme.Base">
+    <style name="Theme.Kiwami.SunlitTerracotta" parent="Theme.Base">
         <item name="colorPrimary">@color/md_theme_light_5_primary</item>
         <item name="colorOnPrimary">@color/md_theme_light_5_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_light_5_primaryContainer</item>
