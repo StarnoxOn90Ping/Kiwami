@@ -103,19 +103,19 @@ class OnboardingActivity : AppCompatActivity() {
             R.string.onboarding_track_title, R.string.onboarding_track_desc
         ),
         Page(
-            Kind.RESTORE, Visual.NONE, 0.5f, -20f, R.string.onboarding_eyebrow_restore,
+            Kind.RESTORE, Visual.NONE, 0.58f, -20f, R.string.onboarding_eyebrow_restore,
             R.string.onboarding_restore_title, R.string.onboarding_restore_desc
         ),
         Page(
-            Kind.DISCLAIMER, Visual.NONE, 0.5f, -14f, R.string.onboarding_eyebrow_disclaimer,
+            Kind.DISCLAIMER, Visual.NONE, 0.58f, -14f, R.string.onboarding_eyebrow_disclaimer,
             R.string.onboarding_disclaimer_title, R.string.onboarding_disclaimer_desc
         ),
         Page(
-            Kind.PERMISSIONS, Visual.NONE, 0.22f, -18f, R.string.onboarding_eyebrow_permissions,
+            Kind.PERMISSIONS, Visual.NONE, 0.58f, -18f, R.string.onboarding_eyebrow_permissions,
             R.string.onboarding_permissions_title, R.string.onboarding_permissions_desc
         ),
         Page(
-            Kind.THEMES, Visual.NONE, 0.38f, -10f, R.string.onboarding_eyebrow_themes,
+            Kind.THEMES, Visual.NONE, 0.58f, -10f, R.string.onboarding_eyebrow_themes,
             R.string.onboarding_themes_title, R.string.onboarding_themes_desc
         ),
         Page(
@@ -123,6 +123,8 @@ class OnboardingActivity : AppCompatActivity() {
             R.string.onboarding_done_title, R.string.onboarding_done_desc
         )
     )
+
+    private val splits = FloatArray(pages.size) { pages[it].split }
 
     private val disclaimerIndex = pages.indexOfFirst { it.kind == Kind.DISCLAIMER }
 
@@ -264,7 +266,9 @@ class OnboardingActivity : AppCompatActivity() {
                 binding.tileWall.setParallax(-(position + positionOffset) * dp(36))
                 val next = pages[(position + 1).coerceAtMost(pages.lastIndex)]
                 val current = pages[position]
-                scrim.split = current.split + (next.split - current.split) * positionOffset
+                val from = splits[position]
+                val to = splits[(position + 1).coerceAtMost(pages.lastIndex)]
+                scrim.split = from + (to - from) * positionOffset
                 binding.tileWall.setTilt(current.tilt + (next.tilt - current.tilt) * positionOffset)
             }
 
@@ -274,7 +278,7 @@ class OnboardingActivity : AppCompatActivity() {
             }
         })
 
-        scrim.split = pages[0].split
+        scrim.split = splits[0]
         binding.tileWall.setTilt(pages[0].tilt)
         updateButtons(0)
         pager.post { playEntrance(0) }
@@ -463,8 +467,29 @@ class OnboardingActivity : AppCompatActivity() {
 
     private inner class PageViewHolder(val b: ItemOnboardingPageBinding) :
         RecyclerView.ViewHolder(b.root) {
-        fun bind(page: Page) {
-            b.splitGuide.setGuidelinePercent(page.split)
+        init {
+            b.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> fitSplit() }
+        }
+
+        private fun fitSplit() {
+            val position = bindingAdapterPosition
+            val rootHeight = b.root.height
+            val contentHeight = b.pageContent.height
+            if (position == RecyclerView.NO_POSITION || rootHeight == 0 || contentHeight == 0) return
+            val insetBottom = ViewCompat.getRootWindowInsets(b.root)
+                ?.getInsets(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
+            val reserve = insetBottom + dp(102)
+            val fit = (rootHeight - reserve - contentHeight).toFloat() / rootHeight
+            val target = fit.coerceAtMost(pages[position].split).coerceAtLeast(0.1f)
+            if (abs(target - splits[position]) > 0.002f) {
+                splits[position] = target
+                b.splitGuide.setGuidelinePercent(target)
+                if (position == binding.onboardingPager.currentItem) scrim.split = target
+            }
+        }
+
+        fun bind(page: Page, position: Int) {
+            b.splitGuide.setGuidelinePercent(splits[position])
             b.markView.isVisible = page.visual == Visual.MARK
             b.markView.reset()
             b.trackCard.isVisible = page.visual == Visual.TRACK
@@ -629,7 +654,7 @@ class OnboardingActivity : AppCompatActivity() {
         )
 
         override fun onBindViewHolder(holder: PageViewHolder, position: Int) {
-            holder.bind(pages[position])
+            holder.bind(pages[position], position)
         }
 
         override fun onBindViewHolder(
