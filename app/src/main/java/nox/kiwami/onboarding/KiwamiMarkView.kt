@@ -5,8 +5,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
@@ -14,8 +17,11 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.view.animation.OvershootInterpolator
 import nox.kiwami.R
+import kotlin.math.atan2
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 
 class KiwamiMarkView @JvmOverloads constructor(
@@ -23,32 +29,42 @@ class KiwamiMarkView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    private class Stroke(
-        val area: RectF,
-        val ax: Float, val ay: Float,
-        val bx: Float, val by: Float,
+    private inner class Layer(
+        resId: Int,
+        x0: Int, y0: Int, x1: Int, y1: Int,
+        dirX: Float, dirY: Float,
         val from: Float, val to: Float
-    )
+    ) {
+        val bitmap: Bitmap = BitmapFactory.decodeResource(resources, resId)
+        val left = x0 / SOURCE_SIZE
+        val top = y0 / SOURCE_SIZE
+        val right = x1 / SOURCE_SIZE
+        val bottom = y1 / SOURCE_SIZE
+        val ux = dirX / hypot(dirX, dirY)
+        val uy = dirY / hypot(dirX, dirY)
+        val angle = Math.toDegrees(atan2(uy, ux).toDouble()).toFloat()
+        val dest = RectF()
+    }
 
-    private val bitmap: Bitmap =
-        BitmapFactory.decodeResource(resources, R.drawable.kiwami_mark)
-
-    private val strokes = listOf(
-        Stroke(RectF(0f, 0f, 0.31f, 1f), 0.19f, 0.04f, 0.19f, 1f, 0f, 0.42f),
-        Stroke(RectF(0.26f, 0.44f, 0.43f, 0.7f), 0.27f, 0.64f, 0.42f, 0.49f, 0.3f, 0.56f),
-        Stroke(RectF(0.48f, 0.03f, 1f, 0.45f), 0.49f, 0.43f, 0.9f, 0.08f, 0.46f, 0.76f),
-        Stroke(RectF(0.47f, 0.54f, 0.88f, 1f), 0.48f, 0.56f, 0.8f, 0.94f, 0.6f, 0.92f)
-    )
-    private val triangle = RectF(0.42f, 0.41f, 0.6f, 0.6f)
+    private val stem = Layer(R.drawable.kiwami_sketch_stem, 141, 56, 299, 994, 0.06f, 1f, 0f, 0.32f)
+    private val arm = Layer(R.drawable.kiwami_sketch_arm, 274, 470, 439, 701, 1f, -0.95f, 0.30f, 0.46f)
+    private val upper = Layer(R.drawable.kiwami_sketch_diag_up, 499, 70, 938, 487, 1f, -0.83f, 0.30f, 0.62f)
+    private val lower = Layer(R.drawable.kiwami_sketch_diag_down, 437, 460, 828, 989, 0.85f, 1f, 0.58f, 0.84f)
+    private val playLayer = Layer(R.drawable.kiwami_sketch_play, 437, 438, 595, 606, 1f, 0f, 0.84f, 1f)
+    private val wiped = listOf(stem, arm, upper, lower)
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val clip = Path()
-    private val area = Path()
-    private val hole = Path()
-    private val dest = RectF()
-    private val part = RectF()
-    private val ease = DecelerateInterpolator(1.6f)
+    private val maskPaint = Paint().apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+        shader = LinearGradient(
+            0f, 0f, 1f, 0f,
+            0xFFFFFFFF.toInt(), 0x00FFFFFF, Shader.TileMode.CLAMP
+        )
+    }
+    private val maskMatrix = Matrix()
+    private val ease = DecelerateInterpolator(1.4f)
+    private val pop = OvershootInterpolator(2.2f)
 
     private var progress = 0f
     private var animator: ValueAnimator? = null
@@ -85,7 +101,6 @@ class KiwamiMarkView @JvmOverloads constructor(
         val size = min(width, height) * 0.92f
         val left = (width - size) / 2f
         val top = (height - size) / 2f
-        dest.set(left, top, left + size, top + size)
 
         val glow = (progress * 3f).coerceIn(0f, 1f)
         glowPaint.shader = RadialGradient(
@@ -96,74 +111,65 @@ class KiwamiMarkView @JvmOverloads constructor(
         glowPaint.alpha = (glow * 255).toInt()
         canvas.drawCircle(width / 2f, height / 2f, size * 0.62f, glowPaint)
 
-        if (progress >= 1f) {
-            bitmapPaint.alpha = 255
-            canvas.drawBitmap(bitmap, null, dest, bitmapPaint)
-            return
-        }
-
         bitmapPaint.alpha = 255
-        strokes.forEach { stroke ->
-            val t = ((progress - stroke.from) / (stroke.to - stroke.from)).coerceIn(0f, 1f)
+        wiped.forEach { layer ->
+            val t = ((progress - layer.from) / (layer.to - layer.from)).coerceIn(0f, 1f)
             if (t <= 0f) return@forEach
-            val p = ease.getInterpolation(t)
-            val ax = left + stroke.ax * size
-            val ay = top + stroke.ay * size
-            val dx = (stroke.bx - stroke.ax) * size
-            val dy = (stroke.by - stroke.ay) * size
-            val length = hypot(dx, dy)
-            val ux = dx / length
-            val uy = dy / length
-            val nx = -uy
-            val ny = ux
-            val pad = size * 0.12f
-            val reach = (length + pad * 2f) * p
-            val sx = ax - ux * pad
-            val sy = ay - uy * pad
-            val ex = sx + ux * reach
-            val ey = sy + uy * reach
-            val w = size
-            clip.reset()
-            clip.moveTo(sx + nx * w, sy + ny * w)
-            clip.lineTo(ex + nx * w, ey + ny * w)
-            clip.lineTo(ex - nx * w, ey - ny * w)
-            clip.lineTo(sx - nx * w, sy - ny * w)
-            clip.close()
-            part.set(
-                left + stroke.area.left * size, top + stroke.area.top * size,
-                left + stroke.area.right * size, top + stroke.area.bottom * size
+            layer.dest.set(
+                left + layer.left * size, top + layer.top * size,
+                left + layer.right * size, top + layer.bottom * size
             )
-            area.reset()
-            area.addRect(part, Path.Direction.CW)
-            hole.reset()
-            hole.addRect(
-                left + triangle.left * size, top + triangle.top * size,
-                left + triangle.right * size, top + triangle.bottom * size,
-                Path.Direction.CW
-            )
-            area.op(hole, Path.Op.DIFFERENCE)
-            canvas.save()
-            canvas.clipPath(area)
-            canvas.clipPath(clip)
-            canvas.drawBitmap(bitmap, null, dest, bitmapPaint)
-            canvas.restore()
+            if (t >= 1f) {
+                canvas.drawBitmap(layer.bitmap, null, layer.dest, bitmapPaint)
+            } else {
+                drawWipe(canvas, layer, ease.getInterpolation(t))
+            }
         }
 
-        val tt = ((progress - 0.8f) / 0.2f).coerceIn(0f, 1f)
+        val tt = ((progress - playLayer.from) / (playLayer.to - playLayer.from)).coerceIn(0f, 1f)
         if (tt > 0f) {
-            val p = ease.getInterpolation(tt)
-            part.set(
-                left + triangle.left * size, top + triangle.top * size,
-                left + triangle.right * size, top + triangle.bottom * size
+            playLayer.dest.set(
+                left + playLayer.left * size, top + playLayer.top * size,
+                left + playLayer.right * size, top + playLayer.bottom * size
             )
-            val scale = 0.6f + 0.4f * p
-            bitmapPaint.alpha = (p * 255).toInt()
+            val scale = 0.45f + 0.55f * pop.getInterpolation(tt)
+            bitmapPaint.alpha = (min(1f, tt * 3f) * 255).toInt()
             canvas.save()
-            canvas.scale(scale, scale, part.centerX(), part.centerY())
-            canvas.clipRect(part)
-            canvas.drawBitmap(bitmap, null, dest, bitmapPaint)
+            canvas.scale(scale, scale, playLayer.dest.centerX(), playLayer.dest.centerY())
+            canvas.drawBitmap(playLayer.bitmap, null, playLayer.dest, bitmapPaint)
             canvas.restore()
             bitmapPaint.alpha = 255
         }
+    }
+
+    private fun drawWipe(canvas: Canvas, layer: Layer, p: Float) {
+        val d = layer.dest
+        var tMin = Float.MAX_VALUE
+        var tMax = -Float.MAX_VALUE
+        for (cx in floatArrayOf(d.left, d.right)) {
+            for (cy in floatArrayOf(d.top, d.bottom)) {
+                val proj = cx * layer.ux + cy * layer.uy
+                tMin = min(tMin, proj)
+                tMax = max(tMax, proj)
+            }
+        }
+        val feather = (tMax - tMin) * FEATHER
+        val head = tMin + (tMax - tMin + feather) * p
+        val start = head - feather
+
+        maskMatrix.setScale(feather, 1f)
+        maskMatrix.postRotate(layer.angle)
+        maskMatrix.postTranslate(layer.ux * start, layer.uy * start)
+        maskPaint.shader.setLocalMatrix(maskMatrix)
+
+        val saved = canvas.saveLayer(d, null)
+        canvas.drawBitmap(layer.bitmap, null, d, bitmapPaint)
+        canvas.drawRect(d, maskPaint)
+        canvas.restoreToCount(saved)
+    }
+
+    private companion object {
+        const val SOURCE_SIZE = 1024f
+        const val FEATHER = 0.3f
     }
 }
