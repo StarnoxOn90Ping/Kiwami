@@ -221,9 +221,9 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val splash = SplashScreenBinding.inflate(layoutInflater)
             binding.root.addView(splash.root)
-            splash.splashImage.play(900L, 0L)
+            splash.splashImage.play()
 
-            delay(1100)
+            delay(2000)
 
             ObjectAnimator.ofFloat(
                 splash.root,
