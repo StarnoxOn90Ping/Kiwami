@@ -703,7 +703,6 @@
     <string name="onboarding_eyebrow_restore">BACKUP</string>
     <string name="onboarding_eyebrow_disclaimer">GOOD TO KNOW</string>
     <string name="onboarding_eyebrow_permissions">PERMISSIONS</string>
-    <string name="onboarding_eyebrow_themes">YOUR STYLE</string>
     <string name="onboarding_eyebrow_done">READY</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
@@ -732,9 +731,6 @@
     <string name="onboarding_perm_storage_desc">Where your downloads are saved</string>
     <string name="onboarding_perm_allow">Allow</string>
     <string name="onboarding_perm_choose">Choose</string>
-    <string name="onboarding_themes_title">Make it <b>yours.</b></string>
-    <string name="onboarding_themes_desc">Pick a look now. You can change it anytime in settings.</string>
-    <string name="onboarding_themes_hint">You can change this anytime in Settings → Theme.</string>
     <string name="onboarding_done_title">That\'s it. <b>Dive in.</b></string>
     <string name="onboarding_done_desc">Your library is waiting.</string>
     <string name="onboarding_card_episode">Episode 12</string>

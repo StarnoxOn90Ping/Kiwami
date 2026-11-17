@@ -177,36 +177,6 @@
             android:orientation="vertical"
             android:visibility="gone" />
 
-        <GridLayout
-            android:id="@+id/themeGrid"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="-6dp"
-            android:layout_marginTop="16dp"
-            android:columnCount="5"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/themeName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:fontFamily="@font/kanit_semibold"
-            android:textColor="@color/onb_accent"
-            android:textSize="18sp"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/themeHint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:fontFamily="@font/kanit_light"
-            android:text="@string/onboarding_themes_hint"
-            android:textColor="@color/onb_text_dim"
-            android:textSize="14sp"
-            android:visibility="gone" />
-
         <TextView
             android:id="@+id/statusChip"
             android:layout_width="wrap_content"

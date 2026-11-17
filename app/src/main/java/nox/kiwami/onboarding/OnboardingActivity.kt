@@ -3,14 +3,11 @@ package nox.kiwami.onboarding
 import android.Manifest
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
-import android.view.Gravity
-import android.widget.GridLayout
 import androidx.documentfile.provider.DocumentFile
 import nox.kiwami.databinding.ItemOnboardingPermissionBinding
 import nox.kiwami.settings.saving.internal.PreferencePackager
@@ -54,7 +51,7 @@ import kotlin.math.abs
 
 class OnboardingActivity : AppCompatActivity() {
 
-    private enum class Kind { INFO, RESTORE, DISCLAIMER, PERMISSIONS, THEMES, DONE }
+    private enum class Kind { INFO, RESTORE, DISCLAIMER, PERMISSIONS, DONE }
 
     private enum class Perm(
         @DrawableRes val icon: Int,
@@ -116,10 +113,6 @@ class OnboardingActivity : AppCompatActivity() {
             R.string.onboarding_permissions_title, R.string.onboarding_permissions_desc
         ),
         Page(
-            Kind.THEMES, Visual.NONE, 0.58f, -10f, R.string.onboarding_eyebrow_themes,
-            R.string.onboarding_themes_title, R.string.onboarding_themes_desc
-        ),
-        Page(
             Kind.DONE, Visual.MARK, 0.58f, -16f, R.string.onboarding_eyebrow_done,
             R.string.onboarding_done_title, R.string.onboarding_done_desc
         )
@@ -128,18 +121,6 @@ class OnboardingActivity : AppCompatActivity() {
     private val splits = FloatArray(pages.size) { pages[it].split }
 
     private val disclaimerIndex = pages.indexOfFirst { it.kind == Kind.DISCLAIMER }
-
-    private val themeSwatches = mapOf(
-        "BLUE" to R.color.md_theme_dark_1_primary,
-        "GREEN" to R.color.md_theme_dark_2_primary,
-        "PURPLE" to R.color.md_theme_dark_3_primary,
-        "PINK" to R.color.md_theme_dark_4_primary,
-        "SAIKOU" to R.color.md_theme_dark_5_primary,
-        "RED" to R.color.md_theme_dark_6_primary,
-        "LAVENDER" to R.color.md_theme_dark_7_primary,
-        "OCEAN" to R.color.md_theme_dark_8_primary,
-        "ORIAX" to R.color.md_theme_dark_9_primary
-    )
 
     private lateinit var binding: ActivityOnboardingBinding
     private lateinit var folderLauncher: LauncherWrapper
@@ -446,7 +427,7 @@ class OnboardingActivity : AppCompatActivity() {
         val page = pages[position]
         listOf<View>(
             b.pageEyebrow, b.pageTitle, b.pageDescription,
-            b.noteCard, b.permissionList, b.themeGrid, b.themeName, b.themeHint, b.actionButton
+            b.noteCard, b.permissionList, b.actionButton
         )
             .forEachIndexed { index, view ->
                 if (!view.isVisible) return@forEachIndexed
@@ -521,9 +502,6 @@ class OnboardingActivity : AppCompatActivity() {
             b.noteCard.isVisible = page.kind == Kind.DISCLAIMER
             b.noteCard.setText(R.string.onboarding_disclaimer_note)
             b.permissionList.isVisible = page.kind == Kind.PERMISSIONS
-            b.themeGrid.isVisible = page.kind == Kind.THEMES
-            b.themeName.isVisible = page.kind == Kind.THEMES
-            b.themeHint.isVisible = page.kind == Kind.THEMES
             b.statusChip.isVisible = false
 
             when (page.kind) {
@@ -536,11 +514,6 @@ class OnboardingActivity : AppCompatActivity() {
                 Kind.PERMISSIONS -> {
                     b.actionButton.isVisible = false
                     buildPermissionRows()
-                }
-
-                Kind.THEMES -> {
-                    b.actionButton.isVisible = false
-                    buildThemeGrid()
                 }
 
                 else -> b.actionButton.isVisible = false
@@ -618,52 +591,6 @@ class OnboardingActivity : AppCompatActivity() {
                 row.findViewById<View>(R.id.permButton).isVisible = !granted
                 row.findViewById<View>(R.id.permCheck).isVisible = granted
             }
-        }
-
-        private fun buildThemeGrid() {
-            val grid = b.themeGrid
-            grid.removeAllViews()
-            val current: String = PrefManager.getVal(PrefName.Theme)
-            val entries = themeSwatches.keys.toList() + "MONOCHROME (BETA)"
-            val circles = mutableMapOf<String, View>()
-
-            fun style(key: String, selected: Boolean) {
-                val color = themeSwatches[key]?.let { getColor(it) } ?: 0xFF9E9E9E.toInt()
-                circles[key]?.background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(color)
-                    setStroke(
-                        dp(if (selected) 4 else 1),
-                        if (selected) Color.WHITE else 0x66FFFFFF
-                    )
-                }
-                circles[key]?.animate()?.scaleX(if (selected) 1.15f else 1f)
-                    ?.scaleY(if (selected) 1.15f else 1f)?.setDuration(180)?.start()
-            }
-
-            fun label(key: String) = key.substring(0, 1) + key.substring(1).lowercase()
-
-            entries.forEach { key ->
-                val circle = View(b.root.context).apply {
-                    layoutParams = GridLayout.LayoutParams().apply {
-                        width = dp(48); height = dp(48)
-                        setMargins(dp(6), dp(6), dp(6), dp(6))
-                        setGravity(Gravity.CENTER)
-                    }
-                    contentDescription = label(key)
-                    setOnClickListener {
-                        PrefManager.setVal(PrefName.Theme, key)
-                        PrefManager.setVal(PrefName.UseMaterialYou, false)
-                        PrefManager.setVal(PrefName.UseCustomTheme, false)
-                        entries.forEach { style(it, it == key) }
-                        b.themeName.text = label(key)
-                    }
-                }
-                circles[key] = circle
-                grid.addView(circle)
-                style(key, key == current)
-            }
-            b.themeName.text = label(if (current in themeSwatches) current else "BLUE")
         }
     }
 
