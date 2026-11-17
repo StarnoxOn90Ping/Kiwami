@@ -4,7 +4,7 @@
     android:id="@+id/onboardingRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#080814">
+    android:background="@color/onb_bg">
 
     <!-- Tilted, drifting, blurred wall of anime artwork -->
     <nox.kiwami.onboarding.AnimeTileWall
@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Neutral dark wash (no accent colour) so text stays readable -->
+    <!-- Gradient that follows the text block so it always sits on solid ground -->
     <View
         android:id="@+id/scrim"
         android:layout_width="match_parent"
@@ -63,13 +63,13 @@
             android:fontFamily="@font/kanit_semibold"
             android:minWidth="150dp"
             android:text="@string/onboarding_next"
-            android:textColor="#0F0F1E"
+            android:textColor="@color/onb_on_accent"
             android:textSize="16sp"
-            app:backgroundTint="#FFFFFF"
+            app:backgroundTint="@color/onb_accent"
             app:cornerRadius="28dp"
             app:icon="@drawable/ic_round_arrow_forward_ios_24"
             app:iconGravity="textEnd"
             app:iconSize="14dp"
-            app:iconTint="#0F0F1E" />
+            app:iconTint="@color/onb_on_accent" />
     </LinearLayout>
 </FrameLayout>

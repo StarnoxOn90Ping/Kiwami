@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="onb_bg">#191A1E</color>
+    <color name="onb_accent">#FF8A4C</color>
+    <color name="onb_accent_coral">#F0646E</color>
+    <color name="onb_on_accent">#191A1E</color>
+    <color name="onb_text_dim">#BFFFFFFF</color>
+</resources>

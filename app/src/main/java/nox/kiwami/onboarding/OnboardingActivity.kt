@@ -1,15 +1,14 @@
 package nox.kiwami.onboarding
 
 import android.Manifest
-import android.animation.Animator
-import android.animation.Keyframe
-import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
-import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.Gravity
 import android.widget.GridLayout
 import androidx.documentfile.provider.DocumentFile
@@ -23,11 +22,7 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.LinearInterpolator
-import android.view.animation.OvershootInterpolator
-import android.content.res.ColorStateList
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
@@ -86,54 +81,46 @@ class OnboardingActivity : AppCompatActivity() {
         fun isRelevant() = this != ALARMS || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     }
 
-    private enum class Motion { FLOAT, BELL, SHAKE, PULSE, HOP, SPIN, SPIN_CCW }
+    private enum class Visual { NONE, MARK, TRACK }
 
     private data class Page(
         val kind: Kind,
-        @DrawableRes val icon: Int,
+        val visual: Visual,
+        val split: Float,
+        val tilt: Float,
         @StringRes val eyebrow: Int,
         @StringRes val title: Int,
-        @StringRes val description: Int,
-        val motion: Motion,
-        val tintIcon: Boolean = true,
-        val iconDp: Int = 128,
-        val containerDp: Int = 240
+        @StringRes val description: Int
     )
 
     private val pages = listOf(
         Page(
-            Kind.INFO, R.drawable.ic_kiwami_round, R.string.onboarding_eyebrow_welcome,
-            R.string.onboarding_welcome_title, R.string.onboarding_welcome_desc,
-            Motion.FLOAT, tintIcon = false, iconDp = 200, containerDp = 300
+            Kind.INFO, Visual.MARK, 0.58f, -16f, R.string.onboarding_eyebrow_welcome,
+            R.string.onboarding_welcome_title, R.string.onboarding_welcome_desc
         ),
         Page(
-            Kind.INFO, R.drawable.ic_round_movie_filter_24, R.string.onboarding_eyebrow_track,
-            R.string.onboarding_track_title, R.string.onboarding_track_desc, Motion.FLOAT
+            Kind.INFO, Visual.TRACK, 0.58f, -12f, R.string.onboarding_eyebrow_track,
+            R.string.onboarding_track_title, R.string.onboarding_track_desc
         ),
         Page(
-            Kind.RESTORE, R.drawable.backup_restore, R.string.onboarding_eyebrow_restore,
-            R.string.onboarding_restore_title, R.string.onboarding_restore_desc, Motion.SPIN_CCW,
-            iconDp = 112, containerDp = 200
+            Kind.RESTORE, Visual.NONE, 0.5f, -20f, R.string.onboarding_eyebrow_restore,
+            R.string.onboarding_restore_title, R.string.onboarding_restore_desc
         ),
         Page(
-            Kind.DISCLAIMER, R.drawable.ic_shield, R.string.onboarding_eyebrow_disclaimer,
-            R.string.onboarding_disclaimer_title, R.string.onboarding_disclaimer_desc,
-            Motion.PULSE, iconDp = 104, containerDp = 190
+            Kind.DISCLAIMER, Visual.NONE, 0.5f, -14f, R.string.onboarding_eyebrow_disclaimer,
+            R.string.onboarding_disclaimer_title, R.string.onboarding_disclaimer_desc
         ),
         Page(
-            Kind.PERMISSIONS, R.drawable.ic_onboarding_battery, R.string.onboarding_eyebrow_permissions,
-            R.string.onboarding_permissions_title, R.string.onboarding_permissions_desc,
-            Motion.PULSE, iconDp = 72, containerDp = 140
+            Kind.PERMISSIONS, Visual.NONE, 0.22f, -18f, R.string.onboarding_eyebrow_permissions,
+            R.string.onboarding_permissions_title, R.string.onboarding_permissions_desc
         ),
         Page(
-            Kind.THEMES, R.drawable.ic_palette, R.string.onboarding_eyebrow_themes,
-            R.string.onboarding_themes_title, R.string.onboarding_themes_desc,
-            Motion.FLOAT, iconDp = 80, containerDp = 150
+            Kind.THEMES, Visual.NONE, 0.38f, -10f, R.string.onboarding_eyebrow_themes,
+            R.string.onboarding_themes_title, R.string.onboarding_themes_desc
         ),
         Page(
-            Kind.DONE, R.drawable.ic_onboarding_sparkle, R.string.onboarding_eyebrow_done,
-            R.string.onboarding_done_title, R.string.onboarding_done_desc, Motion.SPIN,
-            iconDp = 144, containerDp = 260
+            Kind.DONE, Visual.MARK, 0.58f, -16f, R.string.onboarding_eyebrow_done,
+            R.string.onboarding_done_title, R.string.onboarding_done_desc
         )
     )
 
@@ -155,6 +142,7 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var folderLauncher: LauncherWrapper
     private val pageAdapter = PageAdapter()
     private val dots = mutableListOf<View>()
+    private val scrim = OnboardingScrim()
     private val notificationLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             // After two refusals Android silently ignores the request, so fall back to settings.
@@ -212,10 +200,7 @@ class OnboardingActivity : AppCompatActivity() {
 
         folderLauncher = LauncherWrapper(this, ActivityResultContracts.OpenDocumentTree())
 
-        binding.scrim.background = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(0x8C080814.toInt(), 0x59080814, 0xD9080814.toInt())
-        )
+        binding.scrim.background = scrim
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -277,6 +262,10 @@ class OnboardingActivity : AppCompatActivity() {
             ) {
                 updateDots(position + positionOffset)
                 binding.tileWall.setParallax(-(position + positionOffset) * dp(36))
+                val next = pages[(position + 1).coerceAtMost(pages.lastIndex)]
+                val current = pages[position]
+                scrim.split = current.split + (next.split - current.split) * positionOffset
+                binding.tileWall.setTilt(current.tilt + (next.tilt - current.tilt) * positionOffset)
             }
 
             override fun onPageSelected(position: Int) {
@@ -285,6 +274,8 @@ class OnboardingActivity : AppCompatActivity() {
             }
         })
 
+        scrim.split = pages[0].split
+        binding.tileWall.setTilt(pages[0].tilt)
         updateButtons(0)
         pager.post { playEntrance(0) }
     }
@@ -447,8 +438,9 @@ class OnboardingActivity : AppCompatActivity() {
     private fun playEntrance(position: Int) {
         val holder = currentHolder(position) ?: return
         val b = holder.b
+        val page = pages[position]
         listOf<View>(
-            b.iconContainer, b.pageEyebrow, b.pageTitle, b.pageDescription,
+            b.pageEyebrow, b.pageTitle, b.pageDescription,
             b.noteCard, b.permissionList, b.themeGrid, b.themeName, b.themeHint, b.actionButton
         )
             .forEachIndexed { index, view ->
@@ -462,37 +454,22 @@ class OnboardingActivity : AppCompatActivity() {
                     .setInterpolator(DecelerateInterpolator())
                     .start()
             }
-        b.pageIcon.animate().cancel()
-        b.pageIcon.scaleX = 0.4f
-        b.pageIcon.scaleY = 0.4f
-        b.pageIcon.rotation = -20f
-        b.pageIcon.animate()
-            .scaleX(1f).scaleY(1f).rotation(0f)
-            .setStartDelay(120)
-            .setDuration(650)
-            .setInterpolator(OvershootInterpolator(2f))
-            .start()
-        b.iconGlow.animate().cancel()
-        b.iconGlow.scaleX = 0.5f
-        b.iconGlow.scaleY = 0.5f
-        b.iconGlow.animate().scaleX(1f).scaleY(1f).setDuration(700)
-            .setInterpolator(DecelerateInterpolator()).start()
-        holder.startIdle(pages[position])
+        when (page.visual) {
+            Visual.MARK -> b.markView.play()
+            Visual.TRACK -> holder.playTrackCard()
+            Visual.NONE -> Unit
+        }
     }
 
     private inner class PageViewHolder(val b: ItemOnboardingPageBinding) :
         RecyclerView.ViewHolder(b.root) {
-        private var glowAnimator: Animator? = null
-        private val idleAnimators = mutableListOf<Animator>()
-
         fun bind(page: Page) {
-            b.iconContainer.updateLayoutParams { width = dp(page.containerDp); height = dp(page.containerDp) }
-            b.pageIcon.updateLayoutParams { width = dp(page.iconDp); height = dp(page.iconDp) }
-            b.pageIcon.setImageResource(page.icon)
-            b.pageIcon.imageTintList =
-                if (page.tintIcon) ColorStateList.valueOf(Color.WHITE) else null
+            b.splitGuide.setGuidelinePercent(page.split)
+            b.markView.isVisible = page.visual == Visual.MARK
+            b.markView.reset()
+            b.trackCard.isVisible = page.visual == Visual.TRACK
             b.pageEyebrow.setText(page.eyebrow)
-            b.pageTitle.setText(page.title)
+            b.pageTitle.text = accentTitle(page.title)
             b.pageDescription.setText(page.description)
 
             b.noteCard.isVisible = page.kind == Kind.DISCLAIMER
@@ -522,6 +499,48 @@ class OnboardingActivity : AppCompatActivity() {
 
                 else -> b.actionButton.isVisible = false
             }
+        }
+
+        fun playTrackCard() {
+            b.trackCard.animate().cancel()
+            b.trackCard.alpha = 0f
+            b.trackCard.translationY = dp(36).toFloat()
+            b.trackCard.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay(120)
+                .setDuration(550)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+            b.trackFill.animate().cancel()
+            b.trackFill.pivotX = 0f
+            b.trackFill.scaleX = 0f
+            b.trackFill.animate()
+                .scaleX(1f)
+                .setStartDelay(500)
+                .setDuration(900)
+                .setInterpolator(DecelerateInterpolator(1.5f))
+                .start()
+        }
+
+        fun stopAnimations() {
+            b.markView.reset()
+            b.trackCard.animate().cancel()
+            b.trackCard.alpha = 0f
+            b.trackFill.animate().cancel()
+            b.trackFill.scaleX = 0f
+        }
+
+        private fun accentTitle(@StringRes res: Int): CharSequence {
+            val text = SpannableStringBuilder(getText(res))
+            val accent = getColor(R.color.onb_accent)
+            text.getSpans(0, text.length, StyleSpan::class.java).forEach { span ->
+                val start = text.getSpanStart(span)
+                val end = text.getSpanEnd(span)
+                text.removeSpan(span)
+                text.setSpan(ForegroundColorSpan(accent), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            return text
         }
 
         private fun buildPermissionRows() {
@@ -582,7 +601,7 @@ class OnboardingActivity : AppCompatActivity() {
                 val circle = View(b.root.context).apply {
                     layoutParams = GridLayout.LayoutParams().apply {
                         width = dp(48); height = dp(48)
-                        setMargins(dp(8), dp(8), dp(8), dp(8))
+                        setMargins(dp(6), dp(6), dp(6), dp(6))
                         setGravity(Gravity.CENTER)
                     }
                     contentDescription = label(key)
@@ -599,120 +618,6 @@ class OnboardingActivity : AppCompatActivity() {
                 style(key, key == current)
             }
             b.themeName.text = label(if (current in themeSwatches) current else "BLUE")
-        }
-
-        fun startGlow() {
-            glowAnimator?.cancel()
-            glowAnimator = ObjectAnimator.ofPropertyValuesHolder(
-                b.iconGlow,
-                PropertyValuesHolder.ofFloat(View.SCALE_X, 0.92f, 1.06f),
-                PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.92f, 1.06f),
-                PropertyValuesHolder.ofFloat(View.ALPHA, 0.6f, 1f)
-            ).apply {
-                duration = 2600
-                repeatCount = ValueAnimator.INFINITE
-                repeatMode = ValueAnimator.REVERSE
-                interpolator = AccelerateDecelerateInterpolator()
-                start()
-            }
-        }
-
-        fun startIdle(page: Page) {
-            stopIdle()
-            val icon = b.pageIcon
-            val ease = AccelerateDecelerateInterpolator()
-
-            fun keyframes(
-                property: android.util.Property<View, Float>, vararg frames: Pair<Float, Float>
-            ) = PropertyValuesHolder.ofKeyframe(
-                property,
-                *frames.map { (fraction, value) ->
-                    Keyframe.ofFloat(fraction, value).apply { interpolator = ease }
-                }.toTypedArray()
-            )
-
-            fun play(vararg holders: PropertyValuesHolder, ms: Long, reverse: Boolean = false) {
-                idleAnimators.add(ObjectAnimator.ofPropertyValuesHolder(icon, *holders).apply {
-                    duration = ms
-                    startDelay = 750
-                    repeatCount = ValueAnimator.INFINITE
-                    if (reverse) repeatMode = ValueAnimator.REVERSE
-                    interpolator = if (reverse) ease else LinearInterpolator()
-                    start()
-                })
-            }
-
-            icon.pivotX = icon.width / 2f
-            icon.pivotY = icon.height / 2f
-            when (page.motion) {
-                Motion.FLOAT -> play(
-                    PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, 0f, -dp(12).toFloat()),
-                    PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.05f),
-                    PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.05f),
-                    ms = 2400, reverse = true
-                )
-
-                Motion.BELL -> {
-                    icon.pivotY = icon.height * 0.14f
-                    play(
-                        keyframes(
-                            View.ROTATION,
-                            0f to 0f, 0.07f to 20f, 0.15f to -17f, 0.23f to 12f,
-                            0.31f to -8f, 0.39f to 4f, 0.46f to 0f, 1f to 0f
-                        ),
-                        ms = 3400
-                    )
-                }
-
-                Motion.SHAKE -> play(
-                    keyframes(
-                        View.ROTATION,
-                        0f to 0f, 0.05f to 10f, 0.10f to -10f, 0.15f to 9f, 0.20f to -9f,
-                        0.25f to 6f, 0.30f to -6f, 0.35f to 0f, 1f to 0f
-                    ),
-                    ms = 2800
-                )
-
-                Motion.PULSE -> play(
-                    PropertyValuesHolder.ofFloat(View.SCALE_X, 0.94f, 1.12f),
-                    PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.94f, 1.12f),
-                    PropertyValuesHolder.ofFloat(View.ALPHA, 0.78f, 1f),
-                    ms = 1100, reverse = true
-                )
-
-                Motion.HOP -> play(
-                    keyframes(
-                        View.TRANSLATION_Y,
-                        0f to 0f, 0.12f to -dp(22).toFloat(), 0.26f to 0f,
-                        0.34f to -dp(8).toFloat(), 0.42f to 0f, 1f to 0f
-                    ),
-                    ms = 2600
-                )
-
-                Motion.SPIN, Motion.SPIN_CCW -> {
-                    val end = if (page.motion == Motion.SPIN_CCW) -360f else 360f
-                    play(PropertyValuesHolder.ofFloat(View.ROTATION, 0f, end), ms = 8000)
-                    play(
-                        PropertyValuesHolder.ofFloat(View.SCALE_X, 0.9f, 1.1f),
-                        PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.9f, 1.1f),
-                        ms = 1600, reverse = true
-                    )
-                }
-            }
-        }
-
-        private fun stopIdle() {
-            idleAnimators.forEach { it.cancel() }
-            idleAnimators.clear()
-            b.pageIcon.rotation = 0f
-            b.pageIcon.translationY = 0f
-            b.pageIcon.alpha = 1f
-        }
-
-        fun stopAnimations() {
-            glowAnimator?.cancel()
-            glowAnimator = null
-            stopIdle()
         }
     }
 
@@ -735,7 +640,10 @@ class OnboardingActivity : AppCompatActivity() {
         }
 
         override fun onViewAttachedToWindow(holder: PageViewHolder) {
-            holder.startGlow()
+            val position = holder.bindingAdapterPosition
+            if (position != RecyclerView.NO_POSITION && position == binding.onboardingPager.currentItem) {
+                playEntrance(position)
+            }
         }
 
         override fun onViewDetachedFromWindow(holder: PageViewHolder) {
