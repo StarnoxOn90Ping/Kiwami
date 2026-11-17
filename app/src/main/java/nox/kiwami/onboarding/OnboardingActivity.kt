@@ -22,6 +22,7 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.animation.DecelerateInterpolator
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -467,25 +468,45 @@ class OnboardingActivity : AppCompatActivity() {
 
     private inner class PageViewHolder(val b: ItemOnboardingPageBinding) :
         RecyclerView.ViewHolder(b.root) {
+        private var observer: ViewTreeObserver? = null
+
+        private val preDraw = ViewTreeObserver.OnPreDrawListener { !fitSplit() }
+
         init {
-            b.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> fitSplit() }
+            b.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    observer = v.viewTreeObserver.also { it.addOnPreDrawListener(preDraw) }
+                }
+
+                override fun onViewDetachedFromWindow(v: View) {
+                    val current = observer
+                    if (current != null && current.isAlive) {
+                        current.removeOnPreDrawListener(preDraw)
+                    } else {
+                        v.viewTreeObserver.removeOnPreDrawListener(preDraw)
+                    }
+                    observer = null
+                }
+            })
         }
 
-        private fun fitSplit() {
+        private fun fitSplit(): Boolean {
             val position = bindingAdapterPosition
             val rootHeight = b.root.height
             val contentHeight = b.pageContent.height
-            if (position == RecyclerView.NO_POSITION || rootHeight == 0 || contentHeight == 0) return
+            if (position == RecyclerView.NO_POSITION || rootHeight == 0 || contentHeight == 0) {
+                return false
+            }
             val insetBottom = ViewCompat.getRootWindowInsets(b.root)
                 ?.getInsets(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
             val reserve = insetBottom + dp(102)
             val fit = (rootHeight - reserve - contentHeight).toFloat() / rootHeight
             val target = fit.coerceAtMost(pages[position].split).coerceAtLeast(0.1f)
-            if (abs(target - splits[position]) > 0.002f) {
-                splits[position] = target
-                b.splitGuide.setGuidelinePercent(target)
-                if (position == binding.onboardingPager.currentItem) scrim.split = target
-            }
+            if (abs(target - splits[position]) <= 0.002f) return false
+            splits[position] = target
+            b.splitGuide.setGuidelinePercent(target)
+            if (position == binding.onboardingPager.currentItem) scrim.split = target
+            return true
         }
 
         fun bind(page: Page, position: Int) {
