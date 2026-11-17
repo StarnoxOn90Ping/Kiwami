@@ -53,7 +53,8 @@ class ThemeManager(private val context: Activity) {
             "LAVENDER" -> if (useOLED) R.style.Theme_Kiwami_LavenderOLED else R.style.Theme_Kiwami_Lavender
             "OCEAN" -> if (useOLED) R.style.Theme_Kiwami_OceanOLED else R.style.Theme_Kiwami_Ocean
             "MONOCHROME (BETA)" -> if (useOLED) R.style.Theme_Kiwami_MonochromeOLED else R.style.Theme_Kiwami_Monochrome
-            else -> if (useOLED) R.style.Theme_Kiwami_BlueOLED else R.style.Theme_Kiwami_Blue
+            else ->
+                if (useOLED) R.style.Theme_Kiwami_SunlitTerracottaOLED else R.style.Theme_Kiwami_SunlitTerracotta
         }
 
         val window = context.window

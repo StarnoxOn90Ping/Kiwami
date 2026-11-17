@@ -102,7 +102,7 @@ enum class PrefName(val data: Pref) {
     CustomThemeInt(Pref(Location.UI, Int::class, Color.parseColor("#6200EE"))),
     UseSourceTheme(Pref(Location.UI, Boolean::class, false)),
     UseMaterialYou(Pref(Location.UI, Boolean::class, false)),
-    Theme(Pref(Location.UI, String::class, "BLUE")),
+    Theme(Pref(Location.UI, String::class, "SUNLIT_TERRACOTTA")),
     SkipExtensionIcons(Pref(Location.UI, Boolean::class, false)),
     DarkMode(Pref(Location.UI, Int::class, 0)),
     ShowYtButton(Pref(Location.UI, Boolean::class, true)),
