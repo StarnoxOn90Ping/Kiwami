@@ -34,16 +34,18 @@ class KiwamiMarkView @JvmOverloads constructor(
         BitmapFactory.decodeResource(resources, R.drawable.kiwami_mark)
 
     private val strokes = listOf(
-        Stroke(RectF(0f, 0f, 0.31f, 1f), 0.15f, 0f, 0.15f, 1f, 0f, 0.42f),
-        Stroke(RectF(0.2f, 0.38f, 0.43f, 0.7f), 0.1f, 0.63f, 0.41f, 0.48f, 0.3f, 0.56f),
-        Stroke(RectF(0.52f, 0f, 1f, 0.44f), 0.54f, 0.41f, 0.98f, 0.05f, 0.46f, 0.76f),
-        Stroke(RectF(0.47f, 0.52f, 0.92f, 1f), 0.5f, 0.55f, 0.85f, 1f, 0.6f, 0.92f)
+        Stroke(RectF(0f, 0f, 0.31f, 1f), 0.19f, 0.04f, 0.19f, 1f, 0f, 0.42f),
+        Stroke(RectF(0.26f, 0.44f, 0.43f, 0.7f), 0.27f, 0.64f, 0.42f, 0.49f, 0.3f, 0.56f),
+        Stroke(RectF(0.48f, 0.03f, 1f, 0.45f), 0.49f, 0.43f, 0.9f, 0.08f, 0.46f, 0.76f),
+        Stroke(RectF(0.47f, 0.54f, 0.88f, 1f), 0.48f, 0.56f, 0.8f, 0.94f, 0.6f, 0.92f)
     )
-    private val triangle = RectF(0.41f, 0.36f, 0.62f, 0.59f)
+    private val triangle = RectF(0.42f, 0.41f, 0.6f, 0.6f)
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val clip = Path()
+    private val area = Path()
+    private val hole = Path()
     private val dest = RectF()
     private val part = RectF()
     private val ease = DecelerateInterpolator(1.6f)
@@ -51,11 +53,11 @@ class KiwamiMarkView @JvmOverloads constructor(
     private var progress = 0f
     private var animator: ValueAnimator? = null
 
-    fun play() {
+    fun play(durationMs: Long = 1500L, delayMs: Long = 150L) {
         animator?.cancel()
         animator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 1500
-            startDelay = 150
+            duration = durationMs
+            startDelay = delayMs
             interpolator = LinearInterpolator()
             addUpdateListener {
                 progress = it.animatedValue as Float
@@ -131,8 +133,17 @@ class KiwamiMarkView @JvmOverloads constructor(
                 left + stroke.area.left * size, top + stroke.area.top * size,
                 left + stroke.area.right * size, top + stroke.area.bottom * size
             )
+            area.reset()
+            area.addRect(part, Path.Direction.CW)
+            hole.reset()
+            hole.addRect(
+                left + triangle.left * size, top + triangle.top * size,
+                left + triangle.right * size, top + triangle.bottom * size,
+                Path.Direction.CW
+            )
+            area.op(hole, Path.Op.DIFFERENCE)
             canvas.save()
-            canvas.clipRect(part)
+            canvas.clipPath(area)
             canvas.clipPath(clip)
             canvas.drawBitmap(bitmap, null, dest, bitmapPaint)
             canvas.restore()

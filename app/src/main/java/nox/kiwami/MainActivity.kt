@@ -14,7 +14,6 @@ import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnticipateInterpolator
-import android.view.animation.OvershootInterpolator
 import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.activity.viewModels
@@ -220,49 +219,28 @@ class MainActivity : AppCompatActivity() {
         binding.root.isMotionEventSplittingEnabled = false
 
         lifecycleScope.launch {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                val splash = SplashScreenBinding.inflate(layoutInflater)
-                binding.root.addView(splash.root)
-                splash.splashImage.apply {
-                    scaleX = 0f
-                    scaleY = 0f
-                    animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(500L)
-                        .setInterpolator(OvershootInterpolator())
-                        .start()
-                }
+            val splash = SplashScreenBinding.inflate(layoutInflater)
+            binding.root.addView(splash.root)
+            splash.splashImage.play(900L, 0L)
 
-                delay(200)
+            delay(1100)
 
-                ObjectAnimator.ofFloat(
-                    splash.root,
-                    View.TRANSLATION_Y,
-                    0f,
-                    -splash.root.height.toFloat()
-                ).apply {
-                    interpolator = AnticipateInterpolator()
-                    duration = 200L
-                    doOnEnd { binding.root.removeView(splash.root) }
-                    start()
-                }
+            ObjectAnimator.ofFloat(
+                splash.root,
+                View.TRANSLATION_Y,
+                0f,
+                -splash.root.height.toFloat()
+            ).apply {
+                interpolator = AnticipateInterpolator()
+                duration = 200L
+                doOnEnd { binding.root.removeView(splash.root) }
+                start()
             }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
-                ObjectAnimator.ofFloat(
-                    splashScreenView,
-                    View.TRANSLATION_Y,
-                    0f,
-                    -splashScreenView.height.toFloat()
-                ).apply {
-                    interpolator = AnticipateInterpolator()
-                    duration = 200L
-                    doOnEnd { splashScreenView.remove() }
-                    start()
-                }
+                splashScreenView.remove()
             }
         }
 
