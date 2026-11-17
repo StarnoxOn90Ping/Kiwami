@@ -88,13 +88,13 @@ class AnimeTileWall @JvmOverloads constructor(
     }
 
     private fun bindImages() {
-        val w = (tileWidth / 2).coerceAtLeast(16)
-        val h = (tileHeight / 2).coerceAtLeast(16)
+        val w = tileWidth.coerceAtLeast(16)
+        val h = tileHeight.coerceAtLeast(16)
         tiles.forEach { (view, index) ->
             Glide.with(view)
                 .load(BUNDLED[index % BUNDLED.size])
                 .override(w, h)
-                .transform(CenterCrop(), SoftBlurTransformation(BLUR_RADIUS))
+                .transform(CenterCrop())
                 .transition(withCrossFade(300))
                 .into(view)
         }
@@ -102,6 +102,10 @@ class AnimeTileWall @JvmOverloads constructor(
 
     fun setParallax(px: Float) {
         container.translationX = px
+    }
+
+    fun setTilt(degrees: Float) {
+        container.rotation = degrees
     }
 
     fun start() {
@@ -143,8 +147,6 @@ class AnimeTileWall @JvmOverloads constructor(
     }
 
     companion object {
-        private const val BLUR_RADIUS = 1
-
         private const val TILE_COUNT = 32
 
         private val BUNDLED: List<Int> = listOf(
