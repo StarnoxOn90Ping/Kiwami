@@ -271,6 +271,8 @@ class HomeFragment : Fragment() {
             return list
         }
 
+        val cardPool = RecyclerView.RecycledViewPool().apply { setMaxRecycledViews(0, 16) }
+
         fun initRecyclerView(
             mode: LiveData<ArrayList<Media>>,
             container: View,
@@ -288,6 +290,7 @@ class HomeFragment : Fragment() {
             more.visibility = View.VISIBLE
             recyclerView.visibility = View.VISIBLE
 
+            recyclerView.setRecycledViewPool(cardPool)
             recyclerView.adapter = MediaAdaptor(0, getSkeletonMediaList(), requireActivity())
             recyclerView.layoutManager = LinearLayoutManager(
                 requireContext(),

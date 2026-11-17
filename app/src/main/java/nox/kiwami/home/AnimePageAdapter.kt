@@ -44,6 +44,7 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputLayout
 
 class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHolder>() {
+    private val cardPool = RecyclerView.RecycledViewPool().apply { setMaxRecycledViews(0, 16) }
     val ready = MutableLiveData(false)
     lateinit var binding: ItemAnimePageBinding
     private lateinit var trendingBinding: LayoutTrendingBinding
@@ -283,6 +284,7 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         ).apply {
             initialPrefetchItemCount = 4
         }
+        recyclerView.setRecycledViewPool(cardPool)
         recyclerView.layoutManager = llm
         recyclerView.adapter = adaptor
 
