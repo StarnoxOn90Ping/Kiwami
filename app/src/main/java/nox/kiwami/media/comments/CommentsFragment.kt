@@ -3,21 +3,32 @@ package nox.kiwami.media.comments
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context.INPUT_METHOD_SERVICE
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.view.inputmethod.InputMethodManager
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.animation.doOnEnd
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import nox.kiwami.R
 import nox.kiwami.buildMarkwon
 import nox.kiwami.connections.anilist.Anilist
@@ -73,6 +84,7 @@ class CommentsFragment : Fragment() {
     private var isSpoilerMode = false
     private var markwonTextWatcher: TextWatcher? = null
     private var limitTextWatcher: TextWatcher? = null
+    private var headerPump: RecyclerView.AdapterDataObserver? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -80,13 +92,14 @@ class CommentsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentCommentsBinding.inflate(inflater, container, false)
-        binding.commentsLayout.isNestedScrollingEnabled = true
         return binding.root
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding?.commentsList?.adapter = null
+        headerPump?.let { adapter.unregisterAdapterDataObserver(it) }
+        headerPump = null
         _binding = null
         (activity as? MediaDetailsActivity)?.binding?.let { actBinding ->
             markwonTextWatcher?.let { actBinding.commentInput.removeTextChangedListener(it) }
@@ -110,7 +123,7 @@ class CommentsFragment : Fragment() {
         baselineAnchor?.let {
             // If it's the unified container, it already has navBarHeight padding, so don't include it again.
             val includeSystemPaddings = it != activity.binding.mediaBottomBarContainer
-            binding.commentsLayout.setBaseline(it, includeSystemNavBar = includeSystemPaddings)
+            binding.commentsList.setBaseline(it, includeSystemNavBar = includeSystemPaddings)
         }
         val mediaId = arguments?.getInt("mediaId") ?: -1
         mediaName = arguments?.getString("mediaName") ?: "unknown"
@@ -141,10 +154,8 @@ class CommentsFragment : Fragment() {
                 return@setOnRefreshListener
             }
             binding.commentsOfflineText.visibility = View.GONE
-            binding.commentsListContainer.visibility = View.VISIBLE
-            binding.openRules.visibility = View.VISIBLE
-            binding.commentFilter.visibility = View.VISIBLE
-            binding.commentSort.visibility = View.VISIBLE
+            binding.commentsList.visibility = View.VISIBLE
+            setHeaderControlsVisible(true)
             activity.binding.commentMessageContainer.visibility =
                 if (CommentsAPI.authToken != null) View.VISIBLE else View.GONE
 
@@ -158,6 +169,7 @@ class CommentsFragment : Fragment() {
         binding.commentsList.adapter = adapter
         binding.commentsList.layoutManager = LinearLayoutManager(activity)
         adapter.add(section)
+        setupHeader()
 
         val model: MediaDetailsViewModel by activityViewModels()
         model.getMedia().observe(viewLifecycleOwner) { newMedia ->
@@ -176,11 +188,8 @@ class CommentsFragment : Fragment() {
 
                     if (isOfflineOrLocal) {
                         binding.commentsOfflineText.visibility = View.VISIBLE
-                        binding.commentsListContainer.visibility = View.GONE
-                        binding.openRules.visibility = View.GONE
-                        binding.commentFilter.visibility = View.GONE
-                        binding.commentSort.visibility = View.GONE
-                        binding.commentCurrentProgress.visibility = View.GONE
+                        binding.commentsList.visibility = View.GONE
+                        setHeaderControlsVisible(false)
                         binding.commentsProgressBar.visibility = View.GONE
                         activity.binding.commentMessageContainer.visibility = View.GONE
                     } else if (CommentsAPI.authToken != null) {
@@ -210,6 +219,7 @@ class CommentsFragment : Fragment() {
                     else -> return@setOnMenuItemClickListener false
                 }
                 PrefManager.setVal(PrefName.CommentSortOrder, sortOrder)
+                updateSortChip()
                 viewLifecycleOwner.lifecycleScope.launch {
                     loadAndDisplayComments()
                     activity.binding.commentReplyToContainer.visibility = View.GONE
@@ -309,6 +319,7 @@ class CommentsFragment : Fragment() {
         binding.commentsList.setOnTouchListener(
             object : View.OnTouchListener {
                 override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                    binding.commentsHeader.pump(900)
                     if (event?.action == MotionEvent.ACTION_UP) {
                         if (!binding.commentsList.canScrollVertically(1) && !isFetching &&
                             (binding.commentsList.layoutManager as LinearLayoutManager).findLastVisibleItemPosition() == (binding.commentsList.adapter!!.itemCount - 1)
@@ -626,7 +637,167 @@ class CommentsFragment : Fragment() {
         else -> null
     }
 
+    private fun setupHeader() {
+        val header = binding.commentsHeader
+        val list = binding.commentsList
+        val density = resources.displayMetrics.density
+        header.bind(
+            list,
+            binding.commentsRefresh,
+            resolveColorAttr(android.R.attr.colorBackground),
+            ColorUtils.setAlphaComponent(
+                resolveColorAttr(com.google.android.material.R.attr.colorOnBackground),
+                0x1F
+            )
+        )
+        header.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            val height = bottom - top
+            if (_binding != null && height > 0 && list.paddingTop != height) {
+                list.updatePadding(top = height)
+                binding.commentsRefresh.post {
+                    val refresh = _binding?.commentsRefresh ?: return@post
+                    if (!refresh.isRefreshing) {
+                        refresh.setProgressViewOffset(
+                            false,
+                            height - (48 * density).toInt(),
+                            height + (24 * density).toInt()
+                        )
+                    }
+                }
+            }
+        }
+
+        val pump = object : RecyclerView.AdapterDataObserver() {
+            override fun onChanged() = header.pump(700)
+            override fun onItemRangeChanged(positionStart: Int, itemCount: Int) = header.pump(700)
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = header.pump(700)
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = header.pump(700)
+            override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) =
+                header.pump(700)
+        }
+        headerPump?.let { adapter.unregisterAdapterDataObserver(it) }
+        headerPump = pump
+        adapter.registerAdapterDataObserver(pump)
+
+        listOf(
+            binding.commentSort,
+            binding.commentFilter,
+            binding.commentCurrentProgress,
+            binding.openRules
+        ).forEach { pressScale(it) }
+
+        updateSortChip()
+        updateCurrentProgressButton()
+        animateHeaderIn()
+    }
+
+    private fun setHeaderControlsVisible(visible: Boolean) {
+        val state = if (visible) View.VISIBLE else View.GONE
+        binding.openRules.visibility = state
+        binding.commentChipsScroll.visibility = state
+    }
+
+    private fun animateHeaderIn() {
+        val density = resources.displayMetrics.density
+        listOf<View>(binding.commentsTitle, binding.openRules, binding.commentChipsScroll)
+            .forEachIndexed { index, view ->
+                view.alpha = 0f
+                view.translationY = 10f * density
+                view.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(index * 70L)
+                    .setDuration(520)
+                    .setInterpolator(DecelerateInterpolator(1.8f))
+                    .start()
+            }
+    }
+
+    private fun pressScale(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.94f).scaleY(0.94f)
+                    .setDuration(90).setInterpolator(DecelerateInterpolator()).start()
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.animate().scaleX(1f)
+                    .scaleY(1f).setDuration(280).setInterpolator(OvershootInterpolator(2.4f))
+                    .start()
+            }
+            false
+        }
+    }
+
+    private fun styleChip(chip: View, fill: Int, stroke: Int) {
+        val density = resources.displayMetrics.density
+        val radius = 20f * density
+        val shape = GradientDrawable().apply {
+            cornerRadius = radius
+            setColor(fill)
+            setStroke(density.toInt().coerceAtLeast(1), stroke)
+        }
+        val mask = GradientDrawable().apply {
+            cornerRadius = radius
+            setColor(Color.BLACK)
+        }
+        val ripple = ColorStateList.valueOf(
+            ColorUtils.setAlphaComponent(
+                resolveColorAttr(com.google.android.material.R.attr.colorOnBackground),
+                0x2E
+            )
+        )
+        chip.background = RippleDrawable(ripple, shape, mask)
+    }
+
+    private fun tintChip(label: TextView, icon: ImageView?, color: Int) {
+        label.setTextColor(color)
+        icon?.imageTintList = ColorStateList.valueOf(color)
+    }
+
+    private fun styleChipIdle(chip: View, label: TextView, icon: ImageView?) {
+        val onBackground = resolveColorAttr(com.google.android.material.R.attr.colorOnBackground)
+        styleChip(
+            chip,
+            ColorUtils.setAlphaComponent(onBackground, 0x14),
+            ColorUtils.setAlphaComponent(onBackground, 0x2E)
+        )
+        tintChip(label, icon, onBackground)
+    }
+
+    private fun styleChipActive(chip: View, label: TextView, icon: ImageView?) {
+        val primary = resolveColorAttr(androidx.appcompat.R.attr.colorPrimary)
+        styleChip(
+            chip,
+            ColorUtils.setAlphaComponent(primary, 0x2E),
+            ColorUtils.setAlphaComponent(primary, 0xB3)
+        )
+        tintChip(label, icon, primary)
+    }
+
+    private fun updateSortChip() {
+        val order: String = PrefManager.getVal(PrefName.CommentSortOrder, "newest")
+        binding.commentSortLabel.text = when (order) {
+            "oldest" -> "Oldest"
+            "highest_rated" -> "Top rated"
+            "lowest_rated" -> "Lowest rated"
+            else -> "Newest"
+        }
+        styleChipIdle(binding.commentSort, binding.commentSortLabel, binding.commentSortIcon)
+    }
+
+    private fun updateFilterChip() {
+        val progress = userProgress ?: 0
+        val manual = filterTag
+        if (progress <= 0 && manual != null) {
+            binding.commentFilterLabel.text = "${if (isAnime) "Ep" else "Ch"} $manual"
+            styleChipActive(binding.commentFilter, binding.commentFilterLabel, binding.commentFilterIcon)
+        } else {
+            binding.commentFilterLabel.text = if (isAnime) "Episode" else "Chapter"
+            styleChipIdle(binding.commentFilter, binding.commentFilterLabel, binding.commentFilterIcon)
+        }
+    }
+
     private fun updateCurrentProgressButton() {
+        updateFilterChip()
         val progress = userProgress ?: 0
         if (progress <= 0) {
             binding.commentCurrentProgress.visibility = View.GONE
@@ -639,49 +810,22 @@ class CommentsFragment : Fragment() {
         val badge = binding.commentCurrentProgress
         when {
             isManualFilter -> {
+                val primary = resolveColorAttr(androidx.appcompat.R.attr.colorPrimary)
                 badge.text = "$label $activeFilter  ✕"
-                badge.alpha = 1f
-                val primaryColor = resolveColorAttr(androidx.appcompat.R.attr.colorPrimary)
                 badge.setTextColor(
                     resolveColorAttr(com.google.android.material.R.attr.colorOnPrimary)
                 )
-                badge.background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = 16f * resources.displayMetrics.density
-                    setColor(primaryColor)
-                }
+                styleChip(badge, primary, primary)
             }
+
             isAutoFilterOn -> {
                 badge.text = "$label $progress"
-                badge.alpha = 1f
-                badge.setTextColor(
-                    resolveColorAttr(android.R.attr.textColorPrimary)
-                )
-                badge.background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = 16f * resources.displayMetrics.density
-                    setColor(android.graphics.Color.TRANSPARENT)
-                    setStroke(
-                        (1f * resources.displayMetrics.density).toInt(),
-                        android.graphics.Color.WHITE
-                    )
-                }
+                styleChipActive(badge, badge, null)
             }
+
             else -> {
                 badge.text = "$label $progress"
-                badge.alpha = 0.33f
-                badge.setTextColor(
-                    resolveColorAttr(android.R.attr.textColorPrimary)
-                )
-                badge.background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = 16f * resources.displayMetrics.density
-                    setColor(android.graphics.Color.TRANSPARENT)
-                    setStroke(
-                        (1f * resources.displayMetrics.density).toInt(),
-                        android.graphics.Color.WHITE
-                    )
-                }
+                styleChipIdle(badge, badge, null)
             }
         }
         badge.visibility = View.VISIBLE
@@ -747,6 +891,7 @@ class CommentsFragment : Fragment() {
     }
 
     private suspend fun loadAndDisplayComments() {
+        binding.commentsHeader.reveal()
         binding.commentsProgressBar.visibility = View.VISIBLE
         binding.commentsList.visibility = View.GONE
         section.clear()
@@ -785,6 +930,7 @@ class CommentsFragment : Fragment() {
     }
 
     private suspend fun loadCommentThread(commentId: Int) {
+        binding.commentsHeader.reveal()
         binding.commentsProgressBar.visibility = View.VISIBLE
         binding.commentsList.visibility = View.GONE
         section.clear()

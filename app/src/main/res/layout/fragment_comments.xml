@@ -1,128 +1,207 @@
 <?xml version="1.0" encoding="utf-8"?>
-<nox.kiwami.util.BounceNestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/commentsLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:colorBackground"
-    android:clipToPadding="false"
-    android:fillViewport="true">
+    android:clipChildren="false">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/commentsRefresh"
         android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <nox.kiwami.util.BounceRecyclerView
+            android:id="@+id/commentsList"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:visibility="gone"
+            tools:listitem="@layout/item_comments"
+            tools:visibility="visible" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <ProgressBar
+        android:id="@+id/commentsProgressBar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="160dp"
+        tools:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/commentBottomRefresh"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="104dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/commentsOfflineText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fontFamily="@font/poppins_bold"
+        android:gravity="center"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        android:text="You need to have an internet connection to use comments"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="18sp"
+        android:visibility="gone" />
+
+    <nox.kiwami.util.FrostedHeaderLayout
+        android:id="@+id/commentsHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
         android:clipChildren="false"
         android:clipToPadding="false">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="vertical">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical|end"
-                android:orientation="horizontal"
-                tools:ignore="UseCompoundDrawables">
+                android:layout_height="52dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:id="@+id/commentCurrentProgress"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/commentsTitle"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:alpha="0.6"
-                    android:background="@drawable/btn_transparent_round"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:gravity="center"
-                    android:paddingStart="10dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="3dp"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/poppins_bold"
+                    android:includeFontPadding="false"
+                    android:paddingStart="20dp"
+                    android:text="Comments"
                     android:textColor="?attr/colorOnBackground"
-                    android:textSize="12sp"
-                    android:visibility="gone"
-                    tools:text="Ep 12"
-                    tools:visibility="visible" />
+                    android:textSize="20sp" />
 
                 <ImageView
                     android:id="@+id/openRules"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:layout_marginEnd="12dp"
-                    android:background="?android:attr/selectableItemBackground"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/open_rules"
+                    android:padding="8dp"
                     app:srcCompat="@drawable/ic_round_info_24"
-                    app:tint="?attr/colorOnBackground" />
-
-                <ImageView
-                    android:id="@+id/commentFilter"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_marginEnd="12dp"
-                    android:background="?android:attr/selectableItemBackground"
-                    android:contentDescription="@string/sort_by"
-                    app:srcCompat="@drawable/ic_round_filter_alt_24"
-                    app:tint="?attr/colorOnBackground" />
-
-                <ImageView
-                    android:id="@+id/commentSort"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_marginEnd="12dp"
-                    android:background="?android:attr/selectableItemBackground"
-                    android:contentDescription="@string/sort_by"
-                    app:srcCompat="@drawable/ic_round_sort_24"
                     app:tint="?attr/colorOnBackground" />
             </LinearLayout>
 
-            <ProgressBar
-                android:id="@+id/commentsProgressBar"
-                style="?android:attr/progressBarStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginTop="64dp"
-                tools:visibility="gone" />
-
-            <FrameLayout
-                android:id="@+id/commentsListContainer"
+            <HorizontalScrollView
+                android:id="@+id/commentChipsScroll"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="12dp"
+                android:scrollbars="none">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/commentsList"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="top"
-                    android:nestedScrollingEnabled="true"
-                    android:visibility="gone"
-                    tools:listitem="@layout/item_comments"
-                    tools:visibility="visible" />
-
-                <ProgressBar
-                    android:id="@+id/commentBottomRefresh"
-                    style="?android:attr/progressBarStyle"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|center_horizontal"
-                    android:layout_marginBottom="32dp"
-                    android:visibility="gone" />
-            </FrameLayout>
-            <TextView
-                android:id="@+id/commentsOfflineText"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginTop="64dp"
-                android:layout_gravity="center"
-                android:gravity="center"
-                android:text="You need to have an internet connection to use comments"
-                android:textColor="?attr/colorOnBackground"
-                android:textSize="18sp"
-                android:fontFamily="@font/poppins_bold"
-                android:visibility="gone" />
+                    android:clipChildren="false"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:id="@+id/commentSort"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:layout_marginEnd="8dp"
+                        android:clickable="true"
+                        android:contentDescription="@string/sort_by"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="11dp"
+                        android:paddingEnd="14dp">
+
+                        <ImageView
+                            android:id="@+id/commentSortIcon"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:importantForAccessibility="no"
+                            app:srcCompat="@drawable/ic_round_sort_24"
+                            app:tint="?attr/colorOnBackground" />
+
+                        <TextView
+                            android:id="@+id/commentSortLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:fontFamily="@font/poppins_semi_bold"
+                            android:includeFontPadding="false"
+                            android:text="Newest"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/commentFilter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:layout_marginEnd="8dp"
+                        android:clickable="true"
+                        android:contentDescription="@string/sort_by"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="11dp"
+                        android:paddingEnd="14dp">
+
+                        <ImageView
+                            android:id="@+id/commentFilterIcon"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:importantForAccessibility="no"
+                            app:srcCompat="@drawable/ic_round_filter_alt_24"
+                            app:tint="?attr/colorOnBackground" />
+
+                        <TextView
+                            android:id="@+id/commentFilterLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:fontFamily="@font/poppins_semi_bold"
+                            android:includeFontPadding="false"
+                            android:text="Episode"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/commentCurrentProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textSize="12sp"
+                        android:visibility="gone"
+                        tools:text="Ep 12"
+                        tools:visibility="visible" />
+                </LinearLayout>
+            </HorizontalScrollView>
         </LinearLayout>
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-</nox.kiwami.util.BounceNestedScrollView>
+    </nox.kiwami.util.FrostedHeaderLayout>
+</FrameLayout>
