@@ -277,43 +277,67 @@
             android:orientation="vertical"
             android:windowSoftInputMode="adjustResize">
 
-            <LinearLayout
+            <nox.kiwami.util.ExpandVisibilityLayout
                 android:id="@+id/commentReplyToContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="10dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="16dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:visibility="gone"
-                tools:ignore="UseCompoundDrawables">
+                android:visibility="gone">
 
-                <TextView
-                    android:id="@+id/commentReplyTo"
+                <View
+                    android:layout_width="3dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_comment_accent_bar" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:singleLine="true"
-                    android:text="Replying to "
-                    android:textColor="?attr/colorOnBackground"
-                    android:textSize="14sp"
-                    tools:ignore="HardcodedText" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/commentReplyTo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:includeFontPadding="false"
+                        android:singleLine="true"
+                        android:text="Replying to "
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="12sp"
+                        tools:ignore="HardcodedText" />
+
+                    <TextView
+                        android:id="@+id/commentReplyQuote"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:alpha="0.65"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/poppins"
+                        android:includeFontPadding="false"
+                        android:singleLine="true"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textSize="12sp" />
+                </LinearLayout>
 
                 <ImageView
                     android:id="@+id/commentReplyToCancel"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginEnd="16dp"
-                    android:background="?android:attr/selectableItemBackground"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:padding="5dp"
                     app:srcCompat="@drawable/ic_round_close_24"
                     app:tint="?attr/colorOnBackground"
                     tools:ignore="ContentDescription" />
-            </LinearLayout>
+            </nox.kiwami.util.ExpandVisibilityLayout>
 
             <nox.kiwami.util.SlideVisibilityLayout
                 android:id="@+id/commentInputLayout"

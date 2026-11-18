@@ -1038,6 +1038,10 @@ class CommentsFragment : Fragment() {
         val imm = activity.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(activity.binding.commentInput, InputMethodManager.SHOW_IMPLICIT)
         interactionState = InteractionState.EDIT
+        activity.binding.commentReplyTo.text = "Editing comment"
+        activity.binding.commentReplyQuote.text = quoteOf(comment.comment.content)
+        activity.binding.commentReplyToCancel.setOnClickListener { resetOldState() }
+        activity.binding.commentReplyToContainer.visibility = View.VISIBLE
     }
 
     fun replyCallback(comment: CommentItem) {
@@ -1054,8 +1058,9 @@ class CommentsFragment : Fragment() {
 
     fun replyTo(comment: CommentItem, username: String) {
         if (comment.isReplying) {
-            activity.binding.commentReplyToContainer.visibility = View.VISIBLE
             activity.binding.commentReplyTo.text = getString(R.string.replying_to, username)
+            activity.binding.commentReplyQuote.text = quoteOf(comment.comment.content)
+            activity.binding.commentReplyToContainer.visibility = View.VISIBLE
             activity.binding.commentReplyToCancel.setOnClickListener {
                 comment.replying(false)
                 replyCallback(comment)
@@ -1064,6 +1069,13 @@ class CommentsFragment : Fragment() {
         } else {
             activity.binding.commentReplyToContainer.visibility = View.GONE
         }
+    }
+
+    private fun quoteOf(content: String): String {
+        if (content.contains("||")) return "Spoiler"
+        return content.replace(Regex("""!\[[^\]]*]\([^)]*\)"""), "GIF")
+            .replace('\n', ' ')
+            .trim()
     }
 
     fun viewReplyCallback(comment: CommentItem) {
