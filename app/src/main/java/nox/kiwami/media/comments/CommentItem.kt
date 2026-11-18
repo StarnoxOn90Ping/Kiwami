@@ -2,6 +2,8 @@ package nox.kiwami.media.comments
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.animation.ValueAnimator
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.text.Spannable
@@ -13,8 +15,11 @@ import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.view.View
+import android.view.animation.OvershootInterpolator
+import android.widget.TextView
 import android.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.LinearLayoutManager
 import nox.kiwami.R
 import nox.kiwami.connections.comments.Comment
@@ -63,6 +68,8 @@ class CommentItem(
     var isReplying = false
     var repliesVisible = false
     var MAX_DEPTH = 3
+    private var shownVotes: Int? = null
+    private var capsuleColor: Int? = null
 
     init {
         adapter.add(repliesSection)
@@ -254,6 +261,7 @@ class CommentItem(
             }
             setVoteButtons(viewBinding)
             commentUpVote.setOnClickListener {
+                pop(commentUpVote)
                 val voteType = if (comment.userVoteType == 1) 0 else 1
                 val previousVoteType = comment.userVoteType
                 val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -272,6 +280,7 @@ class CommentItem(
             }
 
             commentDownVote.setOnClickListener {
+                pop(commentDownVote)
                 val voteType = if (comment.userVoteType == -1) 0 else -1
                 val previousVoteType = comment.userVoteType
                 val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -287,7 +296,7 @@ class CommentItem(
                     }
                 }
             }
-            commentTotalVotes.text = (comment.upvotes - comment.downvotes).toString()
+            showVotes(commentTotalVotes, comment.upvotes - comment.downvotes)
             commentUserAvatar.openImage(
                 commentsFragment.activity.getString(R.string.avatar, comment.username),
                 comment.profilePictureUrl ?: ""
@@ -356,24 +365,91 @@ class CommentItem(
     }
 
     private fun setVoteButtons(viewBinding: ItemCommentsBinding) {
+        val primary = viewBinding.root.context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+        val up = viewBinding.commentUpVote
+        val down = viewBinding.commentDownVote
+        val tint: Int
         when (comment.userVoteType) {
             1 -> {
-                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_active_24)
-                viewBinding.commentUpVote.alpha = 1f
-                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                up.setImageResource(R.drawable.ic_round_upvote_active_24)
+                up.alpha = 1f
+                down.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                down.alpha = 0.6f
+                tint = ColorUtils.setAlphaComponent(primary, 0x33)
             }
 
             -1 -> {
-                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
-                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_upvote_active_24)
-                viewBinding.commentDownVote.alpha = 1f
+                up.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                up.alpha = 0.6f
+                down.setImageResource(R.drawable.ic_round_upvote_active_24)
+                down.alpha = 1f
+                tint = ColorUtils.setAlphaComponent(VOTE_DOWN, 0x33)
             }
 
             else -> {
-                viewBinding.commentUpVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
-                viewBinding.commentDownVote.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                up.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                up.alpha = 0.6f
+                down.setImageResource(R.drawable.ic_round_upvote_inactive_24)
+                down.alpha = 0.6f
+                tint = CARD_STROKE
             }
         }
+        val capsule = viewBinding.commentVoteCapsule
+        val from = capsuleColor
+        capsuleColor = tint
+        if (from == null || from == tint) {
+            capsule.backgroundTintList = ColorStateList.valueOf(tint)
+            return
+        }
+        ValueAnimator.ofArgb(from, tint).apply {
+            duration = 260
+            addUpdateListener {
+                capsule.backgroundTintList = ColorStateList.valueOf(it.animatedValue as Int)
+            }
+            start()
+        }
+    }
+
+    private fun showVotes(view: TextView, total: Int) {
+        val previous = shownVotes
+        shownVotes = total
+        val text = total.toString()
+        view.animate().cancel()
+        if (previous == null || previous == total) {
+            view.text = text
+            view.alpha = 1f
+            view.translationY = 0f
+            return
+        }
+        val direction = if (total > previous) 1 else -1
+        val offset = 10f * view.resources.displayMetrics.density
+        view.animate()
+            .translationY(-direction * offset)
+            .alpha(0f)
+            .setDuration(100)
+            .withEndAction {
+                view.text = text
+                view.translationY = direction * offset
+                view.animate()
+                    .translationY(0f)
+                    .alpha(1f)
+                    .setDuration(240)
+                    .setInterpolator(OvershootInterpolator(2f))
+                    .start()
+            }
+            .start()
+    }
+
+    private fun pop(view: View) {
+        view.animate().cancel()
+        view.scaleX = 0.7f
+        view.scaleY = 0.7f
+        view.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(380)
+            .setInterpolator(OvershootInterpolator(3.5f))
+            .start()
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -402,6 +478,10 @@ class CommentItem(
     }
 
     companion object {
+        private const val CARD_STROKE = 0x1F808080
+        private const val CARD_FILL = 0x14808080
+        private val VOTE_DOWN = 0xFFE5484D.toInt()
+
         @SuppressLint("SimpleDateFormat")
         fun timestampToMillis(timestamp: String): Long {
             val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT)

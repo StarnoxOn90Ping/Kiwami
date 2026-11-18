@@ -29,6 +29,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SimpleItemAnimator
 import nox.kiwami.R
 import nox.kiwami.buildMarkwon
 import nox.kiwami.connections.anilist.Anilist
@@ -171,6 +172,7 @@ class CommentsFragment : Fragment() {
 
         binding.commentsList.adapter = adapter
         binding.commentsList.layoutManager = LinearLayoutManager(activity)
+        (binding.commentsList.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
         adapter.add(section)
         setupHeader()
 
