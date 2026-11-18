@@ -1189,6 +1189,7 @@ class CommentsFragment : Fragment() {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
         dateFormat.timeZone = TimeZone.getTimeZone("UTC")
         item.comment.timestamp = dateFormat.format(System.currentTimeMillis())
+        item.highlightOnBind = true
         item.notifyChanged()
     }
 
@@ -1220,7 +1221,7 @@ class CommentsFragment : Fragment() {
                         this@CommentsFragment,
                         backgroundColor,
                         depth
-                    )
+                    ).apply { highlightOnBind = true }
                 )
             } else {
                 section.add(
@@ -1232,7 +1233,7 @@ class CommentsFragment : Fragment() {
                         this@CommentsFragment,
                         backgroundColor,
                         0
-                    )
+                    ).apply { highlightOnBind = true }
                 )
             }
         }

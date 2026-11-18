@@ -15,12 +15,14 @@ import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.TextView
 import android.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.SimpleItemAnimator
 import nox.kiwami.R
 import nox.kiwami.connections.comments.Comment
 import nox.kiwami.connections.comments.CommentsAPI
@@ -31,7 +33,8 @@ import nox.kiwami.getThemeColor
 import nox.kiwami.loadImage
 import nox.kiwami.openImage
 import nox.kiwami.profile.ProfileActivity
-import nox.kiwami.setAnimation
+import nox.kiwami.settings.saving.PrefManager
+import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.snackString
 import nox.kiwami.util.ColorEditor.Companion.adjustColorForContrast
 import nox.kiwami.util.ColorEditor.Companion.getContrastRatio
@@ -39,6 +42,7 @@ import nox.kiwami.util.customAlertDialog
 import com.xwray.groupie.GroupieAdapter
 import com.xwray.groupie.Section
 import com.xwray.groupie.viewbinding.BindableItem
+import com.xwray.groupie.viewbinding.GroupieViewHolder
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +74,9 @@ class CommentItem(
     var MAX_DEPTH = 3
     private var shownVotes: Int? = null
     private var capsuleColor: Int? = null
+    private var entered = false
+    var highlightOnBind = false
+    private var pulses: List<ValueAnimator> = emptyList()
 
     init {
         adapter.add(repliesSection)
@@ -82,6 +89,7 @@ class CommentItem(
                 binding.commentTotalReplies.visibility = View.VISIBLE
                 binding.commentRepliesDivider.visibility = View.VISIBLE
             }
+            rotateChevron(binding, visible)
             if (visible) {
                 binding.commentTotalReplies.setText(R.string.hide_replies)
             } else {
@@ -96,12 +104,15 @@ class CommentItem(
 
     override fun bind(viewBinding: ItemCommentsBinding, position: Int) {
         binding = viewBinding
-        setAnimation(binding.root.context, binding.root)
+        playEntrance(binding.root, position)
         val item = this
         viewBinding.apply {
             commentRepliesList.layoutManager =
                 LinearLayoutManager(commentsFragment.activity)
             commentRepliesList.adapter = adapter
+            (commentRepliesList.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+            commentRepliesDivider.rotation = if (repliesVisible) 180f else 0f
+            commentRepliesDivider.setOnClickListener { commentTotalReplies.performClick() }
             val isUserComment = CommentsAPI.userId == comment.userId
             val levelColor = getAvatarColor(comment.totalVotes, backgroundColor)
             commentUserAvatarContainer.strokeColor = levelColor.first
@@ -139,6 +150,7 @@ class CommentItem(
             }
             commentReply.visibility = View.VISIBLE
             commentTotalReplies.setOnClickListener {
+                rotateChevron(viewBinding, !repliesVisible)
                 if (repliesVisible) {
                     repliesSection.clear()
                     removeSubCommentIds()
@@ -308,6 +320,67 @@ class CommentItem(
             commentUserLevel.setTextColor(levelColor.first)
             commentUserTime.text = formatTimestamp(comment.timestamp)
         }
+        if (highlightOnBind) {
+            highlightOnBind = false
+            pulse(viewBinding)
+        }
+    }
+
+    override fun unbind(viewHolder: GroupieViewHolder<ItemCommentsBinding>) {
+        super.unbind(viewHolder)
+        val views = viewHolder.binding
+        views.root.animate().cancel()
+        views.root.alpha = 1f
+        views.root.translationY = 0f
+        pulses.forEach { it.cancel() }
+        pulses = emptyList()
+        views.commentCard.strokeColor = CARD_STROKE
+        views.commentCard.setCardBackgroundColor(CARD_FILL)
+    }
+
+    private fun playEntrance(view: View, position: Int) {
+        view.animate().cancel()
+        val animated = PrefManager.getVal<Boolean>(PrefName.LayoutAnimations) &&
+                ValueAnimator.areAnimatorsEnabled()
+        if (entered || !animated) {
+            entered = true
+            view.alpha = 1f
+            view.translationY = 0f
+            return
+        }
+        entered = true
+        view.alpha = 0f
+        view.translationY = 22f * view.resources.displayMetrics.density
+        view.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setStartDelay((position.coerceAtLeast(0) % 6) * 45L)
+            .setDuration(480)
+            .setInterpolator(DecelerateInterpolator(1.6f))
+            .start()
+    }
+
+    private fun rotateChevron(views: ItemCommentsBinding, expanded: Boolean) {
+        views.commentRepliesDivider.animate()
+            .rotation(if (expanded) 180f else 0f)
+            .setDuration(300)
+            .setInterpolator(OvershootInterpolator(1.4f))
+            .start()
+    }
+
+    private fun pulse(views: ItemCommentsBinding) {
+        val primary = views.root.context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+        val card = views.commentCard
+        val stroke = ValueAnimator.ofArgb(primary, CARD_STROKE).apply {
+            duration = 1600
+            addUpdateListener { card.strokeColor = it.animatedValue as Int }
+        }
+        val fill = ValueAnimator.ofArgb(ColorUtils.setAlphaComponent(primary, 0x40), CARD_FILL).apply {
+            duration = 1600
+            addUpdateListener { card.setCardBackgroundColor(it.animatedValue as Int) }
+        }
+        pulses = listOf(stroke, fill)
+        pulses.forEach { it.start() }
     }
 
     override fun getLayout(): Int {
@@ -319,6 +392,7 @@ class CommentItem(
             repliesVisible = true
             if (::binding.isInitialized) {
                 binding.commentTotalReplies.setText(R.string.hide_replies)
+                rotateChevron(binding, true)
             }
             repliesSection.clear()
             commentsFragment.viewReplyCallback(this)
