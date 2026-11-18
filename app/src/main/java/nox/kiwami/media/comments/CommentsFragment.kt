@@ -85,6 +85,7 @@ class CommentsFragment : Fragment() {
     private var markwonTextWatcher: TextWatcher? = null
     private var limitTextWatcher: TextWatcher? = null
     private var headerPump: RecyclerView.AdapterDataObserver? = null
+    private var composer: CommentComposerController? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -104,6 +105,7 @@ class CommentsFragment : Fragment() {
         (activity as? MediaDetailsActivity)?.binding?.let { actBinding ->
             markwonTextWatcher?.let { actBinding.commentInput.removeTextChangedListener(it) }
             limitTextWatcher?.let { actBinding.commentInput.removeTextChangedListener(it) }
+            composer?.release()
             actBinding.commentInput.onFocusChangeListener = null
             actBinding.commentLabel.setOnClickListener(null)
             actBinding.commentSpoiler.setOnClickListener(null)
@@ -112,6 +114,7 @@ class CommentsFragment : Fragment() {
         }
         markwonTextWatcher = null
         limitTextWatcher = null
+        composer = null
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -400,74 +403,49 @@ class CommentsFragment : Fragment() {
         limitTextWatcher = limitWatcher
         activity.binding.commentInput.addTextChangedListener(limitWatcher)
 
-        activity.binding.commentInput.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                val targetWidth = activity.binding.commentInputLayout.width -
-                        activity.binding.commentLabel.width -
-                        activity.binding.commentSend.width -
-                        activity.binding.commentUserAvatar.width - 12 + 16
-                val anim = ValueAnimator.ofInt(activity.binding.commentInput.width, targetWidth)
-                anim.addUpdateListener { valueAnimator ->
-                    val layoutParams = activity.binding.commentInput.layoutParams
-                    layoutParams.width = valueAnimator.animatedValue as Int
-                    activity.binding.commentInput.layoutParams = layoutParams
-                }
-                anim.duration = 300
-
-                anim.start()
-                anim.doOnEnd {
-                    activity.binding.commentLabel.visibility = View.VISIBLE
-                    activity.binding.commentSend.visibility = View.VISIBLE
-                    activity.binding.commentSpoiler.visibility = View.VISIBLE
-                    activity.binding.commentGif.visibility = View.VISIBLE
-                    activity.binding.commentLabel.animate().translationX(0f).setDuration(300)
-                        .start()
-                    activity.binding.commentSend.animate().translationX(0f).setDuration(300).start()
-                }
-            }
-
-            activity.binding.commentLabel.setOnClickListener {
-                activity.customAlertDialog().apply {
-                    val customView = DialogEdittextBinding.inflate(layoutInflater)
-                    setTitle("Enter a chapter/episode number tag")
-                    setCustomView(customView.root)
-                    setPosButton("OK") {
-                        val text = customView.dialogEditText.text.toString()
-                        tag = text.toIntOrNull()
-                        if (tag == null) {
-                            activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
-                                resources,
-                                R.drawable.ic_label_off_24,
-                                null
-                            )
-                        } else {
-                            activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
-                                resources,
-                                R.drawable.ic_label_24,
-                                null
-                            )
-                        }
-                    }
-                    setNeutralButton("Clear") {
-                        tag = null
+        activity.binding.commentLabel.setOnClickListener {
+            activity.customAlertDialog().apply {
+                val customView = DialogEdittextBinding.inflate(layoutInflater)
+                setTitle("Enter a chapter/episode number tag")
+                setCustomView(customView.root)
+                setPosButton("OK") {
+                    val text = customView.dialogEditText.text.toString()
+                    tag = text.toIntOrNull()
+                    if (tag == null) {
                         activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
                             R.drawable.ic_label_off_24,
                             null
                         )
-                    }
-                    setNegButton("Cancel") {
-                        tag = null
+                    } else {
                         activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
-                            R.drawable.ic_label_off_24,
+                            R.drawable.ic_label_24,
                             null
                         )
                     }
-                    show()
                 }
+                setNeutralButton("Clear") {
+                    tag = null
+                    activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                        resources,
+                        R.drawable.ic_label_off_24,
+                        null
+                    )
+                }
+                setNegButton("Cancel") {
+                    tag = null
+                    activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                        resources,
+                        R.drawable.ic_label_off_24,
+                        null
+                    )
+                }
+                show()
             }
         }
+
+        composer = CommentComposerController(activity.binding).also { it.bind() }
 
         activity.binding.commentSpoiler.setOnClickListener {
             isSpoilerMode = !isSpoilerMode
