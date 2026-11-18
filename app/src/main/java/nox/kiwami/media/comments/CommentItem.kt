@@ -97,6 +97,7 @@ class CommentItem(
             commentRepliesList.adapter = adapter
             val isUserComment = CommentsAPI.userId == comment.userId
             val levelColor = getAvatarColor(comment.totalVotes, backgroundColor)
+            commentUserAvatarContainer.strokeColor = levelColor.first
             markwon.setMarkdown(commentText, comment.content)
             applyTimestampHighlighting(commentText)
             commentEdit.visibility = if (isUserComment) View.VISIBLE else View.GONE
