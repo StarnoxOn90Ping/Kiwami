@@ -28,7 +28,7 @@ open class AnimatedVisibilityLayout @JvmOverloads constructor(
     override fun setVisibility(visibility: Int) {
         val show = visibility == VISIBLE
         val current = animatingTo ?: (super.getVisibility() == VISIBLE)
-        if (!canAnimate()) {
+        if (!canRunAnimation()) {
             stop()
             super.setVisibility(visibility)
             settle(show)
@@ -48,7 +48,7 @@ open class AnimatedVisibilityLayout @JvmOverloads constructor(
         if (target != null) settle(target)
     }
 
-    private fun canAnimate(): Boolean =
+    private fun canRunAnimation(): Boolean =
         isAttachedToWindow && (parent as? View)?.isLaidOut == true && ValueAnimator.areAnimatorsEnabled()
 
     private fun stop() {

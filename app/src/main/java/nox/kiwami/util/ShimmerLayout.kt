@@ -25,10 +25,10 @@ class ShimmerLayout @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    private val paint = Paint().apply {
+    private val sweepPaint = Paint().apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
     }
-    private val matrix = Matrix()
+    private val sweepMatrix = Matrix()
     private var shader: LinearGradient? = null
     private var shaderWidth = 0f
     private var sweep = 0f
@@ -53,13 +53,13 @@ class ShimmerLayout @JvmOverloads constructor(
                 Shader.TileMode.CLAMP
             )
             shaderWidth = band
-            paint.shader = shader
+            sweepPaint.shader = shader
         }
-        matrix.setTranslate(-band + (w + band) * sweep, 0f)
-        shader?.setLocalMatrix(matrix)
+        sweepMatrix.setTranslate(-band + (w + band) * sweep, 0f)
+        shader?.setLocalMatrix(sweepMatrix)
         val layer = canvas.saveLayer(0f, 0f, w, h, null)
         super.dispatchDraw(canvas)
-        canvas.drawRect(0f, 0f, w, h, paint)
+        canvas.drawRect(0f, 0f, w, h, sweepPaint)
         canvas.restoreToCount(layer)
     }
 
