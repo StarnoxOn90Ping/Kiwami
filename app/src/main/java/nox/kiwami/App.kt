@@ -98,11 +98,11 @@ class App : Application(), GraphProvider<AppGraph> {
         val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         applicationScope.launch(Dispatchers.IO) {
             crashlytics.setCustomKey("device Info", SettingsActivity.getDeviceInfo())
+            setupNotificationChannels()
         }
 
         initializeNetwork()
 
-        setupNotificationChannels()
         if (!LogcatLogger.isInstalled) {
             LogcatLogger.install(AndroidLogcatLogger(LogPriority.WARN))
         }
