@@ -703,8 +703,8 @@ class CommentsFragment : Fragment() {
             if (_binding != null && height > 0 && list.paddingTop != height) {
                 list.updatePadding(top = height)
                 binding.commentsProgressBar.updatePadding(top = height)
-                binding.commentsEmptyState.updatePadding(top = height)
-                binding.commentsOfflineText.updatePadding(top = height)
+                binding.commentsEmptyState.updatePadding(top = height + (28 * density).toInt())
+                binding.commentsOfflineText.updatePadding(top = height + (28 * density).toInt())
                 binding.commentsRefresh.post {
                     val refresh = _binding?.commentsRefresh ?: return@post
                     if (!refresh.isRefreshing) {
