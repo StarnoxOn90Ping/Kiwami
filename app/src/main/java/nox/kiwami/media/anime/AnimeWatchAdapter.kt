@@ -30,6 +30,7 @@ import nox.kiwami.loadImage
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.MediaNameAdapter
+import nox.kiwami.media.SourceCardController
 import nox.kiwami.media.SourceSearchDialogFragment
 import nox.kiwami.openSettings
 import nox.kiwami.others.LanguageMapper
@@ -60,13 +61,18 @@ class AnimeWatchAdapter(
 ) : RecyclerView.Adapter<AnimeWatchAdapter.ViewHolder>() {
     private var autoSelect = true
     private var _binding: ItemMediaSourceBinding? = null
+    private var sourceCard: SourceCardController? = null
 
     fun clearBinding() {
+        sourceCard?.release()
+        sourceCard = null
         _binding = null
     }
 
     override fun onViewRecycled(holder: ViewHolder) {
         super.onViewRecycled(holder)
+        sourceCard?.release()
+        sourceCard = null
         _binding = null
     }
 
@@ -172,6 +178,32 @@ class AnimeWatchAdapter(
             }
         }
         binding.mediaSourceTitle.isSelected = true
+        sourceCard?.release()
+        sourceCard = SourceCardController(
+            card = binding.sourceCard,
+            glow = binding.sourceGlow,
+            badge = binding.sourceBadge,
+            letter = binding.sourceBadgeLetter,
+            nameView = binding.sourceCardName,
+            indicator = binding.sourceStatusIndicator,
+            statusText = binding.sourceStatusText,
+            chevron = binding.sourceChevron,
+            pill = binding.mediaSourceSearch,
+            pillText = binding.mediaSourceSearchText,
+            pillIcon = binding.mediaSourceSearchIcon,
+            gear = binding.mediaSourceSettings,
+            nameSource = binding.mediaSource,
+            titleSource = binding.mediaSourceTitle,
+            unit = "eps",
+            iconFor = { name ->
+                val index = watchSources.names.indexOf(name)
+                if (index >= 0) watchSources[index].icon else null
+            },
+            onOpen = {
+                binding.mediaSource.performClick()
+                binding.mediaSource.showDropDown()
+            }
+        ).also { it.bind() }
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             val actualIndex = watchSources.names.indexOf(displayNames[i])
             val isOffline = watchSources.isDownloadedSource(actualIndex)
@@ -582,6 +614,7 @@ class AnimeWatchAdapter(
                 binding.sourceProgressBar.visibility = View.GONE
 
                 val sourceFound = media.anime.episodes!!.isNotEmpty()
+                sourceCard?.onResult(sourceFound, media.anime.episodes!!.size)
                 val isDownloadedSource =
                     watchSources[media.selected!!.sourceIndex] is OfflineAnimeParser
 
@@ -624,6 +657,7 @@ class AnimeWatchAdapter(
                 binding.faqbutton.visibility = View.GONE
                 clearChips()
                 binding.sourceProgressBar.visibility = View.VISIBLE
+                sourceCard?.onLoading()
             }
         }
     }

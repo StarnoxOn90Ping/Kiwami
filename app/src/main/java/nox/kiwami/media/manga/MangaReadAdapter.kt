@@ -29,6 +29,7 @@ import nox.kiwami.loadImage
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.MediaNameAdapter
+import nox.kiwami.media.SourceCardController
 import nox.kiwami.media.SourceSearchDialogFragment
 import nox.kiwami.media.anime.handleProgress
 import nox.kiwami.openSettings
@@ -60,12 +61,18 @@ class MangaReadAdapter(
 
     private var _binding: ItemMediaSourceBinding? = null
 
+    private var sourceCard: SourceCardController? = null
+
     fun clearBinding() {
+        sourceCard?.release()
+        sourceCard = null
         _binding = null
     }
 
     override fun onViewRecycled(holder: ViewHolder) {
         super.onViewRecycled(holder)
+        sourceCard?.release()
+        sourceCard = null
         _binding = null
     }
     val hiddenScanlators = mutableListOf<String>()
@@ -146,6 +153,32 @@ class MangaReadAdapter(
             )
         )
         binding.mediaSourceTitle.isSelected = true
+        sourceCard?.release()
+        sourceCard = SourceCardController(
+            card = binding.sourceCard,
+            glow = binding.sourceGlow,
+            badge = binding.sourceBadge,
+            letter = binding.sourceBadgeLetter,
+            nameView = binding.sourceCardName,
+            indicator = binding.sourceStatusIndicator,
+            statusText = binding.sourceStatusText,
+            chevron = binding.sourceChevron,
+            pill = binding.mediaSourceSearch,
+            pillText = binding.mediaSourceSearchText,
+            pillIcon = binding.mediaSourceSearchIcon,
+            gear = binding.mediaSourceSettings,
+            nameSource = binding.mediaSource,
+            titleSource = binding.mediaSourceTitle,
+            unit = "ch",
+            iconFor = { name ->
+                val index = mangaReadSources.names.indexOf(name)
+                if (index >= 0) mangaReadSources[index].icon else null
+            },
+            onOpen = {
+                binding.mediaSource.performClick()
+                binding.mediaSource.showDropDown()
+            }
+        ).also { it.bind() }
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             val actualIndex = mangaReadSources.names.indexOf(displayNames[i])
             fragment.onSourceChange(actualIndex, true).apply {
@@ -429,6 +462,7 @@ class MangaReadAdapter(
                 binding.sourceProgressBar.visibility = View.GONE
 
                 val sourceFound = filteredChapters.isNotEmpty()
+                sourceCard?.onResult(sourceFound, filteredChapters.size)
                 val isDownloadedSource =
                     mangaReadSources[media.selected!!.sourceIndex] is OfflineMangaParser
 
@@ -470,6 +504,7 @@ class MangaReadAdapter(
                 binding.faqbutton.visibility = View.GONE
                 clearChips()
                 binding.sourceProgressBar.visibility = View.VISIBLE
+                sourceCard?.onLoading()
             }
         }
     }
