@@ -1,13 +1,20 @@
 package nox.kiwami.calendar
 
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
+import android.view.MotionEvent
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.widget.LinearLayout
+import androidx.core.graphics.ColorUtils
+import kotlin.math.abs
+import kotlin.math.min
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
@@ -55,6 +62,13 @@ class AiringCalendarActivity : AppCompatActivity() {
     private var raw: List<CalendarEntry> = emptyList()
     private var snapshotTime = 0L
     private var spinner: ObjectAnimator? = null
+    private var dayFractions = FloatArray(0)
+    private var dayAnimators = arrayOfNulls<ValueAnimator>(0)
+    private var indicatorAnimator: ValueAnimator? = null
+    private var stripAnimator: ValueAnimator? = null
+    private var colorPrimary = 0
+    private var colorOnPrimary = 0
+    private var colorOnSurface = 0
 
     private var loadState = LoadState.LOADING
     private enum class LoadState { LOADING, READY, NEEDS_LOGIN, ERROR }
@@ -95,6 +109,10 @@ class AiringCalendarActivity : AppCompatActivity() {
         binding.calendarRefresh.setOnClickListener { load(force = true) }
         binding.calendarSwipe.setColorSchemeColors(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
         binding.calendarSwipe.setOnRefreshListener { load(force = true) }
+        binding.calendarStripScroll.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) stripAnimator?.cancel()
+            false
+        }
         binding.calendarToday.setOnClickListener {
             val today = startOfDay(System.currentTimeMillis())
             val idx = dayStarts.indexOf(today)
@@ -234,6 +252,9 @@ class AiringCalendarActivity : AppCompatActivity() {
             }
         } else {
             spinner?.cancel()
+        indicatorAnimator?.cancel()
+        stripAnimator?.cancel()
+        dayAnimators.forEach { it?.cancel() }
             spinner = null
             binding.calendarRefresh.rotation = 0f
         }
@@ -405,8 +426,18 @@ class AiringCalendarActivity : AppCompatActivity() {
         dayStarts = starts
         dayCounts = entries.groupingBy { startOfDay(it.airingAt * 1000) }.eachCount()
 
+        dayAnimators.forEach { it?.cancel() }
+        indicatorAnimator?.cancel()
+        stripAnimator?.cancel()
+        colorPrimary = getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+        colorOnPrimary = getThemeColor(com.google.android.material.R.attr.colorOnPrimary)
+        colorOnSurface = getThemeColor(com.google.android.material.R.attr.colorOnSurface)
+
+        val density = resources.displayMetrics.density
         val strip = binding.calendarStrip
+        val track = binding.calendarTrack
         strip.removeAllViews()
+        track.removeAllViews()
         val weekdayFmt = SimpleDateFormat("EEE", Locale.getDefault())
         val numberFmt = SimpleDateFormat("d", Locale.getDefault())
         val inflater = LayoutInflater.from(this)
@@ -416,43 +447,165 @@ class AiringCalendarActivity : AppCompatActivity() {
             cell.dayNumber.text = numberFmt.format(day)
             val n = dayCounts[day] ?: 0
             cell.dayDots.text = "•".repeat(n.coerceAtMost(3))
-            cell.root.setPressBounce(0.88f)
             cell.root.setOnClickListener { selectDay(index, scroll = true) }
             strip.addView(cell.root)
+            track.addView(
+                View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams((54 * density).toInt(), (80 * density).toInt()).apply {
+                        marginEnd = (8 * density).toInt()
+                    }
+                    setBackgroundResource(R.drawable.bg_day_cell)
+                }
+            )
             cell
         }
+        dayFractions = FloatArray(starts.size)
+        dayAnimators = arrayOfNulls(starts.size)
+        dayCells.indices.forEach { styleDay(it, 0f) }
+        binding.calendarIndicator.visibility = View.INVISIBLE
         selectedDay = -1
+    }
+
+    private fun styleDay(i: Int, fraction: Float) {
+        val cell = dayCells.getOrNull(i) ?: return
+        val isToday = dayStarts[i] == startOfDay(System.currentTimeMillis())
+        val idleNumber = if (isToday) colorPrimary else colorOnSurface
+        cell.dayWeekday.setTextColor(ColorUtils.blendARGB(colorOnSurface, colorOnPrimary, fraction))
+        cell.dayNumber.setTextColor(ColorUtils.blendARGB(idleNumber, colorOnPrimary, fraction))
+        cell.dayDots.setTextColor(ColorUtils.blendARGB(colorPrimary, colorOnPrimary, fraction))
+        cell.dayWeekday.alpha = 0.6f + 0.3f * fraction
+        val scale = 1f + 0.12f * fraction
+        cell.dayNumber.scaleX = scale
+        cell.dayNumber.scaleY = scale
+    }
+
+    private fun animateDay(i: Int, to: Float) {
+        if (i !in dayCells.indices) return
+        dayAnimators[i]?.cancel()
+        val from = dayFractions[i]
+        if (from == to) {
+            styleDay(i, to)
+            return
+        }
+        dayAnimators[i] = ValueAnimator.ofFloat(from, to).apply {
+            duration = 260
+            interpolator = DecelerateInterpolator(1.6f)
+            addUpdateListener {
+                val value = it.animatedValue as Float
+                if (i < dayFractions.size) {
+                    dayFractions[i] = value
+                    styleDay(i, value)
+                }
+            }
+            start()
+        }
+    }
+
+    private fun moveIndicator(previous: Int, target: Int) {
+        val indicator = binding.calendarIndicator
+        val density = resources.displayMetrics.density
+        val step = (54 + 8) * density
+        val width = 54 * density
+        val targetLeft = target * step
+        indicatorAnimator?.cancel()
+        indicator.pivotX = 0f
+        indicator.pivotY = 40 * density
+
+        if (previous < 0) {
+            indicator.translationX = targetLeft
+            indicator.scaleX = 1f
+            indicator.scaleY = 1f
+            indicator.visibility = View.VISIBLE
+            return
+        }
+
+        val startLeft = indicator.translationX
+        val startRight = startLeft + width * indicator.scaleX
+        val targetRight = targetLeft + width
+        val distance = abs(targetLeft - startLeft)
+        if (distance < 1f) return
+        val forward = targetLeft > startLeft
+        val steps = distance / step
+
+        fun fast(p: Float): Float = 1f - (1f - p) * (1f - p) * (1f - p)
+        fun slow(p: Float): Float = p * p * (3f - 2f * p)
+
+        indicatorAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = (300 + 45 * min(steps, 6f)).toLong()
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                val p = it.animatedValue as Float
+                val leftP = if (forward) slow(p) else fast(p)
+                val rightP = if (forward) fast(p) else slow(p)
+                val left = startLeft + (targetLeft - startLeft) * leftP
+                val right = startRight + (targetRight - startRight) * rightP
+                indicator.translationX = left
+                indicator.scaleX = ((right - left) / width).coerceAtLeast(0.4f)
+                indicator.scaleY = 1f + 0.05f * kotlin.math.sin(Math.PI * p).toFloat()
+            }
+            start()
+        }
+    }
+
+    private fun centerStripOn(index: Int, instant: Boolean) {
+        val scroll = binding.calendarStripScroll
+        val content = scroll.getChildAt(0)
+        if (scroll.width == 0 || content == null || content.width == 0) {
+            scroll.post { centerStripOn(index, instant) }
+            return
+        }
+        val density = resources.displayMetrics.density
+        val center = scroll.paddingLeft + index * (54 + 8) * density + 27 * density
+        val maxScroll = (content.width + scroll.paddingLeft + scroll.paddingRight - scroll.width).coerceAtLeast(0)
+        val target = (center - scroll.width / 2f).toInt().coerceIn(0, maxScroll)
+        val from = scroll.scrollX
+        stripAnimator?.cancel()
+        if (instant) {
+            scroll.scrollTo(target, 0)
+            return
+        }
+        if (from == target) return
+        stripAnimator = ValueAnimator.ofInt(from, target).apply {
+            duration = (260 + abs(target - from) / density * 1.1f).toLong().coerceIn(260, 560)
+            interpolator = DecelerateInterpolator(1.8f)
+            addUpdateListener { scroll.scrollTo(it.animatedValue as Int, 0) }
+            start()
+        }
+    }
+
+    private fun updateMonth(index: Int) {
+        val text = SimpleDateFormat("LLLL yyyy", Locale.getDefault()).format(dayStarts[index])
+        val label = binding.calendarMonth
+        val hadText = label.text.isNotEmpty()
+        if (label.text.toString() == text) return
+        label.text = text
+        if (hadText) {
+            label.animate().cancel()
+            label.alpha = 0.15f
+            label.translationY = 6 * resources.displayMetrics.density
+            label.animate().alpha(0.7f).translationY(0f).setDuration(280)
+                .setInterpolator(DecelerateInterpolator()).start()
+        }
     }
 
     private fun selectDay(index: Int, scroll: Boolean) {
         if (index !in dayStarts.indices) return
-        val today = startOfDay(System.currentTimeMillis())
-        val onPrimary = getThemeColor(com.google.android.material.R.attr.colorOnPrimary)
-        val onSurface = getThemeColor(com.google.android.material.R.attr.colorOnSurface)
-        val primary = getThemeColor(androidx.appcompat.R.attr.colorPrimary)
-
-        dayCells.forEachIndexed { i, cell ->
-            val selected = i == index
-            val isToday = dayStarts[i] == today
-            cell.root.setBackgroundResource(if (selected) R.drawable.bg_day_cell_selected else R.drawable.bg_day_cell)
-            cell.root.animate().setStartDelay(0)
-                .translationZ(if (selected) 8f * resources.displayMetrics.density else 0f)
-                .setDuration(180).start()
-            cell.dayWeekday.setTextColor(if (selected) onPrimary else onSurface)
-            cell.dayNumber.setTextColor(if (selected) onPrimary else if (isToday) primary else onSurface)
-            cell.dayDots.setTextColor(if (selected) onPrimary else primary)
-            cell.dayWeekday.alpha = if (selected) 0.9f else 0.6f
-        }
+        val previous = selectedDay
         selectedDay = index
 
-        binding.calendarMonth.text =
-            SimpleDateFormat("LLLL yyyy", Locale.getDefault()).format(dayStarts[index])
-
-        val cell = dayCells[index].root
-        binding.calendarStripScroll.post {
-            val target = cell.left - (binding.calendarStripScroll.width - cell.width) / 2
-            binding.calendarStripScroll.smoothScrollTo(target.coerceAtLeast(0), 0)
+        if (previous != index) {
+            if (previous >= 0) animateDay(previous, 0f)
+            if (previous < 0) {
+                dayFractions[index] = 1f
+                styleDay(index, 1f)
+            } else {
+                animateDay(index, 1f)
+            }
+            moveIndicator(previous, index)
         }
+
+        updateMonth(index)
+        centerStripOn(index, instant = previous < 0)
 
         if (scroll) scrollListToDay(dayStarts[index])
     }
