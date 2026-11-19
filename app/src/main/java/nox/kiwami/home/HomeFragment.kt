@@ -1,5 +1,6 @@
 package nox.kiwami.home
 
+import nox.kiwami.calendar.CalendarRepository
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.graphics.drawable.Animatable
@@ -109,6 +110,7 @@ class HomeFragment : Fragment() {
         Logger.log("HomeFragment")
         headerController = HomeHeaderController(binding).also { it.start() }
         pillController = InfoPillController(binding, viewLifecycleOwner, model).also { it.start() }
+        model.getAnimeContinue().observe(viewLifecycleOwner) { CalendarRepository.warm() }
         // load() runs more than once at launch (directly, then after the user data is ready).
         // Only the first run plays the intro animations; later runs just refresh what changed.
         var introPlayed = false

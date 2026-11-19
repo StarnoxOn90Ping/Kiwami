@@ -1,11 +1,13 @@
 package nox.kiwami.calendar
 
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.LinearInterpolator
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
@@ -38,6 +40,7 @@ import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.Serializable
@@ -50,9 +53,8 @@ class AiringCalendarActivity : AppCompatActivity() {
     private val adapter = CalendarAdapter { openMedia(it.media) }
 
     private var raw: List<CalendarEntry> = emptyList()
-    private var fetchKey: String? = null
-    private var loadJob: Job? = null
-    private var libraryCache: List<Media>? = null
+    private var snapshotTime = 0L
+    private var spinner: ObjectAnimator? = null
 
     private var loadState = LoadState.LOADING
     private enum class LoadState { LOADING, READY, NEEDS_LOGIN, ERROR }
@@ -89,6 +91,10 @@ class AiringCalendarActivity : AppCompatActivity() {
 
         binding.calendarBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         binding.calendarCustomize.setOnClickListener { showCustomizeSheet() }
+        binding.calendarRefresh.setPressBounce(0.85f)
+        binding.calendarRefresh.setOnClickListener { load(force = true) }
+        binding.calendarSwipe.setColorSchemeColors(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
+        binding.calendarSwipe.setOnRefreshListener { load(force = true) }
         binding.calendarToday.setOnClickListener {
             val today = startOfDay(System.currentTimeMillis())
             val idx = dayStarts.indexOf(today)
@@ -116,11 +122,18 @@ class AiringCalendarActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    CalendarRepository.version.drop(1).collect { onRepositoryChanged() }
+                }
+                launch {
+                    CalendarRepository.state.collect { onSyncState(it) }
+                }
                 while (true) {
                     if (loadState == LoadState.READY) {
                         adapter.tick()
                         updateSummary()
                     }
+                    renderSyncState()
                     delay(30_000)
                 }
             }
@@ -128,72 +141,101 @@ class AiringCalendarActivity : AppCompatActivity() {
     }
 
     private fun load(force: Boolean = false) {
-        val key = "${CalendarPrefs.source}|${CalendarPrefs.aheadDays}|${CalendarPrefs.pastDays}"
-        if (!force && key == fetchKey && loadState == LoadState.READY) {
+        val source = CalendarPrefs.source
+        if (source == CalendarPrefs.SOURCE_MINE && Anilist.userid == null) {
+            raw = emptyList()
+            snapshotTime = 0L
+            loadState = LoadState.NEEDS_LOGIN
+            binding.calendarSwipe.isRefreshing = false
             applyFilters()
+            renderSyncState()
             return
         }
-        loadJob?.cancel()
-        loadState = LoadState.LOADING
-        showLoading()
-        loadJob = lifecycleScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) { fetch() }
-                raw = result
-                fetchKey = key
-                loadState = LoadState.READY
-            } catch (e: NeedsLogin) {
-                raw = emptyList()
-                loadState = LoadState.NEEDS_LOGIN
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Logger.log(e)
-                raw = emptyList()
-                loadState = LoadState.ERROR
-            }
+        val snap = CalendarRepository.snapshot(source)
+        if (snap != null) {
+            showSnapshot(snap)
+        } else {
+            snapshotTime = 0L
+            loadState = LoadState.LOADING
+            showLoading()
+        }
+        CalendarRepository.refresh(force, source)
+        renderSyncState()
+    }
+
+    private fun showSnapshot(snap: CalendarRepository.Snapshot, keepPosition: Boolean = false) {
+        val (from, to) = CalendarRepository.window(CalendarPrefs.source)
+        raw = CalendarRepository.entriesIn(snap, from, to)
+        snapshotTime = snap.fetchedAtMs
+        loadState = LoadState.READY
+        applyFilters(keepPosition)
+    }
+
+    private fun onRepositoryChanged() {
+        val snap = CalendarRepository.snapshot(CalendarPrefs.source) ?: return
+        val (from, to) = CalendarRepository.window(CalendarPrefs.source)
+        val fresh = CalendarRepository.entriesIn(snap, from, to)
+        fun key(e: CalendarEntry) = listOf(e.media.id, e.episode, e.airingAt, e.listStatus, e.progress)
+        val same = loadState == LoadState.READY && raw.size == fresh.size &&
+                raw.indices.all { key(raw[it]) == key(fresh[it]) }
+        if (same) {
+            snapshotTime = snap.fetchedAtMs
+        } else {
+            showSnapshot(snap, keepPosition = loadState == LoadState.READY)
+        }
+        renderSyncState()
+    }
+
+    private fun onSyncState(state: CalendarRepository.State) {
+        val failed = state == CalendarRepository.State.FAILED || state == CalendarRepository.State.OFFLINE
+        if (failed && loadState == LoadState.LOADING) {
+            raw = emptyList()
+            loadState = LoadState.ERROR
             applyFilters()
+        }
+        renderSyncState()
+    }
+
+    private fun renderSyncState() {
+        if (!::binding.isInitialized) return
+        val state = CalendarRepository.state.value
+        val syncing = state == CalendarRepository.State.SYNCING
+        val label = when {
+            syncing -> getString(R.string.cal_updating)
+            snapshotTime <= 0L -> ""
+            state == CalendarRepository.State.OFFLINE -> getString(R.string.cal_offline_saved)
+            state == CalendarRepository.State.FAILED -> getString(R.string.cal_refresh_failed)
+            else -> updatedAgo(snapshotTime)
+        }
+        binding.calendarUpdated.text = label
+        binding.calendarUpdated.visibility = if (label.isEmpty()) View.GONE else View.VISIBLE
+        if (!syncing) binding.calendarSwipe.isRefreshing = false
+        setSpinning(syncing)
+    }
+
+    private fun updatedAgo(time: Long): String {
+        val minutes = ((System.currentTimeMillis() - time) / 60_000).coerceAtLeast(0)
+        return when {
+            minutes < 1 -> getString(R.string.cal_updated_now)
+            minutes < 60 -> getString(R.string.cal_updated_min, minutes.toInt())
+            minutes < 60 * 24 -> getString(R.string.cal_updated_hours, (minutes / 60).toInt())
+            else -> getString(R.string.cal_updated_days, (minutes / (60 * 24)).toInt())
         }
     }
 
-    private class NeedsLogin : Exception()
-
-    private suspend fun fetch(): List<CalendarEntry> {
-        val source = CalendarPrefs.source
-        val ahead = CalendarPrefs.aheadDays
-        val past = CalendarPrefs.pastDays
-
-        val fromCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -past) }
-        val toCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, ahead + 1) }
-        val from = startOfDay(fromCal.timeInMillis) / 1000
-        val to = startOfDay(toCal.timeInMillis) / 1000
-
-        if (source == CalendarPrefs.SOURCE_ALL) {
-            val cappedTo = minOf(to, startOfDay(Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, 8)
-            }.timeInMillis) / 1000)
-            return Anilist.query.recentlyUpdated(from, cappedTo).mapNotNull { m ->
-                val parts = m.relation?.split(",") ?: return@mapNotNull null
-                val ep = parts.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
-                val at = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
-                CalendarEntry(m, ep, at, m.userStatus, m.userProgress)
-            }.sortedBy { it.airingAt }
-        }
-
-        val userId = Anilist.userid ?: throw NeedsLogin()
-        val library = libraryCache ?: (Anilist.query.getMediaLists(true, userId)["All"] ?: arrayListOf())
-            .also { libraryCache = it }
-        val byId = library.associateBy { it.id }
-
-        val ids = library.filter {
-            val st = it.status?.uppercase() ?: return@filter true
-            st.contains("RELEASING") || st.contains("NOT")
-        }.map { it.id }
-        if (ids.isEmpty()) return emptyList()
-
-        return Anilist.query.airingScheduleFor(ids, from, to).map { (media, ep, at) ->
-            val own = byId[media.id]
-            CalendarEntry(media, ep, at, own?.userStatus ?: media.userStatus, own?.userProgress ?: media.userProgress)
+    private fun setSpinning(on: Boolean) {
+        if (on) {
+            if (spinner?.isRunning == true) return
+            spinner = ObjectAnimator.ofFloat(binding.calendarRefresh, View.ROTATION, 0f, 360f).apply {
+                duration = 900
+                repeatCount = ObjectAnimator.INFINITE
+                interpolator = LinearInterpolator()
+                start()
+            }
+        } else {
+            spinner?.cancel()
+            spinner = null
+            binding.calendarRefresh.rotation = 0f
         }
     }
 
@@ -210,8 +252,12 @@ class AiringCalendarActivity : AppCompatActivity() {
         else -> DateFormat.is24HourFormat(this)
     }
 
-    private fun applyFilters() {
+    private fun applyFilters(keepPosition: Boolean = false) {
         binding.calendarProgress.visibility = View.GONE
+        val anchorDay = if (keepPosition) {
+            val lm = binding.calendarList.layoutManager as LinearLayoutManager
+            dayOfRow(adapter.rows.getOrNull(lm.findFirstVisibleItemPosition()))
+        } else null
 
         val nowSec = System.currentTimeMillis() / 1000
         val mask = CalendarPrefs.statusMask
@@ -242,9 +288,17 @@ class AiringCalendarActivity : AppCompatActivity() {
 
         if (rows.isEmpty()) showEmpty() else {
             binding.calendarEmpty.visibility = View.GONE
-            binding.calendarList.scrollToPosition(0)
+            if (anchorDay == null) binding.calendarList.scrollToPosition(0)
         }
         updateSummary()
+
+        if (anchorDay != null && rows.isNotEmpty()) {
+            val pos = positions.filterKeys { it >= anchorDay }.minByOrNull { it.key }?.value ?: 0
+            (binding.calendarList.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(pos, 0)
+            val idx = dayStarts.indexOf(anchorDay)
+            if (idx >= 0) selectDay(idx, scroll = false)
+            return
+        }
 
         val today = startOfDay(System.currentTimeMillis())
         val target = when {
@@ -521,6 +575,7 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        spinner?.cancel()
         if (::binding.isInitialized) binding.calendarList.adapter = null
     }
 }

@@ -1,5 +1,6 @@
 package nox.kiwami.connections.anilist
 
+import nox.kiwami.calendar.CalendarRepository
 import nox.kiwami.connections.anilist.Anilist.executeQuery
 import nox.kiwami.connections.anilist.api.FuzzyDate
 import nox.kiwami.connections.anilist.api.Query
@@ -275,6 +276,7 @@ class AnilistMutations {
             }""".replace("\n", "").replace("""    """, "")
         println(variables)
         executeQuery<JsonObject>(query, variables, show = true)
+        CalendarRepository.onListEdited(mediaID, status, progress)
         Anilist.query.invalidateUserStatusCache()
         Anilist.query.invalidateHomePageCache()
         Anilist.query.scheduleUserStatsRefresh()
@@ -291,6 +293,7 @@ class AnilistMutations {
         """.trimIndent()
         val variables = """{"id":"$listId"}"""
         executeQuery<JsonObject>(query, variables)
+        CalendarRepository.onListDeleted()
         Anilist.query.invalidateUserStatusCache()
         Anilist.query.invalidateHomePageCache()
         Anilist.query.scheduleUserStatsRefresh()
