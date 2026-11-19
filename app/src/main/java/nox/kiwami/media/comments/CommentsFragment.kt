@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
@@ -88,6 +89,7 @@ class CommentsFragment : Fragment() {
     private var limitTextWatcher: TextWatcher? = null
     private var headerPump: RecyclerView.AdapterDataObserver? = null
     private var composer: CommentComposerController? = null
+    private var lastHeaderPlay = 0L
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -463,6 +465,12 @@ class CommentsFragment : Fragment() {
         }
 
         activity.binding.commentSend.setOnClickListener {
+            it.performHapticFeedback(
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
+                    HapticFeedbackConstants.CONFIRM
+                else
+                    HapticFeedbackConstants.CONTEXT_CLICK
+            )
             if (CommentsAPI.isBanned) {
                 snackString("You are banned from commenting :(")
                 return@setOnClickListener
@@ -480,6 +488,14 @@ class CommentsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         tag = null
+        if (_binding != null) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - lastHeaderPlay > 1500) {
+                lastHeaderPlay = now
+                binding.commentsHeader.reveal()
+                animateHeaderIn()
+            }
+        }
         section.groups.forEach {
             if (it is CommentItem && it.containsGif()) {
                 it.notifyChanged()
@@ -723,7 +739,6 @@ class CommentsFragment : Fragment() {
 
         updateSortChip()
         updateCurrentProgressButton()
-        animateHeaderIn()
     }
 
     private fun setHeaderControlsVisible(visible: Boolean) {
