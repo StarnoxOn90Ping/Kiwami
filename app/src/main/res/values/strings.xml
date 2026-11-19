@@ -864,6 +864,7 @@
     <string name="extension_version">version</string>
     <string name="enter_password_to_decrypt_file">Enter your password to decrypt the file</string>
     <string name="show_rotate_button">Show Rotate Button</string>
+    <string name="default_landscape_player">Default to Landscape in Internal Player</string>
     <string name="default_manga_settings">Default Manga Settings</string>
     <string name="use_dark_theme">Use Dark Theme</string>
     <string name="use_oled_theme">Use OLED Theme</string>

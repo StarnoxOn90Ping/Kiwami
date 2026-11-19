@@ -186,6 +186,7 @@ enum class PrefName(val data: Pref) {
     UseInternalCast(Pref(Location.Player, Boolean::class, false)),
     Pip(Pref(Location.Player, Boolean::class, true)),
     RotationPlayer(Pref(Location.Player, Boolean::class, true)),
+    DefaultLandscapePlayer(Pref(Location.Player, Boolean::class, true)),
     TorrentEnabled(Pref(Location.Player, Boolean::class, false)),
     UseAdditionalCodec(Pref(Location.Player, Boolean::class, false)),
     AutoSelectServer(Pref(Location.Player, Boolean::class, false)),

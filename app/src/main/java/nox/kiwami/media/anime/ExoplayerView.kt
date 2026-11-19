@@ -507,7 +507,11 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
                 }
                 orientationListener?.enable()
             }
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            requestedOrientation = if (PrefManager.getVal(PrefName.DefaultLandscapePlayer)) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
             exoRotate.setOnClickListener {
                 requestedOrientation = rotation
                 it.visibility = View.GONE

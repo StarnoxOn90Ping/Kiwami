@@ -280,6 +280,12 @@ class PlayerSettingsActivity :
             PrefManager.setVal(PrefName.RotationPlayer, isChecked)
         }
 
+        binding.playerSettingsDefaultLandscape.isChecked =
+            PrefManager.getVal(PrefName.DefaultLandscapePlayer)
+        binding.playerSettingsDefaultLandscape.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.DefaultLandscapePlayer, isChecked)
+        }
+
         binding.playerSettingsInternalCast.isChecked = PrefManager.getVal(PrefName.UseInternalCast)
         binding.playerSettingsInternalCast.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.UseInternalCast, isChecked)
