@@ -189,19 +189,8 @@ class CommentsFragment : Fragment() {
                         setHeaderControlsVisible(false)
                         binding.commentsProgressBar.visibility = View.GONE
                         activity.binding.commentMessageContainer.visibility = View.GONE
-                    } else if (CommentsAPI.authToken != null) {
-                        lifecycleScope.launch {
-                            val commentId = arguments?.getInt("commentId")
-                            if (commentId != null && commentId > 0) {
-                                loadCommentThread(commentId)
-                            } else {
-                                loadAndDisplayComments()
-                            }
-                        }
                     } else {
-                        activity.binding.commentMessageContainer.visibility = View.GONE
-                        binding.commentsProgressBar.visibility = View.GONE
-                        showEmptyState("Comments unavailable", "Log in to read and post comments.", true)
+                        viewLifecycleOwner.lifecycleScope.launch { loadWithSignIn(true) }
                     }
                 }
             }
@@ -634,11 +623,47 @@ class CommentsFragment : Fragment() {
             if (CommentsAPI.authToken != null) View.VISIBLE else View.GONE
 
         viewLifecycleOwner.lifecycleScope.launch {
-            loadAndDisplayComments()
+            loadWithSignIn(false)
             _binding?.commentsRefresh?.isRefreshing = false
         }
         activity.binding.commentReplyToContainer.visibility = View.GONE
         return true
+    }
+
+    private suspend fun loadWithSignIn(allowThread: Boolean) {
+        if (CommentsAPI.authToken == null) {
+            hideEmptyState()
+            binding.commentsList.visibility = View.GONE
+            binding.commentsProgressBar.visibility = View.VISIBLE
+            withContext(Dispatchers.IO) { CommentsAPI.fetchAuthToken(activity, null, 1) }
+            if (_binding == null) return
+        }
+        if (CommentsAPI.authToken == null) {
+            binding.commentsProgressBar.visibility = View.GONE
+            activity.binding.commentMessageContainer.visibility = View.GONE
+            showSignInProblem()
+            return
+        }
+        activity.binding.commentMessageContainer.visibility = View.VISIBLE
+        val commentId = arguments?.getInt("commentId")
+        if (allowThread && commentId != null && commentId > 0) {
+            loadCommentThread(commentId)
+        } else {
+            loadAndDisplayComments()
+        }
+    }
+
+    private fun showSignInProblem() {
+        val loggedIn = PrefManager.getVal(PrefName.AnilistToken, null as String?) != null
+        if (!loggedIn) {
+            showEmptyState("Log in to see comments", "Sign in with AniList to read and post comments.")
+        } else {
+            showEmptyState(
+                "Couldn\u2019t sign in to comments",
+                CommentsAPI.lastError ?: "The comments server didn\u2019t accept the login.",
+                true
+            )
+        }
     }
 
     private fun shake(view: View) {
@@ -979,7 +1004,11 @@ class CommentsFragment : Fragment() {
         binding.commentsProgressBar.visibility = View.GONE
         binding.commentsList.visibility = View.VISIBLE
         if (comments == null) {
-            showEmptyState("Couldn\u2019t load comments", "Check your connection and try again.", true)
+            showEmptyState(
+                "Couldn\u2019t load comments",
+                CommentsAPI.lastError ?: "Check your connection and try again.",
+                true
+            )
         } else if (comments.comments.isEmpty()) {
             val short = if (isAnime) "Ep" else "Ch"
             val noun = if (isAnime) "episode" else "chapter"

@@ -38,6 +38,7 @@ object CommentsAPI {
     var isAdmin: Boolean = false
     var isMod: Boolean = false
     var totalVotes: Int = 0
+    var lastError: String? = null
 
     suspend fun getCommentsForId(
         id: Int,
@@ -45,6 +46,7 @@ object CommentsAPI {
         tag: Int?,
         sort: String?
     ): CommentResponse? {
+        lastError = null
         var url = "$ADDRESS/comments/$id/$page"
         val request = requestBuilder()
         tag?.let {
@@ -60,7 +62,11 @@ object CommentsAPI {
             errorMessage("Failed to fetch comments")
             return null
         }
-        if (!json.text.startsWith("{")) return null
+        if (!json.text.startsWith("{")) {
+            lastError = "Unexpected response from the comments server (${json.code})"
+            Logger.log(lastError!!)
+            return null
+        }
         val res = json.code == 200
         if (!res && json.code != 404) {
             errorReason(json.code, json.text)
@@ -68,6 +74,8 @@ object CommentsAPI {
         val parsed = try {
             Json.decodeFromString<CommentResponse>(json.text)
         } catch (e: Exception) {
+            lastError = "Couldn't read the response from the comments server"
+            Logger.log(e)
             return null
         }
         return parsed
@@ -313,10 +321,15 @@ object CommentsAPI {
         return null
     }
 
-    suspend fun fetchAuthToken(context: Context, client: OkHttpClient? = null) {
+    suspend fun fetchAuthToken(
+        context: Context,
+        client: OkHttpClient? = null,
+        maxRetries: Int = 5
+    ) {
         isOnline = isOnline(context)
         if (authToken != null) return
-        val MAX_RETRIES = 5
+        lastError = null
+        val MAX_RETRIES = maxRetries
         val tokenLifetime: Long = 1000 * 60 * 60 * 24 * 6
         val tokenExpiry = PrefManager.getVal<Long>(PrefName.CommentTokenExpiry)
         if (tokenExpiry < System.currentTimeMillis() + tokenLifetime) {
@@ -335,7 +348,7 @@ object CommentsAPI {
         }
         val url = "$ADDRESS/authenticate"
         val token = PrefManager.getVal(PrefName.AnilistToken, null as String?) ?: return
-        repeat(MAX_RETRIES) {
+        repeat(MAX_RETRIES) { attempt ->
             try {
                 val json = authRequest(token, url, client)
                 if (json.code == 200) {
@@ -368,12 +381,13 @@ object CommentsAPI {
                 errorMessage("Failed to login to comments API")
                 return
             }
-            kotlinx.coroutines.delay(60000)
+            if (attempt < MAX_RETRIES - 1) kotlinx.coroutines.delay(60000)
         }
         errorMessage("Failed to login after multiple attempts")
     }
 
     private fun errorMessage(reason: String) {
+        lastError = reason
         if (commentsEnabled) Logger.log(reason)
         if (isOnline && commentsEnabled) snackString(reason)
     }
@@ -430,6 +444,7 @@ object CommentsAPI {
         }
         val message = parsed?.message ?: reason ?: error
         val fullMessage = if (code == 500) message else "$code: $message"
+        lastError = fullMessage
 
         toast(fullMessage)
     }
