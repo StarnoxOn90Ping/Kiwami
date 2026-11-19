@@ -142,8 +142,11 @@ class App : Application(), GraphProvider<AppGraph> {
         applicationScope.launch(Dispatchers.IO) {
             torrentServerManager = Injekt.get()
             downloadAddonManager = Injekt.get()
-            if (torrentServerManager.isAvailable()) {
-                torrentServerManager.start()
+            launch {
+                delay(5000)
+                if (torrentServerManager.isAvailable()) {
+                    torrentServerManager.start()
+                }
             }
             downloadAddonManager.init()
             if (PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1) {
