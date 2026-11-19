@@ -1,5 +1,6 @@
 package nox.kiwami.media.comments
 
+import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context.INPUT_METHOD_SERVICE
@@ -152,23 +153,12 @@ class CommentsFragment : Fragment() {
         val isOfflineOrLocal = !nox.kiwami.isOnline(activity)
 
         binding.commentsRefresh.setOnRefreshListener {
-            val refreshOffline = !nox.kiwami.isOnline(activity)
-            if (refreshOffline) {
-                binding.commentsRefresh.isRefreshing = false
-                return@setOnRefreshListener
-            }
-            binding.commentsOfflineText.visibility = View.GONE
-            binding.commentsList.visibility = View.VISIBLE
-            setHeaderControlsVisible(true)
-            activity.binding.commentMessageContainer.visibility =
-                if (CommentsAPI.authToken != null) View.VISIBLE else View.GONE
-
-            viewLifecycleOwner.lifecycleScope.launch {
-                loadAndDisplayComments()
-                _binding?.commentsRefresh?.isRefreshing = false
-            }
-            activity.binding.commentReplyToContainer.visibility = View.GONE
+            if (!reloadComments()) binding.commentsRefresh.isRefreshing = false
         }
+        binding.commentsRetry.setOnClickListener {
+            if (!reloadComments()) shake(binding.commentsOfflineText)
+        }
+        binding.commentsEmptyAction.setOnClickListener { reloadComments() }
 
         binding.commentsList.adapter = adapter
         binding.commentsList.layoutManager = LinearLayoutManager(activity)
@@ -208,6 +198,8 @@ class CommentsFragment : Fragment() {
                         }
                     } else {
                         activity.binding.commentMessageContainer.visibility = View.GONE
+                        binding.commentsProgressBar.visibility = View.GONE
+                        showEmptyState("Comments unavailable", "Log in to read and post comments.", true)
                     }
                 }
             }
@@ -617,6 +609,66 @@ class CommentsFragment : Fragment() {
         else -> null
     }
 
+    private fun reloadComments(): Boolean {
+        if (!nox.kiwami.isOnline(activity)) return false
+        binding.commentsOfflineText.visibility = View.GONE
+        binding.commentsList.visibility = View.VISIBLE
+        setHeaderControlsVisible(true)
+        activity.binding.commentMessageContainer.visibility =
+            if (CommentsAPI.authToken != null) View.VISIBLE else View.GONE
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            loadAndDisplayComments()
+            _binding?.commentsRefresh?.isRefreshing = false
+        }
+        activity.binding.commentReplyToContainer.visibility = View.GONE
+        return true
+    }
+
+    private fun shake(view: View) {
+        ObjectAnimator.ofFloat(
+            view, View.TRANSLATION_X, 0f, -14f, 14f, -10f, 10f, -5f, 5f, 0f
+        ).setDuration(420).start()
+    }
+
+    private fun showEmptyState(title: String, subtitle: String, retry: Boolean = false) {
+        val state = binding.commentsEmptyState
+        binding.commentsEmptyTitle.text = title
+        binding.commentsEmptySubtitle.text = subtitle
+        binding.commentsEmptyAction.visibility = if (retry) View.VISIBLE else View.GONE
+        state.animate().cancel()
+        state.visibility = View.VISIBLE
+        state.alpha = 0f
+        state.scaleX = 0.92f
+        state.scaleY = 0.92f
+        state.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(420)
+            .setInterpolator(OvershootInterpolator(1.6f))
+            .start()
+        binding.commentsEmptyIcon.animate().cancel()
+        binding.commentsEmptyIcon.rotation = -14f
+        binding.commentsEmptyIcon.animate()
+            .rotation(0f)
+            .setStartDelay(120)
+            .setDuration(520)
+            .setInterpolator(OvershootInterpolator(3f))
+            .start()
+    }
+
+    private fun hideEmptyState() {
+        val state = _binding?.commentsEmptyState ?: return
+        if (state.visibility != View.VISIBLE) return
+        state.animate().cancel()
+        state.animate()
+            .alpha(0f)
+            .setDuration(160)
+            .withEndAction { _binding?.commentsEmptyState?.visibility = View.GONE }
+            .start()
+    }
+
     private fun setupHeader() {
         val header = binding.commentsHeader
         val list = binding.commentsList
@@ -634,6 +686,9 @@ class CommentsFragment : Fragment() {
             val height = bottom - top
             if (_binding != null && height > 0 && list.paddingTop != height) {
                 list.updatePadding(top = height)
+                binding.commentsProgressBar.updatePadding(top = height)
+                binding.commentsEmptyState.updatePadding(top = height)
+                binding.commentsOfflineText.updatePadding(top = height)
                 binding.commentsRefresh.post {
                     val refresh = _binding?.commentsRefresh ?: return@post
                     if (!refresh.isRefreshing) {
@@ -871,6 +926,7 @@ class CommentsFragment : Fragment() {
     }
 
     private suspend fun loadAndDisplayComments() {
+        hideEmptyState()
         binding.commentsHeader.reveal()
         binding.commentsProgressBar.visibility = View.VISIBLE
         binding.commentsList.visibility = View.GONE
@@ -907,9 +963,24 @@ class CommentsFragment : Fragment() {
         totalPages = comments?.totalPages ?: 1
         binding.commentsProgressBar.visibility = View.GONE
         binding.commentsList.visibility = View.VISIBLE
+        if (comments == null) {
+            showEmptyState("Couldn\u2019t load comments", "Check your connection and try again.", true)
+        } else if (comments.comments.isEmpty()) {
+            val short = if (isAnime) "Ep" else "Ch"
+            val noun = if (isAnime) "episode" else "chapter"
+            if (effectiveFilter != null) {
+                showEmptyState(
+                    "No comments for $short $effectiveFilter",
+                    "Be the first to comment on this $noun."
+                )
+            } else {
+                showEmptyState("No comments yet", "Be the first to start the conversation.")
+            }
+        }
     }
 
     private suspend fun loadCommentThread(commentId: Int) {
+        hideEmptyState()
         binding.commentsHeader.reveal()
         binding.commentsProgressBar.visibility = View.VISIBLE
         binding.commentsList.visibility = View.GONE
@@ -1203,6 +1274,7 @@ class CommentsFragment : Fragment() {
             )
         }
         success?.let {
+            hideEmptyState()
             if (interactionState == InteractionState.REPLY) {
                 if (commentWithInteraction == null) return@let
                 val section =
