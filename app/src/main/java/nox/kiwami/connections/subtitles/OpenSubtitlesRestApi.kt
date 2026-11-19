@@ -2,6 +2,8 @@ package nox.kiwami.connections.subtitles
 
 import nox.kiwami.Mapper
 import nox.kiwami.okHttpClient
+import nox.kiwami.settings.saving.PrefManager
+import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,18 +19,67 @@ object OpenSubtitlesRestApi {
     private const val USER_AGENT = "Cloudstream3 v0.2"
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
-    suspend fun search(imdbId: String, episode: Int, season: Int? = null, queryText: String? = null): List<OpenSubRestItem> {
+    private fun languageCodes(): String {
+        val names = try {
+            PrefManager.getVal<Set<String>>(PrefName.OnlineSubtitleLanguages)
+        } catch (_: Exception) {
+            emptySet()
+        }
+        val codes = names.mapNotNull { name ->
+            java.util.Locale.getISOLanguages().firstOrNull {
+                java.util.Locale(it).getDisplayLanguage(java.util.Locale.ENGLISH).equals(name, true) ||
+                    it.equals(name, true)
+            }
+        }
+        return codes.sorted().joinToString(",")
+    }
+
+    private fun buildUrl(params: Map<String, String>): String {
+        val query = params.toSortedMap().entries.joinToString("&") {
+            "${it.key}=${java.net.URLEncoder.encode(it.value, "UTF-8")}"
+        }
+        return "$HOST/subtitles?$query"
+    }
+
+    suspend fun search(
+        imdbId: String?,
+        episode: Int,
+        season: Int? = null,
+        queryText: String? = null,
+        isMovie: Boolean = false
+    ): List<OpenSubRestItem> {
         return withContext(Dispatchers.IO) {
             try {
-                val cleanImdb = imdbId.removePrefix("tt")
+                val cleanImdb = imdbId?.removePrefix("tt")?.trimStart('0')
+                val languages = languageCodes()
                 val urls = mutableListOf<String>()
 
-                urls.add("$HOST/subtitles?imdb_id=$cleanImdb&episode_number=$episode")
-                if (season != null && season > 1) {
-                    urls.add("$HOST/subtitles?imdb_id=$cleanImdb&season_number=$season&episode_number=$episode")
+                fun base(vararg pairs: Pair<String, String>): MutableMap<String, String> {
+                    val map = mutableMapOf(*pairs)
+                    if (languages.isNotBlank()) map["languages"] = languages
+                    return map
+                }
+
+                if (!cleanImdb.isNullOrBlank()) {
+                    if (isMovie) {
+                        urls.add(buildUrl(base("imdb_id" to cleanImdb)))
+                    } else {
+                        val s = season ?: 1
+                        urls.add(buildUrl(base("parent_imdb_id" to cleanImdb, "season_number" to s.toString(), "episode_number" to episode.toString())))
+                        if (s != 1) {
+                            urls.add(buildUrl(base("parent_imdb_id" to cleanImdb, "season_number" to "1", "episode_number" to episode.toString())))
+                        }
+                    }
                 }
                 if (!queryText.isNullOrBlank()) {
-                    urls.add("$HOST/subtitles?query=${java.net.URLEncoder.encode(queryText, "UTF-8")}&episode_number=$episode")
+                    val cleanQuery = queryText
+                        .replace(Regex("(?i)\\s*episode\\s*\\d+\\s*$"), "")
+                        .trim()
+                    if (cleanQuery.isNotBlank()) {
+                        val params = base("query" to cleanQuery)
+                        if (!isMovie) params["episode_number"] = episode.toString()
+                        urls.add(buildUrl(params))
+                    }
                 }
 
                 val results = mutableListOf<OpenSubRestItem>()
@@ -41,30 +92,33 @@ object OpenSubtitlesRestApi {
                             .addHeader("Accept", "application/json")
                             .build()
                         okHttpClient.newCall(req).execute().use { resp ->
-                            if (resp.isSuccessful) {
-                                val json = resp.body.string()
-                                val parsed = Mapper.json.decodeFromString<OpenSubRestResponse>(json)
-                                parsed.data.forEach { item ->
-                                    val file = item.attributes.files.firstOrNull() ?: return@forEach
-                                    val fileId = file.fileId ?: return@forEach
-                                    val fileName = file.fileName ?: item.attributes.release ?: "OpenSubtitles Subtitle"
-                                    val lang = item.attributes.language ?: "English"
-                                    val isHi = item.attributes.hearingImpaired == true
-                                    results.add(
-                                        OpenSubRestItem(
-                                            fileId = fileId,
-                                            fileName = fileName,
-                                            language = lang,
-                                            hearingImpaired = isHi
-                                        )
+                            if (!resp.isSuccessful) {
+                                Logger.log("OpenSubtitlesRestApi: HTTP ${resp.code} for $url")
+                                return@use
+                            }
+                            val json = resp.body.string()
+                            val parsed = Mapper.json.decodeFromString<OpenSubRestResponse>(json)
+                            parsed.data.forEach { item ->
+                                val file = item.attributes.files.firstOrNull() ?: return@forEach
+                                val fileId = file.fileId ?: return@forEach
+                                val fileName = file.fileName ?: item.attributes.release ?: "OpenSubtitles Subtitle"
+                                val lang = item.attributes.language ?: "en"
+                                results.add(
+                                    OpenSubRestItem(
+                                        fileId = fileId,
+                                        fileName = fileName,
+                                        language = lang,
+                                        hearingImpaired = item.attributes.hearingImpaired == true
                                     )
-                                }
+                                )
                             }
                         }
                         if (results.isNotEmpty()) break
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        Logger.log("OpenSubtitlesRestApi request error: ${e.message}")
+                    }
                 }
-                results
+                results.distinctBy { it.fileId }
             } catch (e: Exception) {
                 Logger.log("OpenSubtitlesRestApi error: ${e.message}")
                 emptyList()

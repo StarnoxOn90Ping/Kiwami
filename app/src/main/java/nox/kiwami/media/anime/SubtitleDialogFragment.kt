@@ -539,6 +539,18 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                 currentSeasonEpisode = seasonEpisode
 
                 val onlineSubs = mutableListOf<Any>()
+                try {
+                    val openSubRest = OpenSubtitlesRestApi.search(
+                        imdbId,
+                        targetEpisodeNum,
+                        seasonEpisode.season,
+                        queryText,
+                        media.format == "MOVIE"
+                    )
+                    onlineSubs.addAll(openSubRest)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 if (imdbId != null) {
                     try {
                         val wyzieSubs = WyzieSubtitles.getWyzieSubtitles(imdbId, seasonEpisode.season, seasonEpisode.episode)
@@ -550,13 +562,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     try {
                         val subSourceSubs = SubSourceSubtitles.getSubtitles(imdbId, targetEpisodeNum, seasonEpisode.season)
                         onlineSubs.addAll(subSourceSubs)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-
-                    try {
-                        val openSubRest = OpenSubtitlesRestApi.search(imdbId, targetEpisodeNum, seasonEpisode.season, queryText)
-                        onlineSubs.addAll(openSubRest)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -614,24 +619,6 @@ class SubtitleDialogFragment : BottomSheetDialogFragment() {
                     is StremioSub -> matchesLanguage(item.lang, selectedLanguageFilter)
                     is SubSourceSub -> matchesLanguage(item.lang, selectedLanguageFilter)
                     is OpenSubRestItem -> matchesLanguage(item.language, selectedLanguageFilter)
-                    else -> true
-                }
-            }
-        }
-
-        val queryText = binding.onlineSearchEditText.text?.toString()?.trim() ?: ""
-        if (queryText.isNotEmpty() && !queryText.startsWith(model.getMedia().value?.userPreferredName ?: "", ignoreCase = true)) {
-            filtered = filtered.filter { item ->
-                when (item) {
-                    is WyzieSub -> item.displayLabel.contains(queryText, ignoreCase = true) ||
-                            item.language.contains(queryText, ignoreCase = true) ||
-                            item.format.contains(queryText, ignoreCase = true)
-                    is StremioSub -> item.lang.contains(queryText, ignoreCase = true) ||
-                            mapLanguageCode(item.lang).contains(queryText, ignoreCase = true)
-                    is SubSourceSub -> item.releaseName.contains(queryText, ignoreCase = true) ||
-                            item.lang.contains(queryText, ignoreCase = true)
-                    is OpenSubRestItem -> item.fileName.contains(queryText, ignoreCase = true) ||
-                            item.language.contains(queryText, ignoreCase = true)
                     else -> true
                 }
             }
