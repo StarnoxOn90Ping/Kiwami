@@ -12,6 +12,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import kotlin.reflect.KClass
 
 object PrefManager {
 
@@ -42,6 +43,30 @@ object PrefManager {
         Compat.importOldPrefs(context)
     }
 
+    private const val KIND_BOOLEAN = 0
+    private const val KIND_INT = 1
+    private const val KIND_FLOAT = 2
+    private const val KIND_LONG = 3
+    private const val KIND_STRING = 4
+    private const val KIND_SET = 5
+    private const val KIND_LIST = 6
+    private const val KIND_OTHER = 7
+
+    private val kinds: IntArray by lazy {
+        PrefName.values().map { kindOf(it.data.type) }.toIntArray()
+    }
+
+    private fun kindOf(type: KClass<*>): Int = when (type) {
+        Boolean::class -> KIND_BOOLEAN
+        Int::class -> KIND_INT
+        Float::class -> KIND_FLOAT
+        Long::class -> KIND_LONG
+        String::class -> KIND_STRING
+        Set::class -> KIND_SET
+        List::class -> KIND_LIST
+        else -> KIND_OTHER
+    }
+
     private fun SharedPreferences.readStringSet(key: String): Set<String>? = try {
         getStringSet(key, null)?.mapNotNull { (it as? Any)?.toString() }?.toSet()
     } catch (_: Exception) {
@@ -70,15 +95,15 @@ object PrefManager {
     fun <T> getVal(prefName: PrefName, default: T): T {
         return try {
             val pref = getPrefLocation(prefName.data.prefLocation)
-            when (prefName.data.type) {
-                Boolean::class -> pref.getBoolean(prefName.name, default as Boolean) as T
-                Int::class -> pref.getInt(prefName.name, default as Int) as T
-                Float::class -> pref.getFloat(prefName.name, default as Float) as T
-                Long::class -> pref.getLong(prefName.name, default as Long) as T
-                String::class -> pref.getString(prefName.name, default as String?) as T
-                Set::class -> pref.getStringSet(prefName.name, default as Set<String>) as T
+            when (kinds[prefName.ordinal]) {
+                KIND_BOOLEAN -> pref.getBoolean(prefName.name, default as Boolean) as T
+                KIND_INT -> pref.getInt(prefName.name, default as Int) as T
+                KIND_FLOAT -> pref.getFloat(prefName.name, default as Float) as T
+                KIND_LONG -> pref.getLong(prefName.name, default as Long) as T
+                KIND_STRING -> pref.getString(prefName.name, default as String?) as T
+                KIND_SET -> pref.getStringSet(prefName.name, default as Set<String>) as T
 
-                List::class -> deserializeClass(
+                KIND_LIST -> deserializeClass(
                     prefName.name,
                     default,
                     prefName.data.prefLocation
@@ -95,24 +120,24 @@ object PrefManager {
     fun <T> getVal(prefName: PrefName): T {
         return try {
             val pref = getPrefLocation(prefName.data.prefLocation)
-            when (prefName.data.type) {
-                Boolean::class -> pref.getBoolean(
+            when (kinds[prefName.ordinal]) {
+                KIND_BOOLEAN -> pref.getBoolean(
                     prefName.name,
                     prefName.data.default as Boolean
                 ) as T
 
-                Int::class -> pref.getInt(prefName.name, prefName.data.default as Int) as T
-                Float::class -> pref.getFloat(prefName.name, prefName.data.default as Float) as T
-                Long::class -> pref.getLong(prefName.name, prefName.data.default as Long) as T
-                String::class -> pref.getString(
+                KIND_INT -> pref.getInt(prefName.name, prefName.data.default as Int) as T
+                KIND_FLOAT -> pref.getFloat(prefName.name, prefName.data.default as Float) as T
+                KIND_LONG -> pref.getLong(prefName.name, prefName.data.default as Long) as T
+                KIND_STRING -> pref.getString(
                     prefName.name,
                     prefName.data.default as String?
                 ) as T
 
-                Set::class -> (pref.readStringSet(prefName.name)
+                KIND_SET -> (pref.readStringSet(prefName.name)
                     ?: (prefName.data.default as Set<String>)) as T
 
-                List::class -> deserializeClass(
+                KIND_LIST -> deserializeClass(
                     prefName.name,
                     prefName.data.default,
                     prefName.data.prefLocation
@@ -132,13 +157,13 @@ object PrefManager {
     ): T? {
         return try {
             val pref = getPrefLocation(prefName.data.prefLocation)
-            when (prefName.data.type) {
-                Boolean::class -> pref.getBoolean(prefName.name, default as Boolean) as T?
-                Int::class -> pref.getInt(prefName.name, default as Int) as T?
-                Float::class -> pref.getFloat(prefName.name, default as Float) as T?
-                Long::class -> pref.getLong(prefName.name, default as Long) as T?
-                String::class -> pref.getString(prefName.name, default as String?) as T?
-                Set::class -> (pref.readStringSet(prefName.name) ?: (default as? Set<String>)) as T?
+            when (kinds[prefName.ordinal]) {
+                KIND_BOOLEAN -> pref.getBoolean(prefName.name, default as Boolean) as T?
+                KIND_INT -> pref.getInt(prefName.name, default as Int) as T?
+                KIND_FLOAT -> pref.getFloat(prefName.name, default as Float) as T?
+                KIND_LONG -> pref.getLong(prefName.name, default as Long) as T?
+                KIND_STRING -> pref.getString(prefName.name, default as String?) as T?
+                KIND_SET -> (pref.readStringSet(prefName.name) ?: (default as? Set<String>)) as T?
 
                 else -> deserializeClass(prefName.name, default, prefName.data.prefLocation)
             }
