@@ -42,6 +42,12 @@ object PrefManager {
         Compat.importOldPrefs(context)
     }
 
+    private fun SharedPreferences.readStringSet(key: String): Set<String>? = try {
+        getStringSet(key, null)?.mapNotNull { (it as? Any)?.toString() }?.toSet()
+    } catch (_: Exception) {
+        null
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun <T> setVal(prefName: PrefName, value: T?) {
         val pref = getPrefLocation(prefName.data.prefLocation)
@@ -103,26 +109,8 @@ object PrefManager {
                     prefName.data.default as String?
                 ) as T
 
-                Set::class -> {
-                    val raw = try {
-                        pref.all[prefName.name]
-                    } catch (_: Exception) {
-                        null
-                    }
-                    val stringSet: Set<String> = when (raw) {
-                        is Set<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        is Collection<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        else -> {
-                            val prefsSet = try {
-                                pref.getStringSet(prefName.name, null)
-                            } catch (_: Exception) {
-                                null
-                            }
-                            prefsSet?.mapNotNull { (it as? Any)?.toString() }?.toSet() ?: (prefName.data.default as Set<String>)
-                        }
-                    }
-                    stringSet as T
-                }
+                Set::class -> (pref.readStringSet(prefName.name)
+                    ?: (prefName.data.default as Set<String>)) as T
 
                 List::class -> deserializeClass(
                     prefName.name,
@@ -150,26 +138,7 @@ object PrefManager {
                 Float::class -> pref.getFloat(prefName.name, default as Float) as T?
                 Long::class -> pref.getLong(prefName.name, default as Long) as T?
                 String::class -> pref.getString(prefName.name, default as String?) as T?
-                Set::class -> {
-                    val raw = try {
-                        pref.all[prefName.name]
-                    } catch (_: Exception) {
-                        null
-                    }
-                    val stringSet: Set<String>? = when (raw) {
-                        is Set<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        is Collection<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        else -> {
-                            val prefsSet = try {
-                                pref.getStringSet(prefName.name, null)
-                            } catch (_: Exception) {
-                                null
-                            }
-                            prefsSet?.mapNotNull { (it as? Any)?.toString() }?.toSet() ?: (default as? Set<String>)
-                        }
-                    }
-                    stringSet as T?
-                }
+                Set::class -> (pref.readStringSet(prefName.name) ?: (default as? Set<String>)) as T?
 
                 else -> deserializeClass(prefName.name, default, prefName.data.prefLocation)
             }
@@ -182,7 +151,11 @@ object PrefManager {
     fun <T> getCustomVal(key: String, default: T): T {
         return try {
             if (default == null) {
-                val raw = irrelevantPreferences?.all?.get(key)
+                val raw: Any? = try {
+                    irrelevantPreferences?.getString(key, null)
+                } catch (_: ClassCastException) {
+                    irrelevantPreferences?.all?.get(key)
+                }
                 return (raw as? T) ?: default
             }
             when (default) {
@@ -192,23 +165,7 @@ object PrefManager {
                 is Long -> irrelevantPreferences!!.getLong(key, default) as T
                 is String -> irrelevantPreferences!!.getString(key, default) as T
                 is Set<*> -> {
-                    val raw = try {
-                        irrelevantPreferences!!.all[key]
-                    } catch (_: Exception) {
-                        null
-                    }
-                    val stringSet: Set<String> = when (raw) {
-                        is Set<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        is Collection<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        else -> {
-                            val prefsSet = try {
-                                irrelevantPreferences!!.getStringSet(key, null)
-                            } catch (_: Exception) {
-                                null
-                            }
-                            prefsSet?.mapNotNull { (it as? Any)?.toString() }?.toSet() ?: return default
-                        }
-                    }
+                    val stringSet = irrelevantPreferences!!.readStringSet(key) ?: return default
                     val sample = (default as Set<*>).firstOrNull()
                     when (sample) {
                         is Int -> stringSet.mapNotNull { it.toIntOrNull() }.toSet() as T
@@ -252,26 +209,8 @@ object PrefManager {
                     default as? String
                 ) as T?
 
-                clazz.isAssignableFrom(Set::class.java) -> {
-                    val raw = try {
-                        irrelevantPreferences!!.all[key]
-                    } catch (_: Exception) {
-                        null
-                    }
-                    val stringSet: Set<String>? = when (raw) {
-                        is Set<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        is Collection<*> -> raw.mapNotNull { it?.toString() }.toSet()
-                        else -> {
-                            val prefsSet = try {
-                                irrelevantPreferences!!.getStringSet(key, null)
-                            } catch (_: Exception) {
-                                null
-                            }
-                            prefsSet?.mapNotNull { (it as? Any)?.toString() }?.toSet()
-                        }
-                    }
-                    (stringSet ?: (default as? Set<String>)) as T?
-                }
+                clazz.isAssignableFrom(Set::class.java) ->
+                    (irrelevantPreferences!!.readStringSet(key) ?: (default as? Set<String>)) as T?
 
                 else -> deserializeClass(key, default, Location.Irrelevant)
             }
