@@ -65,10 +65,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
@@ -405,74 +405,79 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                     if (currentEp.selectedVideo in extractor.videos.indices) extractor.videos[currentEp.selectedVideo] else extractor.videos[0]
                                 } else null
                             val activity = activity ?: currActivity()
-                            selectedVideo?.file?.url?.let { url ->
-                                if (url.startsWith("magnet:") || url.endsWith(".torrent")) {
-                                    val torrentManager = Injekt.get<TorrentServerManager>()
-                                    if (!torrentManager.isAvailable()) {
-                                        toast(R.string.torrent_addon_not_available)
-                                        return false
-                                    }
-                                    runBlocking {
-                                        try {
-                                            withContext(Dispatchers.IO) {
-                                                torrentManager.activeTorrentHash?.let {
-                                                    torrentManager.removeTorrent(it)
-                                                }
-                                                val index = if (url.contains("index=")) {
-                                                    url.substringAfter("index=")
-                                                        .toIntOrNull() ?: 0
-                                                } else 0
-                                                Logger.log("Sending: ${url}, ${selectedVideo.quality}, $index")
-                                                val currentTorrent = torrentManager.addTorrent(
-                                                    url,
-                                                    selectedVideo.quality.toString(),
-                                                    "",
-                                                    "",
-                                                    false
-                                                )
-                                                torrentManager.activeTorrentHash =
-                                                    currentTorrent.hash
-
-                                                torrentManager.prebuffer(currentTorrent.hash!!, index)
-
-                                                selectedVideo.file.url =
-                                                    torrentManager.getLink(currentTorrent, index)
-                                                Logger.log("Received: ${selectedVideo.file.url}")
-                                            }
-                                        } catch (e: Exception) {
-                                            Injekt.get<CrashlyticsInterface>()
-                                                .logException(e)
-                                            Logger.log(e)
-                                            toast("Error starting video: ${e.message}")
-                                            return@runBlocking
+                            val startDownload: () -> Unit = {
+                                val act = activity ?: currActivity()
+                                if (selectedVideo != null && act != null) {
+                                    Helper.startAnimeDownloadService(
+                                        act,
+                                        media!!.mainName(),
+                                        currentEp.number,
+                                        selectedVideo,
+                                        subtitlesToDownload,
+                                        audioTracksToDownload,
+                                        media,
+                                        currentEp.thumb?.url ?: media!!.banner
+                                        ?: media!!.cover
+                                    )
+                                    val intent =
+                                        Intent(AnimeWatchFragment.ACTION_DOWNLOAD_STARTED).apply {
+                                            putExtra(
+                                                AnimeWatchFragment.EXTRA_EPISODE_NUMBER,
+                                                currentEp.number,
+                                            )
+                                            putExtra("mediaId", media?.id)
                                         }
-                                    }
+                                    act.sendBroadcast(intent)
+                                } else if (selectedVideo == null) {
+                                    snackString(R.string.no_video_selected)
                                 }
                             }
-                            val act = activity ?: currActivity()
-                            if (selectedVideo != null && act != null) {
-                                Helper.startAnimeDownloadService(
-                                    act,
-                                    media!!.mainName(),
-                                    currentEp.number,
-                                    selectedVideo,
-                                    subtitlesToDownload,
-                                    audioTracksToDownload,
-                                    media,
-                                    currentEp.thumb?.url ?: media!!.banner
-                                    ?: media!!.cover
-                                )
-                                val intent =
-                                    Intent(AnimeWatchFragment.ACTION_DOWNLOAD_STARTED).apply {
-                                        putExtra(
-                                            AnimeWatchFragment.EXTRA_EPISODE_NUMBER,
-                                            currentEp.number,
-                                        )
-                                        putExtra("mediaId", media?.id)
+                            val torrentUrl = selectedVideo?.file?.url
+                                ?.takeIf { it.startsWith("magnet:") || it.endsWith(".torrent") }
+                            if (torrentUrl != null && selectedVideo != null) {
+                                val torrentManager = Injekt.get<TorrentServerManager>()
+                                if (!torrentManager.isAvailable()) {
+                                    toast(R.string.torrent_addon_not_available)
+                                    return false
+                                }
+                                toast("Preparing torrent...")
+                                MainScope().launch {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            torrentManager.activeTorrentHash?.let {
+                                                torrentManager.removeTorrent(it)
+                                            }
+                                            val index = if (torrentUrl.contains("index=")) {
+                                                torrentUrl.substringAfter("index=")
+                                                    .toIntOrNull() ?: 0
+                                            } else 0
+                                            Logger.log("Sending: ${torrentUrl}, ${selectedVideo.quality}, $index")
+                                            val currentTorrent = torrentManager.addTorrent(
+                                                torrentUrl,
+                                                selectedVideo.quality.toString(),
+                                                "",
+                                                "",
+                                                false
+                                            )
+                                            torrentManager.activeTorrentHash =
+                                                currentTorrent.hash
+
+                                            torrentManager.prebuffer(currentTorrent.hash!!, index)
+
+                                            selectedVideo.file.url =
+                                                torrentManager.getLink(currentTorrent, index)
+                                            Logger.log("Received: ${selectedVideo.file.url}")
+                                        }
+                                        startDownload()
+                                    } catch (e: Exception) {
+                                        Injekt.get<CrashlyticsInterface>()
+                                            .logException(e)
+                                        Logger.log(e)
+                                        toast("Error starting video: ${e.message}")
                                     }
-                                act.sendBroadcast(intent)
-                            } else if (selectedVideo == null) {
-                                snackString(R.string.no_video_selected)
+                                }
+                            } else {
+                                startDownload()
                             }
                         }
                         return true
