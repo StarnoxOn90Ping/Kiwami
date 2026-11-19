@@ -78,7 +78,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import kotlin.math.abs
@@ -162,11 +161,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val savedId = savedInstanceState?.getInt("saved_media_id", -1)?.takeIf { it != -1 }
-        var media: Media = intent.getSerialized("media")
+        val media: Media = intent.getSerialized("media")
             ?: savedId?.let { mediaCache.get(it) }
             ?: savedInstanceState?.getSerialized("saved_media")
             ?: mediaSingleton
@@ -175,10 +173,18 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             ?: savedId
             ?: -1
         if (id != -1 && media.name == "No media found") {
-            runBlocking(Dispatchers.IO) {
-                media = Anilist.query.getMedia(id) ?: emptyMedia()
+            lifecycleScope.launch {
+                val fetched = withContext(Dispatchers.IO) { Anilist.query.getMedia(id) }
+                setUpDetails(fetched ?: emptyMedia(), savedInstanceState)
             }
+            return
         }
+        setUpDetails(media, savedInstanceState)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setUpDetails(initialMedia: Media, savedInstanceState: Bundle?) {
+        var media = initialMedia
         this.media = media
         if (media.name == "No media found") {
             snackString(media.name)
