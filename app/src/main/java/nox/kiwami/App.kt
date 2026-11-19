@@ -94,7 +94,11 @@ class App : Application(), GraphProvider<AppGraph> {
         nox.kiwami.home.pill.WatchTimeTracker.install(this)
 
         crashlytics.setCrashlyticsCollectionEnabled(!DisabledReports)
-        crashlytics.setCustomKey("device Info", SettingsActivity.getDeviceInfo())
+
+        val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        applicationScope.launch(Dispatchers.IO) {
+            crashlytics.setCustomKey("device Info", SettingsActivity.getDeviceInfo())
+        }
 
         initializeNetwork()
 
@@ -111,7 +115,6 @@ class App : Application(), GraphProvider<AppGraph> {
             }
         }
 
-        val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         applicationScope.launch(Dispatchers.IO) {
             animeExtensionManager = Injekt.get()
             launch {
