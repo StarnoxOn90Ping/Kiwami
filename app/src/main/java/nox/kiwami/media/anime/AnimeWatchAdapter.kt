@@ -135,17 +135,9 @@ class AnimeWatchAdapter(
             }
         }
         binding.animeSourceDubbed.isChecked = media.selected!!.preferDub
-        binding.animeSourceDubbedText.text =
-            if (media.selected!!.preferDub) binding.root.context.getString(R.string.dubbed) else binding.root.context.getString(
-                R.string.subbed
-            )
 
         var changing = false
         binding.animeSourceDubbed.setOnCheckedChangeListener { _, isChecked ->
-            binding.animeSourceDubbedText.text =
-                if (isChecked) binding.root.context.getString(R.string.dubbed) else binding.root.context.getString(
-                    R.string.subbed
-                )
             if (!changing) fragment.onDubClicked(isChecked)
         }
 
@@ -712,9 +704,22 @@ class AnimeWatchAdapter(
                 binding?.mediaSourceLanguageContainer?.visibility =
                     if (items > 1) View.VISIBLE else View.GONE
                 binding?.mediaSourceLanguage?.setAdapter(adapter)
-
+                val names = parser.extension.sources.map { LanguageMapper.getLanguageName(it.lang) }
+                val codes = parser.extension.sources.map { it.lang.uppercase() }
+                binding?.chipLanguage?.setIcon(R.drawable.ic_round_translate_24)
+                binding?.chipLanguage?.setOptions(names, codes, lang) { i ->
+                    binding?.mediaSourceLanguage?.onItemClickListener
+                        ?.onItemClick(null, null, i, i.toLong())
+                }
+                binding?.chipLanguage?.isVisible = items > 1
+                syncChipRow()
             }
         }
+    }
+
+    private fun syncChipRow() {
+        val b = _binding ?: return
+        b.sourceChipsRow.isVisible = b.chipLanguage.isVisible || b.chipScanlator.isVisible
     }
 
     fun updateScanlatorDropdown() {

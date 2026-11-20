@@ -558,9 +558,22 @@ class MangaReadAdapter(
                 binding?.mediaSourceLanguageContainer?.isVisible = items > 1
 
                 binding?.mediaSourceLanguage?.setAdapter(adapter)
-
+                val names = parser.extension.sources.map { LanguageMapper.getLanguageName(it.lang) }
+                val codes = parser.extension.sources.map { it.lang.uppercase() }
+                binding?.chipLanguage?.setIcon(R.drawable.ic_round_translate_24)
+                binding?.chipLanguage?.setOptions(names, codes, lang) { i ->
+                    binding?.mediaSourceLanguage?.onItemClickListener
+                        ?.onItemClick(null, null, i, i.toLong())
+                }
+                binding?.chipLanguage?.isVisible = items > 1
+                syncChipRow()
             }
         }
+    }
+
+    private fun syncChipRow() {
+        val b = _binding ?: return
+        b.sourceChipsRow.isVisible = b.chipLanguage.isVisible || b.chipScanlator.isVisible
     }
 
     fun updateScanlatorDropdown() {
@@ -599,9 +612,19 @@ class MangaReadAdapter(
                 fragment.onScanlatorChange(hiddenScanlators)
                 scanlatorSelectionListener?.onScanlatorsSelected()
             }
+            val selectedIndex =
+                if (selectedText == allText) 0 else (options.indexOf(selectedText) + 1).coerceAtLeast(0)
+            binding.chipScanlator.setIcon(R.drawable.ic_round_filter_list_24)
+            binding.chipScanlator.setOptions(dropdownItems, dropdownItems, selectedIndex) { i ->
+                binding.mediaSourceScanlator.onItemClickListener
+                    ?.onItemClick(null, null, i, i.toLong())
+            }
+            binding.chipScanlator.isVisible = true
         } else {
             binding.mediaSourceScanlatorContainer.visibility = View.GONE
+            binding.chipScanlator.isVisible = false
         }
+        syncChipRow()
     }
 
     override fun getItemCount(): Int = 1
