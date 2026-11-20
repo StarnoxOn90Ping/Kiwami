@@ -31,6 +31,7 @@ import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.SourceCardController
+import nox.kiwami.media.SourcePicker
 import nox.kiwami.media.SourceSearchDialogFragment
 import nox.kiwami.openSettings
 import nox.kiwami.others.LanguageMapper
@@ -201,7 +202,31 @@ class AnimeWatchAdapter(
             },
             onOpen = {
                 binding.mediaSource.performClick()
-                binding.mediaSource.showDropDown()
+                SourcePicker.show(
+                    context = fragment.requireContext(),
+                    items = displayNames.map { name ->
+                        val index = watchSources.names.indexOf(name)
+                        val parser = if (index >= 0) watchSources[index] else null
+                        val extension = (parser as? DynamicAnimeParser)?.extension
+                        SourcePicker.Item(
+                            name,
+                            parser?.icon,
+                            SourcePicker.subtitle(
+                                extension?.lang,
+                                extension?.versionName,
+                                extension?.isNsfw == true
+                            )
+                        )
+                    },
+                    selected = binding.mediaSource.text.toString(),
+                    recentsKey = "anime",
+                    onPick = { index ->
+                        binding.mediaSource.setText(displayNames[index], false)
+                        binding.mediaSource.onItemClickListener
+                            ?.onItemClick(null, null, index, index.toLong())
+                    },
+                    onDismiss = { sourceCard?.closed() }
+                )
             }
         ).also { it.bind() }
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
