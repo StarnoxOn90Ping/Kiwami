@@ -21,6 +21,9 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.xdrop.fuzzywuzzy.FuzzySearch
@@ -37,6 +40,16 @@ class DownloadsManager(private val context: Context) {
     private val changes = AtomicInteger()
     private var countedVersion = -1
     private val titleCounts = IntArray(MediaType.values().size)
+    private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val saveLock = Any()
+    private var saveJob: Job? = null
+
+    @Volatile
+    private var unsaved = false
+
+    init {
+        current = this
+    }
 
     val version: Int get() = changes.get()
 
@@ -48,9 +61,23 @@ class DownloadsManager(private val context: Context) {
         get() = downloadsList.filter { it.type == MediaType.NOVEL }
 
     private fun saveDownloads() {
-        val jsonString = gson.toJson(downloadsList)
-        PrefManager.setVal(PrefName.DownloadsKeys, jsonString)
         changes.incrementAndGet()
+        synchronized(saveLock) {
+            unsaved = true
+            saveJob?.cancel()
+            saveJob = saveScope.launch {
+                delay(SAVE_DELAY_MS)
+                flush()
+            }
+        }
+    }
+
+    fun flush() {
+        synchronized(saveLock) {
+            if (!unsaved) return
+            unsaved = false
+            PrefManager.setVal(PrefName.DownloadsKeys, gson.toJson(downloadsList.toList()))
+        }
     }
 
     fun hasDownloads(type: MediaType): Boolean = downloadsList.any { it.type == type }
@@ -362,11 +389,19 @@ class DownloadsManager(private val context: Context) {
     }
 
     companion object {
+        private const val SAVE_DELAY_MS = 500L
         private const val BASE_LOCATION = "Kiwami"
         private const val MANGA_SUB_LOCATION = "Manga"
         private const val ANIME_SUB_LOCATION = "Anime"
         private const val NOVEL_SUB_LOCATION = "Novel"
 
+
+        @Volatile
+        private var current: DownloadsManager? = null
+
+        fun flushPending() {
+            current?.flush()
+        }
 
         @Synchronized
         private fun getBaseDirectory(context: Context, type: MediaType): DocumentFile? {
