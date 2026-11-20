@@ -22,6 +22,7 @@
             android:textSize="20sp" />
 
         <TextView
+            android:id="@+id/calSourceLabel"
             style="@style/CalendarSectionLabel"
             android:text="@string/cal_section_source" />
 

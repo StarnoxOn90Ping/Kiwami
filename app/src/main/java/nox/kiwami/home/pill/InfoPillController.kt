@@ -14,6 +14,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import nox.kiwami.R
 import nox.kiwami.calendar.AiringCalendarActivity
+import nox.kiwami.calendar.CalendarPrefs
 import nox.kiwami.connections.anilist.Anilist
 import nox.kiwami.connections.anilist.AnilistHomeViewModel
 import nox.kiwami.databinding.FragmentHomeBinding
@@ -398,7 +399,10 @@ class InfoPillController(
 
     private fun runAction() {
         when (cards.getOrNull(index)) {
-            is Card.UpNext -> ctx.startActivity(Intent(ctx, AiringCalendarActivity::class.java))
+            is Card.UpNext -> ctx.startActivity(
+                Intent(ctx, AiringCalendarActivity::class.java)
+                    .putExtra(AiringCalendarActivity.EXTRA_CATEGORY, CalendarPrefs.CATEGORY_ANIME)
+            )
             Card.Lucky -> pickRandom()
             else -> Unit
         }

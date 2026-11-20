@@ -103,24 +103,36 @@ class CalendarAdapter(
         fun bind(e: CalendarEntry) {
             val ctx = b.root.context
             val density = ctx.resources.displayMetrics.density
-            val nowSec = System.currentTimeMillis() / 1000
-            val diff = e.airingAt - nowSec
-            val aired = diff <= 0
+            val nowMs = System.currentTimeMillis()
+            val diff = e.airingAt - nowMs / 1000
+            val aired = e.hasAired(nowMs)
 
             b.entryTitle.text = e.media.userPreferredName
-            b.entryMeta.text = ctx.getString(
-                R.string.cal_episode_at, e.episode, timeFormat.format(e.airingAt * 1000)
-            )
-
-            b.entryCountdown.text = formatDuration(diff)
-            b.entryCountdownLabel.text = ctx.getString(if (aired) R.string.cal_ago else R.string.cal_left)
+            if (e.isManga) {
+                b.entryMeta.text = if (e.episode > 0) ctx.getString(R.string.cal_chapter_expected, e.episode)
+                else ctx.getString(R.string.cal_chapter_next_expected)
+                val days = ((startOfDay(e.airingAt * 1000) - startOfDay(nowMs)) / DAY_MS).toInt()
+                if (days == 0) {
+                    b.entryCountdown.text = ctx.getString(R.string.cal_today)
+                    b.entryCountdownLabel.text = ""
+                } else {
+                    b.entryCountdown.text = ctx.getString(R.string.cal_short_days, kotlin.math.abs(days))
+                    b.entryCountdownLabel.text = ctx.getString(if (days < 0) R.string.cal_ago else R.string.cal_left)
+                }
+            } else {
+                b.entryMeta.text = ctx.getString(
+                    R.string.cal_episode_at, e.episode, timeFormat.format(e.airingAt * 1000)
+                )
+                b.entryCountdown.text = formatDuration(diff)
+                b.entryCountdownLabel.text = ctx.getString(if (aired) R.string.cal_ago else R.string.cal_left)
+            }
             b.entryCountdown.alpha = if (aired) 0.6f else 1f
             b.entryRow.alpha = if (aired) 0.62f else 1f
 
             val status = ListStatus.from(e.listStatus)
             if (status != null && !compact) {
                 b.entryChipRow.visibility = View.VISIBLE
-                b.entryStatus.text = ctx.getString(statusLabel(status))
+                b.entryStatus.text = ctx.getString(statusLabel(status, e.isManga))
                 b.entryStatus.background = GradientDrawable().apply {
                     cornerRadius = 20f * density
                     setColor(status.color)
@@ -129,10 +141,12 @@ class CalendarAdapter(
                 if (progress != null && (status == ListStatus.CURRENT || status == ListStatus.REPEATING)) {
                     val behind = (e.episode - 1) - progress
                     b.entryProgress.visibility = View.VISIBLE
+                    val atLabel = ctx.getString(
+                        if (e.isManga) R.string.cal_progress_at_chapter else R.string.cal_progress_at, progress
+                    )
                     b.entryProgress.text = if (behind > 0) {
-                        ctx.getString(R.string.cal_progress_at, progress) + " · " +
-                                ctx.getString(R.string.cal_progress_behind, behind)
-                    } else ctx.getString(R.string.cal_progress_at, progress)
+                        atLabel + " · " + ctx.getString(R.string.cal_progress_behind, behind)
+                    } else atLabel
                 } else b.entryProgress.visibility = View.GONE
             } else {
                 b.entryChipRow.visibility = View.GONE
@@ -159,11 +173,12 @@ class CalendarAdapter(
         private const val TYPE_HEADER = 0
         private const val TYPE_ITEM = 1
         private const val TICK = "tick"
+        private const val DAY_MS = 86_400_000L
 
-        fun statusLabel(s: ListStatus): Int = when (s) {
-            ListStatus.CURRENT -> R.string.cal_status_current
+        fun statusLabel(s: ListStatus, manga: Boolean = false): Int = when (s) {
+            ListStatus.CURRENT -> if (manga) R.string.cal_status_reading else R.string.cal_status_current
             ListStatus.PLANNING -> R.string.cal_status_planning
-            ListStatus.REPEATING -> R.string.cal_status_repeating
+            ListStatus.REPEATING -> if (manga) R.string.cal_status_rereading else R.string.cal_status_repeating
             ListStatus.PAUSED -> R.string.cal_status_paused
             ListStatus.COMPLETED -> R.string.cal_status_completed
             ListStatus.DROPPED -> R.string.cal_status_dropped

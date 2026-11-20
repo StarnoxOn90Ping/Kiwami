@@ -79,6 +79,8 @@ class AiringCalendarActivity : AppCompatActivity() {
     private var headerPositions: Map<Long, Int> = emptyMap()
     private var selectedDay = -1
     private var programmaticScroll = false
+    private var segmentPos = 0f
+    private var segmentAnimator: ValueAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -119,6 +121,11 @@ class AiringCalendarActivity : AppCompatActivity() {
             if (idx >= 0) selectDay(idx, scroll = true)
         }
 
+        if (savedInstanceState == null) {
+            intent.getIntExtra(EXTRA_CATEGORY, -1).takeIf { it >= 0 }?.let { CalendarPrefs.category = it }
+        }
+        setupSegment()
+
         binding.calendarList.layoutManager = LinearLayoutManager(this)
         binding.calendarList.adapter = adapter
         binding.calendarList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -158,9 +165,66 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
     }
 
+    private fun isManga() = CalendarPrefs.category == CalendarPrefs.CATEGORY_MANGA
+
+    private fun setupSegment() {
+        val segment = binding.calendarSegment
+        val thumb = binding.calendarSegmentThumb
+        val inset = 4 * resources.displayMetrics.density
+        segmentPos = CalendarPrefs.category.toFloat()
+        binding.calendarTabAnime.setOnClickListener { setCategory(CalendarPrefs.CATEGORY_ANIME) }
+        binding.calendarTabManga.setOnClickListener { setCategory(CalendarPrefs.CATEGORY_MANGA) }
+        segment.post {
+            thumb.updateLayoutParams<ViewGroup.LayoutParams> { width = ((segment.width - inset * 2) / 2f).toInt() }
+            placeSegment(segmentPos)
+        }
+    }
+
+    private fun placeSegment(pos: Float) {
+        segmentPos = pos
+        val segment = binding.calendarSegment
+        val thumb = binding.calendarSegmentThumb
+        val inset = 4 * resources.displayMetrics.density
+        val w = (segment.width - inset * 2) / 2f
+        if (w <= 0f) return
+        thumb.translationX = pos * w
+        val bump = kotlin.math.sin(Math.PI * pos).toFloat().coerceAtLeast(0f)
+        thumb.scaleX = 1f + 0.22f * bump
+        thumb.scaleY = 1f - 0.12f * bump
+        val on = getThemeColor(com.google.android.material.R.attr.colorOnPrimary)
+        val off = getThemeColor(com.google.android.material.R.attr.colorOutline)
+        binding.calendarTabAnime.setTextColor(ColorUtils.blendARGB(on, off, pos))
+        binding.calendarTabManga.setTextColor(ColorUtils.blendARGB(off, on, pos))
+        val a = 1f + 0.08f * (1f - pos)
+        val m = 1f + 0.08f * pos
+        binding.calendarTabAnime.scaleX = a
+        binding.calendarTabAnime.scaleY = a
+        binding.calendarTabManga.scaleX = m
+        binding.calendarTabManga.scaleY = m
+    }
+
+    private fun animateSegment(to: Int) {
+        segmentAnimator?.cancel()
+        segmentAnimator = ValueAnimator.ofFloat(segmentPos, to.toFloat()).apply {
+            duration = 340
+            interpolator = DecelerateInterpolator(1.6f)
+            addUpdateListener { placeSegment(it.animatedValue as Float) }
+            start()
+        }
+    }
+
+    private fun setCategory(category: Int) {
+        if (CalendarPrefs.category == category) return
+        CalendarPrefs.category = category
+        animateSegment(category)
+        binding.calendarList.alpha = 0f
+        binding.calendarList.animate().alpha(1f).setDuration(260).start()
+        load()
+    }
+
     private fun load(force: Boolean = false) {
-        val source = CalendarPrefs.source
-        if (source == CalendarPrefs.SOURCE_MINE && Anilist.userid == null) {
+        val source = CalendarPrefs.activeSource
+        if (source != CalendarPrefs.SOURCE_ALL && Anilist.userid == null) {
             raw = emptyList()
             snapshotTime = 0L
             loadState = LoadState.NEEDS_LOGIN
@@ -182,7 +246,7 @@ class AiringCalendarActivity : AppCompatActivity() {
     }
 
     private fun showSnapshot(snap: CalendarRepository.Snapshot, keepPosition: Boolean = false) {
-        val (from, to) = CalendarRepository.window(CalendarPrefs.source)
+        val (from, to) = CalendarRepository.window(CalendarPrefs.activeSource)
         raw = CalendarRepository.entriesIn(snap, from, to)
         snapshotTime = snap.fetchedAtMs
         loadState = LoadState.READY
@@ -190,8 +254,8 @@ class AiringCalendarActivity : AppCompatActivity() {
     }
 
     private fun onRepositoryChanged() {
-        val snap = CalendarRepository.snapshot(CalendarPrefs.source) ?: return
-        val (from, to) = CalendarRepository.window(CalendarPrefs.source)
+        val snap = CalendarRepository.snapshot(CalendarPrefs.activeSource) ?: return
+        val (from, to) = CalendarRepository.window(CalendarPrefs.activeSource)
         val fresh = CalendarRepository.entriesIn(snap, from, to)
         fun key(e: CalendarEntry) = listOf(e.media.id, e.episode, e.airingAt, e.listStatus, e.progress)
         val same = loadState == LoadState.READY && raw.size == fresh.size &&
@@ -280,13 +344,14 @@ class AiringCalendarActivity : AppCompatActivity() {
             dayOfRow(adapter.rows.getOrNull(lm.findFirstVisibleItemPosition()))
         } else null
 
-        val nowSec = System.currentTimeMillis() / 1000
-        val mask = CalendarPrefs.statusMask
-        val mine = CalendarPrefs.source == CalendarPrefs.SOURCE_MINE
+        val nowMs = System.currentTimeMillis()
+        val manga = isManga()
+        val mask = if (manga) CalendarPrefs.mangaStatusMask else CalendarPrefs.statusMask
+        val mine = CalendarPrefs.activeSource != CalendarPrefs.SOURCE_ALL
         val entries = raw.filter { e ->
             val st = ListStatus.from(e.listStatus)
             val statusOk = !mine || (st != null && (mask and st.bit) != 0)
-            val airedOk = !CalendarPrefs.hideAired || e.airingAt > nowSec
+            val airedOk = !CalendarPrefs.hideAired || !e.hasAired(nowMs)
             statusOk && airedOk
         }.sortedBy { it.airingAt }
 
@@ -299,9 +364,7 @@ class AiringCalendarActivity : AppCompatActivity() {
         byDay.keys.sorted().forEach { day ->
             val list = byDay.getValue(day)
             positions[day] = rows.size
-            val count = if (list.size == 1) getString(R.string.cal_episode_count_one)
-            else getString(R.string.cal_episodes_count, list.size)
-            rows.add(CalendarRow.Header(day, dayTitle(day), "${dateFmt.format(day)} · $count"))
+            rows.add(CalendarRow.Header(day, dayTitle(day), "${dateFmt.format(day)} · ${countLabel(list.size)}"))
             list.forEach { rows.add(CalendarRow.Item(it)) }
         }
         headerPositions = positions
@@ -330,6 +393,11 @@ class AiringCalendarActivity : AppCompatActivity() {
         if (target >= 0) selectDay(target, scroll = rows.isNotEmpty())
     }
 
+    private fun countLabel(n: Int): String = when {
+        isManga() -> if (n == 1) getString(R.string.cal_chapter_count_one) else getString(R.string.cal_chapters_count, n)
+        else -> if (n == 1) getString(R.string.cal_episode_count_one) else getString(R.string.cal_episodes_count, n)
+    }
+
     private fun showEmpty() {
         val title: Int
         val text: Int
@@ -338,11 +406,11 @@ class AiringCalendarActivity : AppCompatActivity() {
         when (loadState) {
             LoadState.NEEDS_LOGIN -> {
                 title = R.string.cal_login_title
-                text = R.string.cal_login_text
-                action = R.string.cal_source_all
+                text = if (isManga()) R.string.cal_login_text_manga else R.string.cal_login_text
+                action = if (isManga()) R.string.cal_browse_anime else R.string.cal_source_all
                 onAction = {
                     CalendarPrefs.source = CalendarPrefs.SOURCE_ALL
-                    load()
+                    if (isManga()) setCategory(CalendarPrefs.CATEGORY_ANIME) else load()
                 }
             }
             LoadState.ERROR -> {
@@ -353,7 +421,7 @@ class AiringCalendarActivity : AppCompatActivity() {
             }
             else -> {
                 title = R.string.cal_empty_title
-                text = R.string.cal_empty_text
+                text = if (isManga()) R.string.cal_empty_text_manga else R.string.cal_empty_text
             }
         }
         binding.calendarEmptyTitle.setText(title)
@@ -369,8 +437,9 @@ class AiringCalendarActivity : AppCompatActivity() {
             binding.calendarSummaryCard.visibility = View.GONE
             return
         }
-        val nowSec = System.currentTimeMillis() / 1000
-        val today = startOfDay(System.currentTimeMillis())
+        val nowMs = System.currentTimeMillis()
+        val nowSec = nowMs / 1000
+        val today = startOfDay(nowMs)
         val entries = adapter.rows.filterIsInstance<CalendarRow.Item>().map { it.entry }
         if (entries.isEmpty()) {
             binding.calendarSummaryCard.visibility = View.GONE
@@ -378,22 +447,32 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
         val todayCount = entries.count { startOfDay(it.airingAt * 1000) == today }
         binding.calendarSummaryTitle.text = if (todayCount > 0) {
-            getString(
-                R.string.cal_summary_today,
-                if (todayCount == 1) getString(R.string.cal_episode_count_one)
-                else getString(R.string.cal_episodes_count, todayCount)
-            )
-        } else getString(R.string.cal_summary_nothing_today)
+            getString(R.string.cal_summary_today, countLabel(todayCount))
+        } else getString(
+            if (isManga()) R.string.cal_summary_nothing_today_manga else R.string.cal_summary_nothing_today
+        )
 
-        val next = entries.firstOrNull { it.airingAt > nowSec }
-        binding.calendarSummarySub.text = if (next != null) {
-            getString(
+        val next = entries.firstOrNull { !it.hasAired(nowMs) }
+        binding.calendarSummarySub.text = when {
+            next == null -> getString(
+                if (isManga()) R.string.cal_summary_next_none_manga else R.string.cal_summary_next_none
+            )
+            next.isManga -> {
+                val days = ((startOfDay(next.airingAt * 1000) - today) / 86_400_000L).toInt()
+                val whenText = if (days <= 0) getString(R.string.cal_in_today) else getString(R.string.cal_in_days, days)
+                if (next.episode > 0) {
+                    getString(R.string.cal_summary_next_chapter, next.media.userPreferredName, next.episode, whenText)
+                } else {
+                    getString(R.string.cal_summary_next_chapter_unnumbered, next.media.userPreferredName, whenText)
+                }
+            }
+            else -> getString(
                 R.string.cal_summary_next,
                 next.media.userPreferredName,
                 next.episode,
                 getString(R.string.cal_in_time, formatDuration(next.airingAt - nowSec))
             )
-        } else getString(R.string.cal_summary_next_none)
+        }
         binding.calendarSummaryCard.visibility = View.VISIBLE
     }
 
@@ -417,7 +496,7 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     private fun buildStrip(entries: List<CalendarEntry>) {
         val past = CalendarPrefs.pastDays
-        val ahead = if (CalendarPrefs.source == CalendarPrefs.SOURCE_ALL) minOf(CalendarPrefs.aheadDays, 7)
+        val ahead = if (CalendarPrefs.activeSource == CalendarPrefs.SOURCE_ALL) minOf(CalendarPrefs.aheadDays, 7)
         else CalendarPrefs.aheadDays
 
         val starts = (-past..ahead).map { offset ->
@@ -624,6 +703,7 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     private fun showCustomizeSheet() {
         val sheet = BottomSheetDialog(this)
+        val manga = isManga()
         val b = DialogCalendarCustomizeBinding.inflate(layoutInflater)
         sheet.setContentView(b.root)
         sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
@@ -638,7 +718,7 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
 
         fun refreshStatusVisibility() {
-            val vis = if (CalendarPrefs.source == CalendarPrefs.SOURCE_MINE) View.VISIBLE else View.GONE
+            val vis = if (manga || CalendarPrefs.source == CalendarPrefs.SOURCE_MINE) View.VISIBLE else View.GONE
             b.calStatusLabel.visibility = vis
             b.calStatusGroup.visibility = vis
         }
@@ -648,6 +728,9 @@ class AiringCalendarActivity : AppCompatActivity() {
             b.calStatusGroup.removeAllViews()
             b.calAheadGroup.removeAllViews()
             b.calPastGroup.removeAllViews()
+
+            b.calSourceLabel.visibility = if (manga) View.GONE else View.VISIBLE
+            b.calSourceGroup.visibility = if (manga) View.GONE else View.VISIBLE
 
             chip(b.calSourceGroup, getString(R.string.cal_source_mine), CalendarPrefs.source == CalendarPrefs.SOURCE_MINE) {
                 if (it) {
@@ -664,10 +747,15 @@ class AiringCalendarActivity : AppCompatActivity() {
                 }
             }
 
-            ListStatus.values().forEach { st ->
-                chip(b.calStatusGroup, getString(CalendarAdapter.statusLabel(st)), (CalendarPrefs.statusMask and st.bit) != 0) { on ->
-                    CalendarPrefs.statusMask =
-                        if (on) CalendarPrefs.statusMask or st.bit else CalendarPrefs.statusMask and st.bit.inv()
+            val statuses = if (manga) {
+                ListStatus.values().filter { (ListStatus.MANGA_DEFAULT_MASK and it.bit) != 0 }
+            } else ListStatus.values().toList()
+            statuses.forEach { st ->
+                val current = if (manga) CalendarPrefs.mangaStatusMask else CalendarPrefs.statusMask
+                chip(b.calStatusGroup, getString(CalendarAdapter.statusLabel(st, manga)), (current and st.bit) != 0) { on ->
+                    val mask = if (manga) CalendarPrefs.mangaStatusMask else CalendarPrefs.statusMask
+                    val updated = if (on) mask or st.bit else mask and st.bit.inv()
+                    if (manga) CalendarPrefs.mangaStatusMask = updated else CalendarPrefs.statusMask = updated
                     load()
                 }
             }
@@ -697,6 +785,7 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
         populate()
 
+        if (manga) b.calHideAired.setText(R.string.cal_hide_released)
         b.calHideAired.isChecked = CalendarPrefs.hideAired
         b.calHideAired.setOnCheckedChangeListener { _, on ->
             CalendarPrefs.hideAired = on
@@ -726,9 +815,14 @@ class AiringCalendarActivity : AppCompatActivity() {
         )
     }
 
+    companion object {
+        const val EXTRA_CATEGORY = "calendar_category"
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         spinner?.cancel()
+        segmentAnimator?.cancel()
         if (::binding.isInitialized) binding.calendarList.adapter = null
     }
 }
