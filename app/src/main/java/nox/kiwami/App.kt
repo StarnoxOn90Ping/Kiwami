@@ -13,6 +13,7 @@ import nox.kiwami.connections.crashlytics.CrashlyticsInterface
 import nox.kiwami.connections.discord.Discord
 import nox.kiwami.connections.discord.RPC
 import nox.kiwami.connections.discord.RPCManager
+import nox.kiwami.download.DownloadsManager
 import nox.kiwami.notifications.TaskScheduler
 import nox.kiwami.others.DisabledReports
 import nox.kiwami.parsers.AnimeSources
@@ -277,6 +278,7 @@ class App : Application(), GraphProvider<AppGraph> {
             startedActivityCount--
             if (startedActivityCount == 0) {
                 RPCManager.clearPresence(p0)
+                DownloadsManager.flushPending()
             }
         }
 
