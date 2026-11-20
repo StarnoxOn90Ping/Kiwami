@@ -263,7 +263,6 @@ class App : Application(), GraphProvider<AppGraph> {
         override fun onActivityStarted(p0: Activity) {
             currentActivity = p0
             startedActivityCount++
-            updateDiscordPresence(p0)
         }
 
         override fun onActivityResumed(p0: Activity) {
