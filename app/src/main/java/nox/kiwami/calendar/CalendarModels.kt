@@ -8,8 +8,12 @@ data class CalendarEntry(
     val episode: Int,
     val airingAt: Long,
     val listStatus: String?,
-    val progress: Int?
+    val progress: Int?,
+    val isManga: Boolean = false
 )
+
+fun CalendarEntry.hasAired(nowMs: Long): Boolean =
+    if (isManga) startOfDay(airingAt * 1000) < startOfDay(nowMs) else airingAt * 1000 <= nowMs
 
 enum class ListStatus(val key: String, val bit: Int, val color: Int) {
     CURRENT("CURRENT", 1, 0xFF3DB46D.toInt()),
@@ -26,18 +30,25 @@ enum class ListStatus(val key: String, val bit: Int, val color: Int) {
         }
 
         const val DEFAULT_MASK = 1 or 2 or 4 or 8 or 16
+        const val MANGA_DEFAULT_MASK = 1 or 2 or 4 or 8
     }
 }
 
 object CalendarPrefs {
     const val SOURCE_MINE = 0
     const val SOURCE_ALL = 1
+    const val SOURCE_MANGA = 2
+
+    const val CATEGORY_ANIME = 0
+    const val CATEGORY_MANGA = 1
 
     val AHEAD_OPTIONS = listOf(3, 7, 14, 30)
     val PAST_OPTIONS = listOf(0, 1, 3, 7)
 
     private const val K_SOURCE = "cal_source"
     private const val K_MASK = "cal_status_mask"
+    private const val K_MANGA_MASK = "cal_manga_status_mask"
+    private const val K_CATEGORY = "cal_category"
     private const val K_AHEAD = "cal_ahead_days"
     private const val K_PAST = "cal_past_days"
     private const val K_HIDE_AIRED = "cal_hide_aired"
@@ -47,6 +58,17 @@ object CalendarPrefs {
     var source: Int
         get() = PrefManager.getCustomVal(K_SOURCE, SOURCE_MINE)
         set(v) = PrefManager.setCustomVal(K_SOURCE, v)
+
+    var category: Int
+        get() = PrefManager.getCustomVal(K_CATEGORY, CATEGORY_ANIME)
+        set(v) = PrefManager.setCustomVal(K_CATEGORY, v)
+
+    val activeSource: Int
+        get() = if (category == CATEGORY_MANGA) SOURCE_MANGA else source
+
+    var mangaStatusMask: Int
+        get() = PrefManager.getCustomVal(K_MANGA_MASK, ListStatus.MANGA_DEFAULT_MASK)
+        set(v) = PrefManager.setCustomVal(K_MANGA_MASK, v)
 
     var statusMask: Int
         get() = PrefManager.getCustomVal(K_MASK, ListStatus.DEFAULT_MASK)
@@ -75,6 +97,7 @@ object CalendarPrefs {
     fun reset() {
         source = SOURCE_MINE
         statusMask = ListStatus.DEFAULT_MASK
+        mangaStatusMask = ListStatus.MANGA_DEFAULT_MASK
         aheadDays = 14
         pastDays = 1
         hideAired = false

@@ -5,17 +5,24 @@ import nox.kiwami.currContext
 import nox.kiwami.isOnline
 import nox.kiwami.media.Media
 import nox.kiwami.media.anime.Anime
+import nox.kiwami.media.manga.Manga
+import nox.kiwami.media.mangaupdates.MangaAnimeUtil
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.util.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
@@ -35,6 +42,14 @@ object CalendarRepository {
 
     private data class LibItem(val id: Int, val status: String?, val progress: Int?)
 
+    private class Prediction(
+        val next: Long,
+        val interval: Int,
+        val chapter: Double?,
+        val fetchedAt: Long,
+        val none: Boolean
+    )
+
     private sealed class Plan {
         object None : Plan()
         object Full : Plan()
@@ -45,6 +60,13 @@ object CalendarRepository {
     private const val LIB_KEY = "cal_library_v1"
     private const val DIRTY_KEY = "cal_dirty_v1"
     private const val FULL_DIRTY_KEY = "cal_full_dirty_v1"
+    private const val MANGA_DIRTY_KEY = "cal_manga_dirty_v1"
+    private const val PREDICTION_KEY = "cal_manga_prediction_v1"
+    private const val MANGA_MAX_AGE_MS = 6L * 3600 * 1000
+    private const val PREDICTION_TTL_MS = 24L * 3600 * 1000
+    private const val PREDICTION_FAIL_TTL_MS = 6L * 3600 * 1000
+    private const val MANGA_FETCH_MASK = 1 or 2 or 4 or 8
+    private const val MANGA_PARALLEL = 3
     private const val MINE_MAX_AGE_MS = 8L * 3600 * 1000
     private const val ALL_MAX_AGE_MS = 2L * 3600 * 1000
     private const val RETRY_AGE_MS = 5L * 60 * 1000
@@ -132,11 +154,28 @@ object CalendarRepository {
         refresh(false)
     }
 
+    private fun patchMangaSnapshot(mediaId: Int, status: String?, progress: Int?): Boolean {
+        val snap = snapshot(CalendarPrefs.SOURCE_MANGA) ?: return false
+        if (snap.entries.none { it.media.id == mediaId }) return false
+        val patched = snap.entries.map {
+            if (it.media.id == mediaId) {
+                it.copy(listStatus = status ?: it.listStatus, progress = progress ?: it.progress)
+            } else it
+        }
+        saveSnapshot(
+            CalendarPrefs.SOURCE_MANGA,
+            Snapshot(snap.fetchedAtMs, snap.fullAtMs, snap.fromSec, snap.toSec, patched)
+        )
+        _version.value = _version.value + 1
+        return true
+    }
+
     fun onListEdited(mediaId: Int, status: String?, progress: Int?) {
         scope.launch {
             var needsFetch = false
             try {
                 lock.withLock {
+                    if (patchMangaSnapshot(mediaId, status, progress)) return@withLock
                     val lib = loadLib()?.toMutableList() ?: return@withLock
                     val idx = lib.indexOfFirst { it.id == mediaId }
                     val old = lib.getOrNull(idx)
@@ -169,11 +208,12 @@ object CalendarRepository {
 
     fun onListDeleted() {
         PrefManager.setCustomVal(FULL_DIRTY_KEY, true)
+        PrefManager.setCustomVal(MANGA_DIRTY_KEY, true)
         refresh(false)
     }
 
     private suspend fun run(source: Int, force: Boolean) {
-        if (source == CalendarPrefs.SOURCE_MINE && Anilist.userid == null) return
+        if (source != CalendarPrefs.SOURCE_ALL && Anilist.userid == null) return
         val (from, to) = window(source)
         val now = System.currentTimeMillis()
         val snap = snapshot(source)
@@ -189,7 +229,7 @@ object CalendarRepository {
         _state.value = State.SYNCING
         try {
             val ok = when (plan) {
-                is Plan.Full -> runFull(source, from, to, snap)
+                is Plan.Full -> runFull(source, from, to, snap, force)
                 is Plan.Partial -> runPartial(source, from, to, snap!!, plan.ids)
                 else -> true
             }
@@ -204,10 +244,15 @@ object CalendarRepository {
     }
 
     private fun plan(snap: Snapshot?, source: Int, from: Long, to: Long, now: Long, force: Boolean): Plan {
-        val fullDirty = PrefManager.getCustomVal(FULL_DIRTY_KEY, false)
+        val dirtyKey = if (source == CalendarPrefs.SOURCE_MANGA) MANGA_DIRTY_KEY else FULL_DIRTY_KEY
+        val fullDirty = PrefManager.getCustomVal(dirtyKey, false)
         if (snap == null || force || fullDirty) return Plan.Full
         val covers = snap.fromSec <= from && snap.toSec >= to - DAY_SEC
-        val maxAge = if (source == CalendarPrefs.SOURCE_MINE) MINE_MAX_AGE_MS else ALL_MAX_AGE_MS
+        val maxAge = when (source) {
+            CalendarPrefs.SOURCE_MINE -> MINE_MAX_AGE_MS
+            CalendarPrefs.SOURCE_MANGA -> MANGA_MAX_AGE_MS
+            else -> ALL_MAX_AGE_MS
+        }
         if (!covers || now - snap.fullAtMs > maxAge) return Plan.Full
         if (source != CalendarPrefs.SOURCE_MINE) return Plan.None
         val aired = snap.entries
@@ -217,7 +262,8 @@ object CalendarRepository {
         return if (ids.isEmpty()) Plan.None else Plan.Partial(ids)
     }
 
-    private suspend fun runFull(source: Int, from: Long, to: Long, old: Snapshot?): Boolean {
+    private suspend fun runFull(source: Int, from: Long, to: Long, old: Snapshot?, force: Boolean): Boolean {
+        if (source == CalendarPrefs.SOURCE_MANGA) return runFullManga(from, to, old, force)
         val now = System.currentTimeMillis()
         val entries: List<CalendarEntry>
         var fullAt = now
@@ -263,6 +309,152 @@ object CalendarRepository {
         if (source == CalendarPrefs.SOURCE_MINE) saveDirty(emptySet())
         _version.value = _version.value + 1
         return true
+    }
+
+    private suspend fun runFullManga(from: Long, to: Long, old: Snapshot?, force: Boolean): Boolean {
+        val userId = Anilist.userid ?: return true
+        val now = System.currentTimeMillis()
+        val library = Anilist.query.getMediaLists(false, userId)["All"] ?: arrayListOf()
+        if (library.isEmpty()) {
+            if (old != null) return false
+            val fullAt = now - MANGA_MAX_AGE_MS + RETRY_AGE_MS
+            saveSnapshot(CalendarPrefs.SOURCE_MANGA, Snapshot(now, fullAt, from, to, emptyList()))
+            _version.value = _version.value + 1
+            return true
+        }
+
+        val tracked = library.filter {
+            val st = ListStatus.from(it.userStatus)
+            st != null && (MANGA_FETCH_MASK and st.bit) != 0 && it.status?.uppercase() == "RELEASING"
+        }
+
+        val cache = loadPredictions()
+        val gate = Semaphore(MANGA_PARALLEL)
+        val fetched = coroutineScope {
+            tracked.map { media ->
+                async { gate.withPermit { media to predictionFor(media, cache[media.id], now, force) } }
+            }.awaitAll()
+        }
+
+        val fresh = HashMap<Int, Prediction>()
+        val entries = mutableListOf<CalendarEntry>()
+        fetched.forEach { (media, prediction) ->
+            fresh[media.id] = prediction
+            entries.addAll(expandPrediction(media, prediction, from, to, now))
+        }
+        savePredictions(fresh)
+
+        val nowSec = now / 1000
+        val everyLookupFailed = tracked.isNotEmpty() && fresh.values.all { it.none }
+        if (everyLookupFailed && old?.entries?.any { it.airingAt > nowSec } == true) return false
+
+        saveSnapshot(
+            CalendarPrefs.SOURCE_MANGA,
+            Snapshot(now, now, from, to, entries.sortedBy { it.airingAt })
+        )
+        PrefManager.setCustomVal(MANGA_DIRTY_KEY, false)
+        _version.value = _version.value + 1
+        return true
+    }
+
+    private suspend fun predictionFor(media: Media, cached: Prediction?, now: Long, force: Boolean): Prediction {
+        if (!force && cached != null) {
+            val ttl = if (cached.none) PREDICTION_FAIL_TTL_MS else PREDICTION_TTL_MS
+            if (now - cached.fetchedAt < ttl) return cached
+        }
+        val result = try {
+            val series = MangaAnimeUtil.getSeriesFromMedia(media)
+            MangaAnimeUtil.getNextChapterPrediction(media, series)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.log(e)
+            null
+        }
+        val date = result?.nextReleaseDate
+        if (result == null || result.error != null || date == null) {
+            val keep = cached?.takeIf { !it.none }
+            return keep?.let {
+                Prediction(it.next, it.interval, it.chapter, now - PREDICTION_TTL_MS + PREDICTION_FAIL_TTL_MS, false)
+            } ?: Prediction(0L, 0, null, now, true)
+        }
+        val chapter = result.nextChapter
+            ?.let { Regex("([0-9]+(?:[.][0-9]+)?)").find(it)?.groupValues?.get(1)?.toDoubleOrNull() }
+        return Prediction(
+            startOfDay(date.time),
+            (result.averageIntervalDays ?: 7).coerceAtLeast(1),
+            chapter,
+            now,
+            false
+        )
+    }
+
+    private fun expandPrediction(media: Media, p: Prediction, from: Long, to: Long, now: Long): List<CalendarEntry> {
+        if (p.none) return emptyList()
+        val cal = Calendar.getInstance().apply { timeInMillis = p.next }
+        var chapter = p.chapter
+        val today = startOfDay(now)
+        var guard = 0
+        while (cal.timeInMillis < today && guard++ < 400) {
+            cal.add(Calendar.DAY_OF_YEAR, p.interval)
+            chapter = chapter?.plus(1)
+        }
+        val out = mutableListOf<CalendarEntry>()
+        guard = 0
+        while (cal.timeInMillis < to * 1000 && guard++ < 120) {
+            if (cal.timeInMillis >= from * 1000) {
+                val noon = (cal.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, 12) }
+                out.add(
+                    CalendarEntry(
+                        media,
+                        chapter?.toInt() ?: 0,
+                        noon.timeInMillis / 1000,
+                        media.userStatus,
+                        media.userProgress,
+                        isManga = true
+                    )
+                )
+            }
+            cal.add(Calendar.DAY_OF_YEAR, p.interval)
+            chapter = chapter?.plus(1)
+        }
+        return out
+    }
+
+    private fun loadPredictions(): Map<Int, Prediction> {
+        val raw = PrefManager.getCustomVal(PREDICTION_KEY, "")
+        if (raw.isBlank()) return emptyMap()
+        return try {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).associate {
+                val o = arr.getJSONObject(it)
+                o.getInt("id") to Prediction(
+                    o.getLong("n"),
+                    o.getInt("i"),
+                    if (o.isNull("c")) null else o.getDouble("c"),
+                    o.getLong("f"),
+                    o.optBoolean("x", false)
+                )
+            }
+        } catch (e: Exception) {
+            Logger.log(e)
+            emptyMap()
+        }
+    }
+
+    private fun savePredictions(items: Map<Int, Prediction>) {
+        try {
+            val arr = JSONArray()
+            items.forEach { (id, p) ->
+                arr.put(
+                    JSONObject().put("id", id).put("n", p.next).put("i", p.interval)
+                        .put("c", p.chapter ?: JSONObject.NULL).put("f", p.fetchedAt).put("x", p.none)
+                )
+            }
+            PrefManager.setCustomVal(PREDICTION_KEY, arr.toString())
+        } catch (e: Exception) {
+            Logger.log(e)
+        }
     }
 
     private suspend fun runPartial(source: Int, from: Long, to: Long, snap: Snapshot, ids: Set<Int>): Boolean {
@@ -348,7 +540,8 @@ object CalendarRepository {
             .put("ms", m.status ?: JSONObject.NULL)
             .put("f", m.format ?: JSONObject.NULL)
             .put("sc", m.meanScore ?: JSONObject.NULL)
-            .put("te", m.anime?.totalEpisodes ?: JSONObject.NULL)
+            .put("te", m.anime?.totalEpisodes ?: m.manga?.totalChapters ?: JSONObject.NULL)
+            .put("mg", e.isManga)
             .put("ep", e.episode)
             .put("at", e.airingAt)
             .put("ls", e.listStatus ?: JSONObject.NULL)
@@ -358,8 +551,10 @@ object CalendarRepository {
     private fun entryFromJson(o: JSONObject): CalendarEntry {
         val status = o.str("ls")
         val progress = o.int("pr")
+        val isManga = o.optBoolean("mg", false)
         val media = Media(
-            anime = Anime(totalEpisodes = o.int("te")),
+            anime = if (isManga) null else Anime(totalEpisodes = o.int("te")),
+            manga = if (isManga) Manga(totalChapters = o.int("te")) else null,
             id = o.getInt("id"),
             idMAL = o.int("mal"),
             name = o.str("n"),
@@ -374,6 +569,6 @@ object CalendarRepository {
             format = o.str("f"),
             meanScore = o.int("sc")
         )
-        return CalendarEntry(media, o.getInt("ep"), o.getLong("at"), status, progress)
+        return CalendarEntry(media, o.getInt("ep"), o.getLong("at"), status, progress, isManga)
     }
 }
