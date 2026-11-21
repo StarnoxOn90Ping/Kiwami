@@ -48,6 +48,7 @@ import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.MediaDetailsViewModel
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.MediaType
+import nox.kiwami.media.SourcePillController
 import nox.kiwami.navBarHeight
 import nox.kiwami.notifications.subscription.SubscriptionHelper
 import nox.kiwami.notifications.subscription.SubscriptionHelper.Companion.saveSubscription
@@ -97,6 +98,7 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     private var reverse = false
 
     private lateinit var headerAdapter: AnimeWatchAdapter
+    private var sourcePill: SourcePillController? = null
     private lateinit var episodeAdapter: EpisodeAdapter
 
     val downloadManager = Injekt.get<DownloadsManager>()
@@ -204,6 +206,16 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
                 }
             }
         })
+        sourcePill = SourcePillController(
+            pill = binding.sourcePill,
+            badge = binding.sourcePillBadge,
+            letter = binding.sourcePillLetter,
+            nameView = binding.sourcePillName,
+            status = binding.sourcePillStatus,
+            countView = binding.sourcePillCount,
+            recycler = binding.mediaSourceRecycler,
+            onOpen = { if (::headerAdapter.isInitialized) headerAdapter.openSourcePicker() }
+        ).also { it.bind() }
         model.scrolledToTop.observe(viewLifecycleOwner) {
             if (it) binding.mediaSourceRecycler.scrollToPosition(0)
         }
@@ -237,6 +249,7 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
                         model.watchSources!!.isDownloadedSource(media.selected!!.sourceIndex)
 
                     headerAdapter = AnimeWatchAdapter(it, this, model.watchSources!!)
+                    headerAdapter.onSourceSnapshot = { snapshot -> sourcePill?.update(snapshot) }
                     headerAdapter.scanlatorSelectionListener = this
                     episodeAdapter =
                         EpisodeAdapter(
@@ -1151,6 +1164,8 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     }
 
     override fun onDestroyView() {
+        sourcePill?.release()
+        sourcePill = null
         if (isReceiverRegistered) {
             try {
                 context?.unregisterReceiver(downloadStatusReceiver)

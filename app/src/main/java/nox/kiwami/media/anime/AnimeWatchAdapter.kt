@@ -65,6 +65,7 @@ class AnimeWatchAdapter(
     private var autoSelect = true
     private var _binding: ItemMediaSourceBinding? = null
     private var sourceCard: SourceCardController? = null
+    var onSourceSnapshot: ((SourceCardController.Snapshot) -> Unit)? = null
     private var countLabel: CountLabelController? = null
 
     fun clearBinding() {
@@ -227,7 +228,10 @@ class AnimeWatchAdapter(
                     onLift = { lifted -> sourceCard?.setBadgeLifted(lifted) }
                 )
             }
-        ).also { it.bind() }
+        ).also {
+            it.onSnapshot = { snapshot -> onSourceSnapshot?.invoke(snapshot) }
+            it.bind()
+        }
         countLabel = CountLabelController(binding.sourceCountText)
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             val actualIndex = watchSources.names.indexOf(displayNames[i])
@@ -727,6 +731,10 @@ class AnimeWatchAdapter(
                 syncChipRow()
             }
         }
+    }
+
+    fun openSourcePicker() {
+        _binding?.sourceCard?.performClick()
     }
 
     private fun syncChipRow() {
