@@ -507,13 +507,25 @@
             app:singleSelection="true" />
     </HorizontalScrollView>
 
-    <ProgressBar
+    <nox.kiwami.util.ShimmerLayout
         android:id="@+id/sourceProgressBar"
-        style="?android:attr/progressBarStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        tools:visibility="gone" />
+        tools:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <include layout="@layout/item_episode_skeleton" />
+
+            <include layout="@layout/item_episode_skeleton" />
+
+            <include layout="@layout/item_episode_skeleton" />
+        </LinearLayout>
+    </nox.kiwami.util.ShimmerLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
