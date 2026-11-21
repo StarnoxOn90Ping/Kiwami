@@ -17,7 +17,7 @@
     <string name="preference_file_key" translatable="false">kiwamiprefs</string>
 
     <string name="app_name" translatable="false">Kiwami</string>
-    <string name="slogan">The NEW Best Anime &amp; Manga app for Android.</string>
+    <string name="slogan">Anime and Manga tracking, taken to the Extreme.</string>
 
     <string name="login">Login</string>
     <string name="logout">Logout</string>
