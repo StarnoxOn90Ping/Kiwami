@@ -22,7 +22,7 @@
     <string name="login">Login</string>
     <string name="logout">Logout</string>
 
-    <string name="discord" translatable="false">https://discord.gg/Y2evZNKekQ</string>
+    <string name="discord" translatable="false">https://discord.gg/xfwCAmYWFc</string>
     <string name="github" translatable="false">https://github.com/StarnoxOn90Ping/Kiwami</string>
 
     <string name="anilist_link">https://anilist.co/user/%1$s/</string>
@@ -681,7 +681,7 @@
     <string name="answer_15">Enable Use Proxy for Timestamps: Settings &gt; Anime &gt; Player Settings &gt; Segments. That clears the handshake error for most people.\n\nIf the error is gone but you still get no skip buttons, that episode just doesn\'t have timestamps yet.</string>
 
     <string name="question_16">A source shows nothing</string>
-    <string name="answer_16">Work through these in order and stop when it starts working:\n\n1. Update your extensions.\n2. Open the source\'s Web View and let the page finish loading, then go back. If the Web View shows a 404 or something similar, the source itself is down.\n3. Change the DNS in Settings &gt; Common &gt; Selected DNS. Some ISPs block sources.\n4. Try a VPN you trust, then repeat step 2.\n\nStill nothing? Switch to another source, or ask in our [Discord](https://discord.gg/Y2evZNKekQ).</string>
+    <string name="answer_16">Work through these in order and stop when it starts working:\n\n1. Update your extensions.\n2. Open the source\'s Web View and let the page finish loading, then go back. If the Web View shows a 404 or something similar, the source itself is down.\n3. Change the DNS in Settings &gt; Common &gt; Selected DNS. Some ISPs block sources.\n4. Try a VPN you trust, then repeat step 2.\n\nStill nothing? Switch to another source, or ask in our [Discord](https://discord.gg/xfwCAmYWFc).</string>
 
     <string name="question_17">Little things worth knowing</string>
     <string name="answer_17">- Long-press the logo at the top of Settings to check for updates.\n\n- Long-press an error message, tag, synonym or title to copy it.\n\n- Long-press a server on any episode to open it in another app, like an external player or a download manager.\n\n- You can create custom lists on [AniList](https://anilist.co/settings/lists) once you\'re signed in.\n\n- If watching or reading doesn\'t update your progress by itself, long-press the status button (planning, repeating, watching) on that entry. Next time you finish an episode or start a chapter, Kiwami will ask whether to update it. Say yes.\n\n- Tap the logo in Settings a few times if you\'re bored. It has things to say.</string>
