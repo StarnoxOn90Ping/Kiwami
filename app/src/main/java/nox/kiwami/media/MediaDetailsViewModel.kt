@@ -202,13 +202,14 @@ class MediaDetailsViewModel : ViewModel() {
                     media.postValue(m)
                 } else if (downloaded && !bypassMemory) {
                     media.postValue(m)
-                    val localCover = m.cover?.takeUnless { it.startsWith("http") }
-                    val localBanner = m.banner?.takeUnless { it.startsWith("http") }
-                    val details = runCatching { Anilist.query.mediaDetails(m.copy()) }.getOrNull()
-                    if (details != null && details.shareLink != null) {
-                        localCover?.let { details.cover = it }
-                        localBanner?.let { details.banner = it }
-                        media.postValue(details)
+                    val fresh = runCatching { Anilist.query.mediaDetails(m.copy()) }.getOrNull()
+                    if (fresh?.shareLink != null && (
+                            fresh.description != m.description ||
+                                    fresh.status != m.status ||
+                                    fresh.genres != m.genres
+                            )
+                    ) {
+                        detailsOutdated.postValue(true)
                     }
                 } else {
                     val servedFromCache = nox.kiwami.connections.anilist.MediaDetailsCache.has(m.id)
