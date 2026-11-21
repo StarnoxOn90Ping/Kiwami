@@ -37,6 +37,8 @@ class MangaChapterAdapter(
         private const val PAYLOAD_SELECTION = "selection"
 
         private const val PAYLOAD_READ = "read_state"
+        private const val PAYLOAD_PROGRESS = "download_progress"
+        private const val PAYLOAD_DOWNLOAD_STATE = "download_state"
     }
 
     val selectedChapters = LinkedHashSet<String>()
@@ -88,6 +90,15 @@ class MangaChapterAdapter(
             if (position in arr.indices) bindReadState(holder, arr[position])
             handled = true
         }
+        val listHolder = holder as? ChapterListViewHolder
+        if (payloads.contains(PAYLOAD_DOWNLOAD_STATE)) {
+            if (position in arr.indices) listHolder?.bindDownloadState(arr[position])
+            handled = true
+        }
+        if (payloads.contains(PAYLOAD_PROGRESS)) {
+            if (position in arr.indices) listHolder?.bindProgressText(arr[position].progress)
+            handled = true
+        }
         if (handled) return
         super.onBindViewHolder(holder, position, payloads)
     }
@@ -113,6 +124,10 @@ class MangaChapterAdapter(
         notifyItemRangeChanged(0, newArr.size, PAYLOAD_READ)
         for (i in newArr.indices) {
             val chapter = newArr[i]
+            if (chapter.progress.isNullOrEmpty() && isDownloaded(chapter)) {
+                chapter.progress = downloadedText(chapter)
+                notifyItemChanged(i, PAYLOAD_PROGRESS)
+            }
             val bound = boundKeys[chapter.uniqueNumber()]
             if (bound != null && bound != contentKey(chapter)) notifyItemChanged(i)
         }
@@ -248,6 +263,31 @@ class MangaChapterAdapter(
 
     private val activeDownloads = mutableSetOf<String>()
     private val downloadedChapters = mutableSetOf<String>()
+    private val downloadedSizes = HashMap<String, String>()
+
+    private fun downloadedText(chapter: MangaChapter): String {
+        val size = downloadedSizes[chapter.uniqueNumber()]
+        return if (size.isNullOrEmpty()) "Downloaded" else "Downloaded: ($size)"
+    }
+
+    fun hasDownloadedSize(name: String): Boolean {
+        val chapter = arr.firstOrNull { it.uniqueNumber() == name || it.number == name }
+            ?: return true
+        return downloadedSizes.containsKey(chapter.uniqueNumber())
+    }
+
+    fun setDownloadedSize(name: String, bytes: Long) {
+        val position = arr.indexOfFirst { it.uniqueNumber() == name || it.number == name }
+        if (position == -1) return
+        val chapter = arr[position]
+        downloadedSizes[chapter.uniqueNumber()] =
+            if (bytes > 0L) SizeFormatter.formatBytes(bytes) else ""
+        if (bytes <= 0L || !isDownloaded(chapter) || isDownloading(chapter.uniqueNumber())) return
+        val text = downloadedText(chapter)
+        if (chapter.progress == text) return
+        chapter.progress = text
+        notifyItemChanged(position, PAYLOAD_PROGRESS)
+    }
 
     fun isDownloading(chapterNumber: String): Boolean = activeDownloads.contains(chapterNumber)
     fun isDownloaded(chapterNumber: String): Boolean = downloadedChapters.contains(chapterNumber)
@@ -270,7 +310,7 @@ class MangaChapterAdapter(
             val chapter = arr[position]
             activeDownloads.add(chapter.uniqueNumber())
             activeDownloads.add(chapter.number)
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -284,8 +324,8 @@ class MangaChapterAdapter(
             activeDownloads.remove(chapter.number)
             downloadedChapters.add(chapter.uniqueNumber())
             downloadedChapters.add(chapter.number)
-            chapter.progress = "Downloaded"
-            notifyItemChanged(position)
+            chapter.progress = downloadedText(chapter)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -295,10 +335,11 @@ class MangaChapterAdapter(
         activeDownloads.remove(chapterNumber.uniqueNumber())
         activeDownloads.remove(chapterNumber.number)
         chapterNumber.title?.let { downloadedChapters.remove(it) }
+        downloadedSizes.remove(chapterNumber.uniqueNumber())
         val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber.uniqueNumber() }
         if (position != -1) {
             arr[position].progress = ""
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -312,8 +353,9 @@ class MangaChapterAdapter(
             activeDownloads.remove(chapter.number)
             downloadedChapters.remove(chapter.uniqueNumber())
             downloadedChapters.remove(chapter.number)
+            downloadedSizes.remove(chapter.uniqueNumber())
             chapter.progress = ""
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -328,15 +370,11 @@ class MangaChapterAdapter(
         estimatedTotalBytes: Long
     ) {
         val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber }
-        if (position != -1) {
-            arr[position].progress = buildDownloadProgressText(
-                progress,
-                downloadedBytes,
-                estimatedTotalBytes
-            )
-
-            notifyItemChanged(position)
-        }
+        if (position == -1) return
+        val text = buildDownloadProgressText(progress, downloadedBytes, estimatedTotalBytes)
+        if (arr[position].progress == text) return
+        arr[position].progress = text
+        notifyItemChanged(position, PAYLOAD_PROGRESS)
     }
 
     private fun buildDownloadProgressText(
@@ -391,6 +429,21 @@ class MangaChapterAdapter(
     inner class ChapterListViewHolder(val binding: ItemChapterListBinding) :
         RecyclerView.ViewHolder(binding.root) {
         private val activeCoroutines = mutableSetOf<String>()
+        fun bindProgressText(progress: String?) {
+            if (progress.isNullOrEmpty()) {
+                binding.itemChapterTitle.visibility = View.GONE
+                binding.itemChapterTitle.text = ""
+            } else {
+                binding.itemChapterTitle.visibility = View.VISIBLE
+                binding.itemChapterTitle.text = progress
+            }
+        }
+
+        fun bindDownloadState(chapter: MangaChapter) {
+            bind(chapter, chapter.progress)
+            bindProgressText(chapter.progress)
+        }
+
         fun bind(chapter: MangaChapter, progress: String?) {
             val chapterNumber = chapter.uniqueNumber()
             if (progress != null) {

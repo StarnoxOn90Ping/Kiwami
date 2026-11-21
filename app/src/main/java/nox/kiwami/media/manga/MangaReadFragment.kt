@@ -829,6 +829,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     private val downloadStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (!this@MangaReadFragment::chapterAdapter.isInitialized) return
+            if (intent.getIntExtra("mediaId", -1) != media.id) return
             when (intent.action) {
                 ACTION_DOWNLOAD_STARTED -> {
                     val chapterNumber = intent.getStringExtra(EXTRA_CHAPTER_NUMBER)
@@ -838,6 +839,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 ACTION_DOWNLOAD_FINISHED -> {
                     val chapterNumber = intent.getStringExtra(EXTRA_CHAPTER_NUMBER)
                     chapterNumber?.let { chapterAdapter.stopDownload(it) }
+                    loadDownloadSizes()
                 }
 
                 ACTION_DOWNLOAD_FAILED -> {
@@ -865,6 +867,27 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
     }
 
+
+    private fun loadDownloadSizes() {
+        val appContext = context?.applicationContext ?: return
+        val targets = downloadManager.mangaDownloadedTypes.filter { media.compareName(it.titleName) }
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            for (download in targets) {
+                if (chapterAdapter.hasDownloadedSize(download.uniqueName)) continue
+                val bytes = DownloadsManager.getDirSize(
+                    appContext,
+                    MediaType.MANGA,
+                    download.titleName,
+                    download.chapterName
+                )
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    chapterAdapter.setDownloadedSize(download.uniqueName, bytes)
+                    chapterAdapter.setDownloadedSize(download.chapterName, bytes)
+                }
+            }
+        }
+    }
 
     @SuppressLint("NotifyDataSetChanged")
     private fun reload() {
@@ -905,6 +928,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     chapterAdapter.markDownloaded(download.chapterName)
                 }
             }
+            loadDownloadSizes()
             return
         }
 
@@ -921,6 +945,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
 
         chapterAdapter.notifyItemRangeInserted(0, arr.size)
+        loadDownloadSizes()
     }
 
     override fun onDestroyView() {

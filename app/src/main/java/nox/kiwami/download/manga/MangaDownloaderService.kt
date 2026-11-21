@@ -161,8 +161,8 @@ class MangaDownloaderService : Service() {
             val task = MangaServiceDataSingleton.downloadQueue.poll()
             if (task != null) {
                 if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@MangaDownloaderService)) {
-                    broadcastDownloadFailed(task.uniqueName)
-                    broadcastDownloadFailed(task.chapter)
+                    broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
+                    broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
                     withContext(Dispatchers.Main) {
                         snackString(getString(R.string.download_wifi_only_warning))
                     }
@@ -220,8 +220,8 @@ class MangaDownloaderService : Service() {
     fun cancelDownload(chapter: String) {
         val tasks = MangaServiceDataSingleton.downloadQueue.filter { it.chapter == chapter || it.uniqueName == chapter }
         tasks.forEach { task ->
-            broadcastDownloadFailed(task.uniqueName)
-            broadcastDownloadFailed(task.chapter)
+            broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
+            broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
         }
         serviceScope.launch {
             mutex.withLock {
@@ -260,8 +260,8 @@ class MangaDownloaderService : Service() {
 
     suspend fun download(task: DownloadTask) {
         if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@MangaDownloaderService)) {
-            broadcastDownloadFailed(task.uniqueName)
-            broadcastDownloadFailed(task.chapter)
+            broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
+            broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
             withContext(Dispatchers.Main) {
                 snackString(getString(R.string.download_wifi_only_warning))
             }
@@ -345,12 +345,14 @@ class MangaDownloaderService : Service() {
                         MangaServiceDataSingleton.progress["${task.title}_${task.chapter}"] = progressPercent
                         broadcastDownloadProgress(
                             task.uniqueName,
+                            task.sourceMedia?.id,
                             progressPercent,
                             downloadedBytes,
                             estimatedTotalBytes
                         )
                         broadcastDownloadProgress(
                             task.chapter,
+                            task.sourceMedia?.id,
                             progressPercent,
                             downloadedBytes,
                             estimatedTotalBytes
@@ -383,16 +385,16 @@ class MangaDownloaderService : Service() {
                         scanlator = task.scanlator,
                     )
                 )
-                broadcastDownloadFinished(task.uniqueName)
-                broadcastDownloadFinished(task.chapter)
+                broadcastDownloadFinished(task.uniqueName, task.sourceMedia?.id)
+                broadcastDownloadFinished(task.chapter, task.sourceMedia?.id)
                 snackString("${task.title} - ${task.chapter} Download finished")
             }
         } catch (e: Exception) {
             Logger.log("Exception while downloading file: ${e.message}")
             snackString("Exception while downloading file: ${e.message}")
             Injekt.get<CrashlyticsInterface>().logException(e)
-            broadcastDownloadFailed(task.uniqueName)
-            broadcastDownloadFailed(task.chapter)
+            broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
+            broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
         }
     }
 
@@ -493,35 +495,40 @@ class MangaDownloaderService : Service() {
             }
         }
 
-    private fun broadcastDownloadStarted(chapterNumber: String) {
+    private fun broadcastDownloadStarted(chapterNumber: String, mediaId: Int?) {
         val intent = Intent(ACTION_DOWNLOAD_STARTED).apply {
             putExtra(EXTRA_CHAPTER_NUMBER, chapterNumber)
+            putExtra("mediaId", mediaId ?: -1)
         }
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadFinished(chapterNumber: String) {
+    private fun broadcastDownloadFinished(chapterNumber: String, mediaId: Int?) {
         val intent = Intent(ACTION_DOWNLOAD_FINISHED).apply {
             putExtra(EXTRA_CHAPTER_NUMBER, chapterNumber)
+            putExtra("mediaId", mediaId ?: -1)
         }
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadFailed(chapterNumber: String) {
+    private fun broadcastDownloadFailed(chapterNumber: String, mediaId: Int?) {
         val intent = Intent(ACTION_DOWNLOAD_FAILED).apply {
             putExtra(EXTRA_CHAPTER_NUMBER, chapterNumber)
+            putExtra("mediaId", mediaId ?: -1)
         }
         sendBroadcast(intent)
     }
 
     private fun broadcastDownloadProgress(
         chapterNumber: String,
+        mediaId: Int?,
         progress: Int,
         downloadedBytes: Long,
         estimatedTotalBytes: Long
     ) {
         val intent = Intent(ACTION_DOWNLOAD_PROGRESS).apply {
             putExtra(EXTRA_CHAPTER_NUMBER, chapterNumber)
+            putExtra("mediaId", mediaId ?: -1)
             putExtra("progress", progress)
             putExtra(EXTRA_DOWNLOADED_BYTES, downloadedBytes)
             putExtra(EXTRA_ESTIMATED_TOTAL_BYTES, estimatedTotalBytes)
