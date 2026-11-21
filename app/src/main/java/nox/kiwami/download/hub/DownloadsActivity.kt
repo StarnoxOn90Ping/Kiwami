@@ -1,9 +1,11 @@
 package nox.kiwami.download.hub
 
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.LinearInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -14,12 +16,16 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import nox.kiwami.R
 import nox.kiwami.databinding.ActivityDownloadsBinding
+import nox.kiwami.download.DownloadRefresher
 import nox.kiwami.download.DownloadsManager
+import nox.kiwami.download.OfflineLibraryCache
 import nox.kiwami.download.anime.OfflineAnimeFragment
 import nox.kiwami.download.manga.OfflineMangaFragment
 import nox.kiwami.media.MediaType
 import nox.kiwami.getThemeColor
 import nox.kiwami.initActivity
+import nox.kiwami.isOnline
+import nox.kiwami.snackString
 import nox.kiwami.navBarHeight
 import nox.kiwami.settings.DownloadQueueActivity
 import nox.kiwami.settings.saving.PrefManager
@@ -46,6 +52,8 @@ class DownloadsActivity : AppCompatActivity() {
     private var lastMangaCount = -1
     private var lastCountsVersion = -1
     private var currentPage = 0
+    private var refreshing = false
+    private var spinner: ObjectAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,15 +76,15 @@ class DownloadsActivity : AppCompatActivity() {
         binding.downloadsTitle.fadeInDown()
         binding.downloadsSubtitle.fadeInDown(120)
         binding.downloadsBack.setPressBounce()
-        binding.downloadsQueueButton.setPressBounce()
+        binding.downloadsRefreshButton.setPressBounce()
         binding.downloadsBanner.setPressBounce(0.97f)
 
         binding.downloadsBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         val openQueue = View.OnClickListener {
             startActivity(Intent(this, DownloadQueueActivity::class.java))
         }
-        binding.downloadsQueueButton.setOnClickListener(openQueue)
         binding.downloadsBanner.setOnClickListener(openQueue)
+        binding.downloadsRefreshButton.setOnClickListener { refreshDownloads() }
 
         bannerArrow = DownloadArrowAnimator(
             binding.downloadsBannerIcon,
@@ -85,6 +93,41 @@ class DownloadsActivity : AppCompatActivity() {
         setupPager()
         refreshCounts()
         startLiveUpdates()
+    }
+
+    private fun refreshDownloads() {
+        if (refreshing) return
+        if (DownloadActivityState.snapshot().isActive) {
+            snackString(getString(R.string.hub_refresh_busy))
+            return
+        }
+        if (!isOnline(this)) {
+            snackString(getString(R.string.hub_refresh_offline))
+            return
+        }
+        refreshing = true
+        spinner = ObjectAnimator.ofFloat(binding.downloadsRefreshIcon, View.ROTATION, 0f, 360f).apply {
+            duration = 900
+            repeatCount = ObjectAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            start()
+        }
+        lifecycleScope.launch {
+            try {
+                val result = DownloadRefresher.refreshAll(applicationContext, downloadsManager) { done, total ->
+                    runOnUiThread {
+                        binding.downloadsSubtitle.text = getString(R.string.hub_refreshing, done, total)
+                    }
+                }
+                OfflineLibraryCache.clear()
+                snackString(getString(R.string.hub_refresh_done, result.refreshed, result.total))
+                recreate()
+            } finally {
+                refreshing = false
+                spinner?.cancel()
+                binding.downloadsRefreshIcon.rotation = 0f
+            }
+        }
     }
 
     private fun setupPager() {
@@ -203,7 +246,6 @@ class DownloadsActivity : AppCompatActivity() {
 
     private fun renderState(state: DownloadActivityState) {
         val banner = binding.downloadsBanner
-        val count = binding.downloadsQueueCount
         if (state.isActive) {
             val pct = state.percent
             binding.downloadsBannerText.text =
@@ -215,8 +257,6 @@ class DownloadsActivity : AppCompatActivity() {
             } else if (!binding.downloadsBannerProgress.isIndeterminate) {
                 binding.downloadsBannerProgress.isIndeterminate = true
             }
-            count.text = state.total.toString()
-            count.visibility = View.VISIBLE
 
             if (banner.visibility != View.VISIBLE) {
                 banner.alpha = 0f
@@ -225,7 +265,6 @@ class DownloadsActivity : AppCompatActivity() {
             }
             bannerArrow.start()
         } else {
-            count.visibility = View.GONE
             bannerArrow.stop()
             if (banner.visibility == View.VISIBLE) {
                 banner.animate().alpha(0f).setDuration(200)
