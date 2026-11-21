@@ -76,30 +76,6 @@
                         tools:text="12" />
                 </androidx.cardview.widget.CardView>
 
-                <LinearLayout
-                    android:id="@+id/itemMediaProgress_cont"
-                    android:layout_width="164dp"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom"
-                    android:orientation="horizontal"
-                    android:visibility="gone">
-
-                    <View
-                        android:id="@+id/itemMediaProgress"
-                        android:layout_width="0dp"
-                        android:layout_height="2dp"
-                        android:layout_weight="0"
-                        android:background="?attr/colorPrimary" />
-
-                    <View
-                        android:id="@+id/itemMediaProgressEmpty"
-                        android:layout_width="0dp"
-                        android:layout_height="2dp"
-                        android:layout_weight="1"
-                        android:background="#80FFFFFF" />
-
-                </LinearLayout>
-
                 <ImageButton
                     android:id="@+id/itemEpisodeViewed"
                     android:layout_width="wrap_content"
@@ -213,6 +189,30 @@
             app:lineHeight="16sp"
             tools:ignore="TextContrastCheck"
             tools:text="@tools:sample/lorem/random" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/itemMediaProgress_cont"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/itemMediaProgress"
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_weight="0"
+            android:background="?attr/colorPrimary" />
+
+        <View
+            android:id="@+id/itemMediaProgressEmpty"
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_weight="1"
+            android:background="#80FFFFFF" />
 
     </LinearLayout>
 
