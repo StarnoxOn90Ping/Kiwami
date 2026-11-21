@@ -23,7 +23,9 @@ import nox.kiwami.R
 import nox.kiwami.addons.download.DownloadAddonManager
 import nox.kiwami.connections.crashlytics.CrashlyticsInterface
 import nox.kiwami.defaultHeaders
+import nox.kiwami.download.DownloadMetadata
 import nox.kiwami.download.DownloadedType
+import nox.kiwami.download.EpisodeInfo
 import nox.kiwami.download.DownloadsManager
 import nox.kiwami.download.DownloadsManager.Companion.getSubDirectory
 import nox.kiwami.download.video.DrmDownloader
@@ -623,14 +625,32 @@ class AnimeDownloaderService : Service() {
                         ensureImage(it, directory, "banner.jpg")
                     }
                     if (task.episodeImage != null) {
-                        media.anime?.episodes?.getEpisode(task.episode)?.let { episode ->
-                            episode.thumb = ensureImage(
-                                task.episodeImage,
-                                episodeDirectory,
-                                "episodeImage.jpg"
-                            )?.let { FileUrl(it) }
-                        }
+                        val thumbnailUri = ensureImage(
+                            task.episodeImage,
+                            episodeDirectory,
+                            DownloadMetadata.EPISODE_THUMBNAIL
+                        )
+                        media.anime?.episodes?.getEpisode(task.episode)?.thumb =
+                            thumbnailUri?.let { FileUrl(it) }
                     }
+                    val episodeData = media.anime?.episodes?.getEpisode(task.episode)
+                    val thumbnailName = episodeDirectory.findFile(DownloadMetadata.EPISODE_THUMBNAIL)
+                        ?.takeIf { it.isFile && it.length() > 0L }
+                        ?.name
+                    DownloadMetadata.write(
+                        this@AnimeDownloaderService,
+                        episodeDirectory,
+                        DownloadMetadata.EPISODE_FILE,
+                        EpisodeInfo(
+                            number = task.episode,
+                            title = episodeData?.title,
+                            description = episodeData?.desc,
+                            thumbnail = thumbnailName,
+                            filler = episodeData?.filler ?: false,
+                            date = episodeData?.date,
+                            rating = episodeData?.rating
+                        )
+                    )
 
                     val jsonString = gson.toJson(media)
                     withContext(Dispatchers.Main) {
