@@ -1,16 +1,20 @@
 package nox.kiwami.calendar
 
 import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.text.format.DateFormat
+import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
-import androidx.core.graphics.ColorUtils
 import android.widget.TextView
+import kotlin.math.abs
+import kotlin.math.min
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.Lifecycle
@@ -66,8 +70,8 @@ class AiringCalendarActivity : AppCompatActivity() {
     private var headerPositions: Map<Long, Int> = emptyMap()
     private var selectedDay = -1
     private var programmaticScroll = false
-    private var segmentPos = 0f
-    private var segmentAnimator: ValueAnimator? = null
+    private lateinit var segmentController: CategorySegmentController
+    private var switching = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,58 +163,160 @@ class AiringCalendarActivity : AppCompatActivity() {
     private fun isManga() = CalendarPrefs.category == CalendarPrefs.CATEGORY_MANGA
 
     private fun setupSegment() {
-        val segment = binding.calendarSegment
-        val thumb = binding.calendarSegmentThumb
-        val inset = 4 * resources.displayMetrics.density
-        segmentPos = CalendarPrefs.category.toFloat()
-        binding.calendarTabAnime.setOnClickListener { setCategory(CalendarPrefs.CATEGORY_ANIME) }
-        binding.calendarTabManga.setOnClickListener { setCategory(CalendarPrefs.CATEGORY_MANGA) }
-        segment.post {
-            thumb.updateLayoutParams<ViewGroup.LayoutParams> { width = ((segment.width - inset * 2) / 2f).toInt() }
-            placeSegment(segmentPos)
-        }
+        segmentController = CategorySegmentController(
+            binding.calendarSegment,
+            binding.calendarSegmentThumb,
+            listOf(binding.calendarTabAnime, binding.calendarTabManga),
+            CalendarPrefs.category
+        ) { setCategory(it) }
+        binding.calendarList.addOnItemTouchListener(CategorySwipe())
     }
 
-    private fun placeSegment(pos: Float) {
-        segmentPos = pos
-        val segment = binding.calendarSegment
-        val thumb = binding.calendarSegmentThumb
-        val inset = 4 * resources.displayMetrics.density
-        val w = (segment.width - inset * 2) / 2f
-        if (w <= 0f) return
-        thumb.translationX = pos * w
-        val bump = kotlin.math.sin(Math.PI * pos).toFloat().coerceAtLeast(0f)
-        thumb.scaleX = 1f + 0.22f * bump
-        thumb.scaleY = 1f - 0.12f * bump
-        val on = getThemeColor(com.google.android.material.R.attr.colorOnPrimary)
-        val off = getThemeColor(com.google.android.material.R.attr.colorOutline)
-        binding.calendarTabAnime.setTextColor(ColorUtils.blendARGB(on, off, pos))
-        binding.calendarTabManga.setTextColor(ColorUtils.blendARGB(off, on, pos))
-        val a = 1f + 0.08f * (1f - pos)
-        val m = 1f + 0.08f * pos
-        binding.calendarTabAnime.scaleX = a
-        binding.calendarTabAnime.scaleY = a
-        binding.calendarTabManga.scaleX = m
-        binding.calendarTabManga.scaleY = m
-    }
-
-    private fun animateSegment(to: Int) {
-        segmentAnimator?.cancel()
-        segmentAnimator = ValueAnimator.ofFloat(segmentPos, to.toFloat()).apply {
-            duration = 340
-            interpolator = DecelerateInterpolator(1.6f)
-            addUpdateListener { placeSegment(it.animatedValue as Float) }
-            start()
-        }
-    }
+    private fun contentViews(): List<View> =
+        listOf(binding.calendarList, binding.calendarSummaryCard, binding.calendarStripScroll)
 
     private fun setCategory(category: Int) {
-        if (CalendarPrefs.category == category) return
+        if (CalendarPrefs.category == category || switching) return
+        runSwitch(category, if (category > CalendarPrefs.category) -1f else 1f)
+    }
+
+    private fun runSwitch(category: Int, outward: Float) {
+        switching = true
         CalendarPrefs.category = category
-        animateSegment(category)
-        binding.calendarList.alpha = 0f
-        binding.calendarList.animate().alpha(1f).setDuration(260).start()
+        segmentController.animateTo(category)
+        val width = binding.calendarRoot.width.toFloat()
+        contentViews().forEachIndexed { i, view ->
+            val animator = view.animate()
+                .translationX(outward * width * 0.22f * SWIPE_PARALLAX[i])
+                .alpha(0f)
+                .setStartDelay(0)
+                .setDuration(150)
+                .setInterpolator(AccelerateInterpolator(1.4f))
+            if (i == 0) animator.withEndAction { enterContent(outward) }
+            animator.start()
+        }
+    }
+
+    private fun enterContent(outward: Float) {
         load()
+        val width = binding.calendarRoot.width.toFloat()
+        contentViews().forEachIndexed { i, view ->
+            view.animate().cancel()
+            view.translationX = -outward * width * 0.2f * SWIPE_PARALLAX[i]
+            view.alpha = 0f
+            view.animate()
+                .translationX(0f)
+                .alpha(1f)
+                .setStartDelay(i * 50L)
+                .setDuration(380)
+                .setInterpolator(DecelerateInterpolator(2.2f))
+                .start()
+        }
+        binding.calendarRoot.postDelayed({ switching = false }, 560)
+    }
+
+    private fun settleContent() {
+        segmentController.animateTo(CalendarPrefs.category)
+        contentViews().forEach { view ->
+            view.animate().translationX(0f).alpha(1f).setStartDelay(0).setDuration(320)
+                .setInterpolator(DecelerateInterpolator(2f)).start()
+        }
+    }
+
+    private inner class CategorySwipe : RecyclerView.OnItemTouchListener {
+        private val slop = ViewConfiguration.get(this@AiringCalendarActivity).scaledTouchSlop
+        private var startX = 0f
+        private var startY = 0f
+        private var originX = 0f
+        private var dragging = false
+        private var tracker: VelocityTracker? = null
+
+        override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+            if (switching) return false
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    startX = e.x
+                    startY = e.y
+                    dragging = false
+                    tracker?.recycle()
+                    tracker = VelocityTracker.obtain().also { it.addMovement(e) }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    tracker?.addMovement(e)
+                    val dx = e.x - startX
+                    val dy = e.y - startY
+                    if (!dragging && abs(dx) > slop * 1.5f && abs(dx) > abs(dy) * 1.6f) {
+                        dragging = true
+                        originX = e.x
+                        rv.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (!dragging) release()
+            }
+            return dragging
+        }
+
+        override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {
+            tracker?.addMovement(e)
+            when (e.actionMasked) {
+                MotionEvent.ACTION_MOVE -> applyDrag(e.x - originX)
+                MotionEvent.ACTION_UP -> {
+                    tracker?.computeCurrentVelocity(1000)
+                    finishDrag(e.x - originX, tracker?.xVelocity ?: 0f, true)
+                    release()
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    finishDrag(e.x - originX, 0f, false)
+                    release()
+                }
+            }
+        }
+
+        override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) = Unit
+
+        private fun release() {
+            tracker?.recycle()
+            tracker = null
+            dragging = false
+        }
+
+        private fun canSwitch(dx: Float): Boolean {
+            val current = CalendarPrefs.category
+            return (current == CalendarPrefs.CATEGORY_ANIME && dx < 0f) ||
+                    (current == CalendarPrefs.CATEGORY_MANGA && dx > 0f)
+        }
+
+        private fun applyDrag(dx: Float) {
+            val width = binding.calendarRoot.width.toFloat().coerceAtLeast(1f)
+            val current = CalendarPrefs.category
+            val toOther = if (current == CalendarPrefs.CATEGORY_ANIME) 1f else -1f
+            val allowed = canSwitch(dx)
+            val progress = (abs(dx) / (width * 0.5f)).coerceIn(0f, 1f)
+            val shift = if (allowed) dx * 0.55f else dx * 0.16f
+            if (allowed) {
+                segmentController.drag(current + toOther * progress)
+            } else {
+                segmentController.drag(current - toOther * min(abs(dx) / width * 0.3f, 0.06f))
+            }
+            contentViews().forEachIndexed { i, view ->
+                view.animate().cancel()
+                view.translationX = shift * SWIPE_PARALLAX[i]
+                view.alpha = if (allowed) 1f - 0.6f * progress else 1f
+            }
+        }
+
+        private fun finishDrag(dx: Float, vx: Float, allowCommit: Boolean) {
+            val width = binding.calendarRoot.width.toFloat().coerceAtLeast(1f)
+            val current = CalendarPrefs.category
+            val towardOther = if (current == CalendarPrefs.CATEGORY_ANIME) -vx else vx
+            val commit = allowCommit && canSwitch(dx) && (abs(dx) > width * 0.26f || towardOther > 900f)
+            if (commit) {
+                val target = 1 - current
+                runSwitch(target, if (target > current) -1f else 1f)
+            } else {
+                settleContent()
+            }
+        }
     }
 
     private fun load(force: Boolean = false) {
@@ -647,12 +753,13 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CATEGORY = "calendar_category"
+        private val SWIPE_PARALLAX = floatArrayOf(1f, 0.82f, 0.64f)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         spinner?.cancel()
-        segmentAnimator?.cancel()
+        if (::segmentController.isInitialized) segmentController.cancel()
         if (::stripController.isInitialized) stripController.cancel()
         if (::binding.isInitialized) binding.calendarList.adapter = null
     }
