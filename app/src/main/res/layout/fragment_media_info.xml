@@ -335,6 +335,7 @@
                         android:textSize="20sp" />
 
                     <GridLayout
+                        android:id="@+id/mediaInfoDetailsGrid"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:columnCount="2">
@@ -370,6 +371,7 @@
                     </LinearLayout>
 
                     <LinearLayout
+                        android:id="@+id/mediaInfoFormatContainer"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
@@ -399,6 +401,7 @@
                     </LinearLayout>
 
                     <LinearLayout
+                        android:id="@+id/mediaInfoSourceContainer"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"

@@ -275,6 +275,15 @@ class MediaInfoFragment : Fragment() {
             if (it) binding.mediaInfoScroll.scrollTo(0, 0)
         }
 
+        val detailCells = (0 until binding.mediaInfoDetailsGrid.childCount)
+            .map { binding.mediaInfoDetailsGrid.getChildAt(it) }
+
+        fun packDetailCells() {
+            val grid = binding.mediaInfoDetailsGrid
+            grid.removeAllViews()
+            detailCells.filter { it.visibility != View.GONE }.forEach { grid.addView(it) }
+        }
+
         model.getMedia().observe(viewLifecycleOwner) { media ->
             if (media != null) {
                 loaded = true
@@ -305,7 +314,9 @@ class MediaInfoFragment : Fragment() {
                     media.userPreferredName.takeIf { it != media.name && it != media.nameRomaji }
                 )
                 binding.mediaInfoFormat.text = media.format
+                binding.mediaInfoFormatContainer.isGone = media.format.isNullOrBlank()
                 binding.mediaInfoSource.text = media.source
+                binding.mediaInfoSourceContainer.isGone = media.source.isNullOrBlank()
                 binding.mediaInfoStart.text = media.startDate?.toString() ?: "~"
                 if (media.anime != null) {
                     binding.mediaInfoSeasonContainer.visibility = View.VISIBLE
@@ -403,6 +414,8 @@ class MediaInfoFragment : Fragment() {
                         }
                     }
                 }
+
+                packDetailCells()
 
                 val desc = HtmlCompat.fromHtml(
                     (media.description ?: "null").replace("\\n", "<br>").replace("\\\"", "\""),
