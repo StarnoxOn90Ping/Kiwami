@@ -96,7 +96,7 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         val view = inflater.inflate(R.layout.fragment_offline_page, container, false)
 
         val textInputLayout = view.findViewById<TextInputLayout>(R.id.offlineMangaSearchBar)
-        textInputLayout.hint = "Anime"
+        textInputLayout.hint = getString(R.string.search)
         val currentColor = textInputLayout.boxBackgroundColor
         val semiTransparentColor = (currentColor and 0x00FFFFFF) or 0xA8000000.toInt()
         textInputLayout.boxBackgroundColor = semiTransparentColor
