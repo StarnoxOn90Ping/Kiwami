@@ -3,6 +3,7 @@ package nox.kiwami.media.anime
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -31,6 +32,7 @@ import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.SourceCardController
+import nox.kiwami.util.CountLabelController
 import nox.kiwami.media.SourcePicker
 import nox.kiwami.media.SourceSearchDialogFragment
 import nox.kiwami.openSettings
@@ -63,10 +65,12 @@ class AnimeWatchAdapter(
     private var autoSelect = true
     private var _binding: ItemMediaSourceBinding? = null
     private var sourceCard: SourceCardController? = null
+    private var countLabel: CountLabelController? = null
 
     fun clearBinding() {
         sourceCard?.release()
         sourceCard = null
+        countLabel = null
         _binding = null
     }
 
@@ -74,6 +78,7 @@ class AnimeWatchAdapter(
         super.onViewRecycled(holder)
         sourceCard?.release()
         sourceCard = null
+        countLabel = null
         _binding = null
     }
 
@@ -221,6 +226,7 @@ class AnimeWatchAdapter(
                 )
             }
         ).also { it.bind() }
+        countLabel = CountLabelController(binding.sourceCountText)
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             val actualIndex = watchSources.names.indexOf(displayNames[i])
             val isOffline = watchSources.isDownloadedSource(actualIndex)
@@ -263,6 +269,7 @@ class AnimeWatchAdapter(
 
 
         binding.mediaTorrentButton.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
             fragment.openDirectTorrent()
         }
         binding.mediaTorrentButton.setOnLongClickListener {
@@ -271,6 +278,7 @@ class AnimeWatchAdapter(
         }
 
         binding.mediaNestedButton.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
             val dialogBinding = DialogLayoutBinding.inflate(fragment.layoutInflater)
             dialogBinding.apply {
                 var refresh = false
@@ -632,6 +640,7 @@ class AnimeWatchAdapter(
 
                 val sourceFound = media.anime.episodes!!.isNotEmpty()
                 sourceCard?.onResult(sourceFound, media.anime.episodes!!.size)
+                countLabel?.show(if (sourceFound) media.anime.episodes!!.size else 0)
                 val isDownloadedSource =
                     watchSources[media.selected!!.sourceIndex] is OfflineAnimeParser
 
@@ -675,6 +684,7 @@ class AnimeWatchAdapter(
                 clearChips()
                 binding.sourceProgressBar.visibility = View.VISIBLE
                 sourceCard?.onLoading()
+                countLabel?.hide()
             }
         }
     }

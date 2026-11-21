@@ -3,6 +3,7 @@ package nox.kiwami.media.manga
 import android.content.Intent
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -30,6 +31,7 @@ import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.SourceCardController
+import nox.kiwami.util.CountLabelController
 import nox.kiwami.media.SourcePicker
 import nox.kiwami.media.SourceSearchDialogFragment
 import nox.kiwami.media.anime.handleProgress
@@ -63,10 +65,12 @@ class MangaReadAdapter(
     private var _binding: ItemMediaSourceBinding? = null
 
     private var sourceCard: SourceCardController? = null
+    private var countLabel: CountLabelController? = null
 
     fun clearBinding() {
         sourceCard?.release()
         sourceCard = null
+        countLabel = null
         _binding = null
     }
 
@@ -74,6 +78,7 @@ class MangaReadAdapter(
         super.onViewRecycled(holder)
         sourceCard?.release()
         sourceCard = null
+        countLabel = null
         _binding = null
     }
     val hiddenScanlators = mutableListOf<String>()
@@ -204,6 +209,7 @@ class MangaReadAdapter(
                 )
             }
         ).also { it.bind() }
+        countLabel = CountLabelController(binding.sourceCountText)
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             val actualIndex = mangaReadSources.names.indexOf(displayNames[i])
             fragment.onSourceChange(actualIndex, true).apply {
@@ -240,6 +246,7 @@ class MangaReadAdapter(
         binding.mediaTorrentButton.visibility = View.GONE
 
         binding.mediaNestedButton.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
             val dialogBinding = DialogLayoutBinding.inflate(fragment.layoutInflater)
             var refresh = false
             var run = false
@@ -488,6 +495,7 @@ class MangaReadAdapter(
 
                 val sourceFound = filteredChapters.isNotEmpty()
                 sourceCard?.onResult(sourceFound, filteredChapters.size)
+                countLabel?.show(if (sourceFound) filteredChapters.size else 0)
                 val isDownloadedSource =
                     mangaReadSources[media.selected!!.sourceIndex] is OfflineMangaParser
 
@@ -530,6 +538,7 @@ class MangaReadAdapter(
                 clearChips()
                 binding.sourceProgressBar.visibility = View.VISIBLE
                 sourceCard?.onLoading()
+                countLabel?.hide()
             }
         }
     }
