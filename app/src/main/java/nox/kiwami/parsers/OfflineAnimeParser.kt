@@ -1,7 +1,9 @@
 package nox.kiwami.parsers
 
 import android.app.Application
+import nox.kiwami.FileUrl
 import nox.kiwami.currContext
+import nox.kiwami.download.DownloadMetadata
 import nox.kiwami.download.DownloadCompat.Companion.loadEpisodesCompat
 import nox.kiwami.download.DownloadCompat.Companion.loadSubtitleCompat
 import nox.kiwami.download.DownloadsManager
@@ -41,12 +43,18 @@ class OfflineAnimeParser : AnimeParser() {
                 extraData["title"] = animeLink
                 extraData["episode"] = it.name!!
                 if (it.isDirectory) {
+                    val info = DownloadMetadata.readEpisode(context, it)
+                    val thumbnail = info?.thumbnail
+                        ?.let { name -> it.findFile(name) }
+                        ?.takeIf { file -> file.isFile && file.length() > 0L }
+                        ?.let { file -> FileUrl(file.uri.toString()) }
                     val episode = Episode(
                         it.name!!,
                         getTaskName(animeLink, it.name!!),
-                        it.name,
-                        null,
-                        null,
+                        info?.title ?: it.name,
+                        thumbnail,
+                        info?.description,
+                        info?.filler ?: false,
                         extra = extraData,
                         sEpisode = SEpisodeImpl()
                     )
