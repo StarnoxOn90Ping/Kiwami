@@ -18,6 +18,8 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import nox.kiwami.R
 import nox.kiwami.connections.crashlytics.CrashlyticsInterface
+import nox.kiwami.download.ChapterInfo
+import nox.kiwami.download.DownloadMetadata
 import nox.kiwami.download.DownloadedType
 import nox.kiwami.download.DownloadsManager
 import nox.kiwami.download.DownloadsManager.Companion.getSubDirectory
@@ -308,6 +310,7 @@ class NovelDownloaderService : Service() {
                     this@NovelDownloaderService, MediaType.NOVEL, false, task.title
                 ) ?: throw Exception("Directory not found")
                 saveMediaInfo(task, baseDirectory)
+                saveChapterInfo(task)
 
                 downloadsManager.addDownload(DownloadedType(task.title, task.chapter, MediaType.NOVEL))
 
@@ -424,6 +427,7 @@ class NovelDownloaderService : Service() {
                 if (notifi) notificationManager.notify(NOTIFICATION_ID, builder.build())
 
                 saveMediaInfo(task, baseDirectory)
+                saveChapterInfo(task)
                 downloadsManager.addDownload(DownloadedType(task.title, task.chapter, MediaType.NOVEL))
                 broadcastDownloadFinished(task.originalLink)
                 snackString("${task.title} - ${task.chapter} Download finished")
@@ -441,6 +445,26 @@ class NovelDownloaderService : Service() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                     PackageManager.PERMISSION_GRANTED
         else true
+
+    private fun saveChapterInfo(task: DownloadTask) {
+        val directory = getSubDirectory(
+            this, MediaType.NOVEL, false, task.title, task.chapter
+        ) ?: return
+        val chapter = task.sourceMedia?.manga?.chapters?.values
+            ?.firstOrNull { it.number == task.chapter }
+        DownloadMetadata.write(
+            this,
+            directory,
+            DownloadMetadata.CHAPTER_FILE,
+            ChapterInfo(
+                number = task.chapter,
+                title = chapter?.title,
+                description = chapter?.description,
+                scanlator = chapter?.scanlator,
+                date = chapter?.date
+            )
+        )
+    }
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun saveMediaInfo(task: DownloadTask, directory: DocumentFile) {

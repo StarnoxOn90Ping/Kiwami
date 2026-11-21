@@ -19,6 +19,8 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import nox.kiwami.R
 import nox.kiwami.connections.crashlytics.CrashlyticsInterface
+import nox.kiwami.download.ChapterInfo
+import nox.kiwami.download.DownloadMetadata
 import nox.kiwami.download.DownloadedType
 import nox.kiwami.download.DownloadsManager
 import nox.kiwami.download.DownloadsManager.Companion.getSubDirectory
@@ -377,6 +379,7 @@ class MangaDownloaderService : Service() {
                 }
 
                 saveMediaInfo(task, baseOutputDir)
+                saveChapterInfo(task, outputDir)
                 downloadsManager.addDownload(
                     DownloadedType(
                         task.title,
@@ -420,6 +423,25 @@ class MangaDownloaderService : Service() {
             Injekt.get<CrashlyticsInterface>().logException(e)
             return 0L
         }
+    }
+
+    private fun saveChapterInfo(task: DownloadTask, directory: DocumentFile) {
+        val chapters = task.sourceMedia?.manga?.chapters?.values
+        val chapter = chapters?.firstOrNull {
+            it.number == task.chapter && it.scanlator == task.scanlator
+        } ?: chapters?.firstOrNull { it.number == task.chapter }
+        DownloadMetadata.write(
+            this,
+            directory,
+            DownloadMetadata.CHAPTER_FILE,
+            ChapterInfo(
+                number = task.chapter,
+                title = chapter?.title,
+                description = chapter?.description,
+                scanlator = task.scanlator,
+                date = chapter?.date
+            )
+        )
     }
 
     @OptIn(DelicateCoroutinesApi::class)

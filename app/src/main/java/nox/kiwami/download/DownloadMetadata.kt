@@ -17,8 +17,17 @@ data class EpisodeInfo(
     val rating: String? = null
 )
 
+data class ChapterInfo(
+    val number: String,
+    val title: String? = null,
+    val description: String? = null,
+    val scanlator: String? = null,
+    val date: Long? = null
+)
+
 object DownloadMetadata {
     const val EPISODE_FILE = "episode.json"
+    const val CHAPTER_FILE = "chapter.json"
     const val EPISODE_THUMBNAIL = "episodeImage.jpg"
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
