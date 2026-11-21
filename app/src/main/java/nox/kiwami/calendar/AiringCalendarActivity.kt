@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.text.format.DateFormat
 import android.view.Gravity
 import android.view.MotionEvent
-import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
@@ -342,25 +341,49 @@ class AiringCalendarActivity : AppCompatActivity() {
         private var startY = 0f
         private var originX = 0f
         private var dragging = false
-        private var tracker: VelocityTracker? = null
+        private val sampleTimes = LongArray(SWIPE_SAMPLES)
+        private val sampleXs = FloatArray(SWIPE_SAMPLES)
+        private var sampleCount = 0
+
+        private fun addSample(e: MotionEvent) {
+            val index = sampleCount % SWIPE_SAMPLES
+            sampleTimes[index] = e.eventTime
+            sampleXs[index] = e.rawX
+            sampleCount++
+        }
+
+        private fun velocity(): Float {
+            if (sampleCount < 2) return 0f
+            val last = (sampleCount - 1) % SWIPE_SAMPLES
+            var oldest = last
+            val available = min(sampleCount, SWIPE_SAMPLES)
+            for (back in 1 until available) {
+                val i = ((sampleCount - 1 - back) % SWIPE_SAMPLES + SWIPE_SAMPLES) % SWIPE_SAMPLES
+                if (sampleTimes[last] - sampleTimes[i] > 120L) break
+                oldest = i
+            }
+            val span = sampleTimes[last] - sampleTimes[oldest]
+            if (span <= 0L) return 0f
+            return (sampleXs[last] - sampleXs[oldest]) / span * 1000f
+        }
 
         override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
             if (switching) return false
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    startX = e.x
-                    startY = e.y
+                    startX = e.rawX
+                    startY = e.rawY
                     dragging = false
-                    tracker?.recycle()
-                    tracker = VelocityTracker.obtain().also { it.addMovement(e) }
+                    sampleCount = 0
+                    addSample(e)
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    tracker?.addMovement(e)
-                    val dx = e.x - startX
-                    val dy = e.y - startY
+                    addSample(e)
+                    val dx = e.rawX - startX
+                    val dy = e.rawY - startY
                     if (!dragging && abs(dx) > slop * 1.5f && abs(dx) > abs(dy) * 1.6f) {
                         dragging = true
-                        originX = e.x
+                        originX = e.rawX
                         settleAnimator?.cancel()
                         preparePivots()
                         rv.parent?.requestDisallowInterceptTouchEvent(true)
@@ -372,16 +395,15 @@ class AiringCalendarActivity : AppCompatActivity() {
         }
 
         override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {
-            tracker?.addMovement(e)
+            addSample(e)
             when (e.actionMasked) {
-                MotionEvent.ACTION_MOVE -> applyDrag(e.x - originX)
+                MotionEvent.ACTION_MOVE -> applyDrag(e.rawX - originX)
                 MotionEvent.ACTION_UP -> {
-                    tracker?.computeCurrentVelocity(1000)
-                    finishDrag(e.x - originX, tracker?.xVelocity ?: 0f, true)
+                    finishDrag(e.rawX - originX, velocity(), true)
                     release()
                 }
                 MotionEvent.ACTION_CANCEL -> {
-                    finishDrag(e.x - originX, 0f, false)
+                    finishDrag(e.rawX - originX, 0f, false)
                     release()
                 }
             }
@@ -390,8 +412,7 @@ class AiringCalendarActivity : AppCompatActivity() {
         override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) = Unit
 
         private fun release() {
-            tracker?.recycle()
-            tracker = null
+            sampleCount = 0
             dragging = false
         }
 
@@ -870,6 +891,7 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CATEGORY = "calendar_category"
+        private const val SWIPE_SAMPLES = 8
     }
 
     override fun onDestroy() {
