@@ -137,7 +137,7 @@ class DownloadsManager(private val context: Context) {
                 for (chapterDir in titleDir.listFiles()) {
                     if (!chapterDir.isDirectory) continue
                     val chapter = chapterDir.name ?: continue
-                    if (chapterDir.listFiles().none { it.isFile && it.length() > 0 }) continue
+                    if (chapterDir.listFiles().none { it.isFile && it.length() > 0 && it.name !in INFO_FILES }) continue
 
                     val alreadyIndexed = downloadsList.any {
                         it.type == type && it.titleName == title && it.chapterName == chapter
@@ -394,6 +394,11 @@ class DownloadsManager(private val context: Context) {
         private const val MANGA_SUB_LOCATION = "Manga"
         private const val ANIME_SUB_LOCATION = "Anime"
         private const val NOVEL_SUB_LOCATION = "Novel"
+        private val INFO_FILES = setOf(
+            DownloadMetadata.EPISODE_FILE,
+            DownloadMetadata.CHAPTER_FILE,
+            DownloadMetadata.EPISODE_THUMBNAIL
+        )
 
 
         @Volatile
