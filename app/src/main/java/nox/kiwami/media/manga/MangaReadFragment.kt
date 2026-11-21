@@ -529,11 +529,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     val arr = filteredChapters.keys.toTypedArray()
                     val stored = ceil((total).toDouble() / limit).toInt()
 
-                    val anilistEp = (media.userProgress ?: 0).plus(1)
-                    val appEp = PrefManager.getCustomVal<String?>(
-                        "${media.id}_current_ep", ""
-                    )?.let { MediaNameAdapter.findChapterNumber(it)?.toInt() ?: it.toIntOrNull() } ?: 1
-                    val targetChpNum = (if (anilistEp > appEp) anilistEp else appEp).toFloat()
+                    val targetChpNum = headerAdapter.continueTargetNumber(filteredChapters.values)
 
                     var targetIndex = arr.indexOfFirst { key ->
                         val chObj = filteredChapters[key]

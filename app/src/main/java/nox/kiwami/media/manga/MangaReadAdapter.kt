@@ -402,6 +402,39 @@ class MangaReadAdapter(
         _binding?.mediaSourceChipGroup?.removeAllViews()
     }
 
+    private var autoSelect = true
+
+    private val continueThreshold = 0.8f
+
+    private fun savedProgressRatio(chapterNumber: String): Float? {
+        val clean = MediaNameAdapter.findChapterNumber(chapterNumber)?.let {
+            if (it % 1 == 0f) it.toInt().toString() else it.toString()
+        }
+        val curr = PrefManager.getNullableCustomVal("${media.id}_$chapterNumber", null, Long::class.java)
+            ?: clean?.let { PrefManager.getNullableCustomVal("${media.id}_$it", null, Long::class.java) }
+        val max = PrefManager.getNullableCustomVal("${media.id}_${chapterNumber}_max", null, Long::class.java)
+            ?: clean?.let { PrefManager.getNullableCustomVal("${media.id}_${it}_max", null, Long::class.java) }
+        if (curr == null || max == null || max <= 0L) return null
+        return curr.toFloat() / max.toFloat()
+    }
+
+    private fun appChapterNumber(): Int =
+        PrefManager.getNullableCustomVal("${media.id}_current_chp", null, String::class.java)
+            ?.let { MediaNameAdapter.findChapterNumber(it)?.toInt() ?: it.toIntOrNull() }
+            ?: PrefManager.getNullableCustomVal("${media.id}_current_chp_num", null, String::class.java)?.toIntOrNull()
+            ?: 1
+
+    fun continueTargetNumber(chapters: Collection<MangaChapter>): Float {
+        val anilistEp = (media.userProgress ?: 0).plus(1)
+        val appEp = appChapterNumber()
+        val appChapter = chapters.find { ch ->
+            MediaNameAdapter.findChapterNumber(ch.number)?.toInt() == appEp
+        } ?: chapters.elementAtOrNull(appEp - 1)
+        val appChapterActive = appChapter != null &&
+            (savedProgressRatio(appChapter.number)?.let { it < continueThreshold } ?: false)
+        return (if (anilistEp > appEp && !appChapterActive) anilistEp else appEp).toFloat()
+    }
+
     fun handleChapters() {
 
         val binding = _binding
@@ -414,14 +447,7 @@ class MangaReadAdapter(
                         chapter.value.scanlator !in hiddenScanlators
                     }
                 }
-                val anilistEp = (media.userProgress ?: 0).plus(1)
-                val appEp = PrefManager.getNullableCustomVal(
-                    "${media.id}_current_chp",
-                    null,
-                    String::class.java
-                )?.let { MediaNameAdapter.findChapterNumber(it)?.toInt() ?: it.toIntOrNull() }
-                    ?: PrefManager.getNullableCustomVal("${media.id}_current_chp_num", null, String::class.java)?.toIntOrNull()
-                    ?: 1
+                val appEp = appChapterNumber()
 
                 val maxAvailableChapter = filteredChapters.values.maxOfOrNull {
                     MediaNameAdapter.findChapterNumber(it.number) ?: 0f
@@ -433,7 +459,7 @@ class MangaReadAdapter(
                     return
                 }
 
-                val targetChpNum = (if (anilistEp > appEp) anilistEp else appEp).toFloat()
+                val targetChpNum = continueTargetNumber(filteredChapters.values)
 
                 var continueChap = filteredChapters.values.find { ch ->
                     val num = MediaNameAdapter.findChapterNumber(ch.number)
@@ -449,7 +475,7 @@ class MangaReadAdapter(
                         continueChap.number
                     )
                     val progressWeight = (binding.itemMediaProgress.layoutParams as LinearLayout.LayoutParams).weight
-                    if (progressWeight > 0.8f) {
+                    if (progressWeight > continueThreshold) {
                         val chapterList = filteredChapters.values.toList()
                         val currIdx = chapterList.indexOf(continueChap)
                         if (currIdx != -1 && currIdx + 1 < chapterList.size) {
@@ -479,7 +505,7 @@ class MangaReadAdapter(
                             fragment.onMangaChapterClick(continueChap)
                         }
                         if (fragment.continueEp) {
-                            if ((binding.itemMediaProgress.layoutParams as LinearLayout.LayoutParams).weight < 0.8f) {
+                            if ((binding.itemMediaProgress.layoutParams as LinearLayout.LayoutParams).weight < continueThreshold) {
                                 binding.sourceContinue.performClick()
                                 fragment.continueEp = false
                             }
@@ -514,7 +540,7 @@ class MangaReadAdapter(
                 binding.faqbutton.isGone = sourceFound
 
 
-                if (!sourceFound && PrefManager.getVal(PrefName.SearchSources)) {
+                if (!sourceFound && PrefManager.getVal(PrefName.SearchSources) && autoSelect) {
                     if (binding.mediaSource.adapter.count > media.selected!!.sourceIndex + 1) {
                         val nextIndex = media.selected!!.sourceIndex + 1
                         binding.mediaSource.setText(
@@ -531,6 +557,7 @@ class MangaReadAdapter(
                         fragment.loadChapters(nextIndex, invalidate)
                     }
                 }
+                binding.mediaSource.setOnClickListener { autoSelect = false }
             } else {
                 binding.sourceContinue.visibility = View.GONE
                 binding.sourceNotFound.visibility = View.GONE

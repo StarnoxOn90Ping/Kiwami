@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.OvershootInterpolator
 import android.view.animation.LinearInterpolator
+import android.widget.LinearLayout
 import android.widget.NumberPicker
 import androidx.lifecycle.coroutineScope
 import androidx.recyclerview.widget.RecyclerView
@@ -17,6 +18,7 @@ import nox.kiwami.media.Media
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.anime.EpisodeWatchAnimator
 import nox.kiwami.media.anime.applySelectionStyle
+import nox.kiwami.media.anime.handleProgress
 import nox.kiwami.setAnimation
 import nox.kiwami.util.SizeFormatter
 import nox.kiwami.util.customAlertDialog
@@ -138,7 +140,13 @@ class MangaChapterAdapter(
         stopDownload(name)
     }
 
-    private class ReadViews(val cover: View, val badge: View?)
+    private class ReadViews(
+        val cover: View,
+        val badge: View?,
+        val cont: LinearLayout,
+        val bar: View,
+        val empty: View
+    )
 
     private fun resetReadAnim(holder: RecyclerView.ViewHolder) {
         val v = readViews(holder) ?: return
@@ -157,9 +165,24 @@ class MangaChapterAdapter(
     }
 
     private fun readViews(holder: RecyclerView.ViewHolder): ReadViews? = when (holder) {
-        is ChapterCompactViewHolder -> ReadViews(holder.binding.itemEpisodeViewedCover, null)
-        is ChapterListViewHolder ->
-            ReadViews(holder.binding.itemEpisodeViewedCover, holder.binding.itemEpisodeViewed)
+        is ChapterCompactViewHolder -> holder.binding.let {
+            ReadViews(
+                it.itemEpisodeViewedCover,
+                null,
+                it.itemMediaProgressCont,
+                it.itemMediaProgress,
+                it.itemMediaProgressEmpty
+            )
+        }
+        is ChapterListViewHolder -> holder.binding.let {
+            ReadViews(
+                it.itemEpisodeViewedCover,
+                it.itemEpisodeViewed,
+                it.itemMediaProgressCont,
+                it.itemMediaProgress,
+                it.itemMediaProgressEmpty
+            )
+        }
         else -> null
     }
 
@@ -170,6 +193,7 @@ class MangaChapterAdapter(
 
     private fun showReadState(holder: RecyclerView.ViewHolder, chapter: MangaChapter) {
         val views = readViews(holder) ?: return
+        handleProgress(views.cont, views.bar, views.empty, media.id, chapter.number)
         EpisodeWatchAnimator.cancel(holder.itemView)
         views.badge?.animate()?.cancel()
         val read = isRead(chapter)
@@ -184,6 +208,7 @@ class MangaChapterAdapter(
 
     private fun bindReadState(holder: RecyclerView.ViewHolder, chapter: MangaChapter) {
         val views = readViews(holder) ?: return
+        handleProgress(views.cont, views.bar, views.empty, media.id, chapter.number)
         val card = holder.itemView as? ViewGroup ?: return
         val read = isRead(chapter)
         if (read == (views.cover.visibility == View.VISIBLE)) return
