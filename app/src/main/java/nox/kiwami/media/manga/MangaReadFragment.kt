@@ -880,8 +880,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         model.saveSelected(media.id, selected)
         headerAdapter.handleChapters()
         setupSelectionUi()
-        chapterAdapter.clearSelection()
-        chapterAdapter.notifyItemRangeRemoved(0, chapterAdapter.arr.size)
         var arr: ArrayList<MangaChapter> = arrayListOf()
         if (media.manga!!.chapters != null) {
             val end = if (end != null && end!! < media.manga!!.chapters!!.size) end else null
@@ -892,8 +890,28 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             if (reverse)
                 arr = (arr.reversed() as? ArrayList<MangaChapter>) ?: arr
         }
+        val newType = style ?: PrefManager.getVal(PrefName.MangaDefaultView)
+
+        val old = chapterAdapter.arr
+        val sameList = old.isNotEmpty() &&
+            old.size == arr.size &&
+            chapterAdapter.currentType == newType &&
+            old.indices.all { old[it].uniqueNumber() == arr[it].uniqueNumber() }
+        if (sameList) {
+            chapterAdapter.softUpdate(arr)
+            for (download in downloadManager.mangaDownloadedTypes) {
+                if (media.compareName(download.titleName)) {
+                    chapterAdapter.markDownloaded(download.uniqueName)
+                    chapterAdapter.markDownloaded(download.chapterName)
+                }
+            }
+            return
+        }
+
+        chapterAdapter.clearSelection()
+        chapterAdapter.notifyItemRangeRemoved(0, chapterAdapter.arr.size)
         chapterAdapter.arr = arr
-        chapterAdapter.updateType(style ?: PrefManager.getVal(PrefName.MangaDefaultView))
+        chapterAdapter.updateType(newType)
 
         for (download in downloadManager.mangaDownloadedTypes) {
             if (media.compareName(download.titleName)) {

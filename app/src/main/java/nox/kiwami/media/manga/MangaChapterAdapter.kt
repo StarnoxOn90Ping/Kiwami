@@ -96,7 +96,50 @@ class MangaChapterAdapter(
         if (arr.isNotEmpty()) notifyItemRangeChanged(0, arr.size, PAYLOAD_READ)
     }
 
+    val currentType: Int get() = type
+
+    private val boundKeys = HashMap<String, String>()
+
+    private val baseAlpha = java.util.WeakHashMap<View, Float>()
+    private fun base(v: View): Float = baseAlpha.getOrPut(v) { v.alpha }
+
+    private fun contentKey(chapter: MangaChapter): String =
+        listOf(chapter.title, chapter.description, chapter.date, chapter.scanlator, chapter.link)
+            .joinToString("\u0001")
+
+    fun softUpdate(newArr: ArrayList<MangaChapter>) {
+        arr = newArr
+        if (newArr.isEmpty()) return
+        notifyItemRangeChanged(0, newArr.size, PAYLOAD_READ)
+        for (i in newArr.indices) {
+            val chapter = newArr[i]
+            val bound = boundKeys[chapter.uniqueNumber()]
+            if (bound != null && bound != contentKey(chapter)) notifyItemChanged(i)
+        }
+    }
+
+    fun markDownloaded(name: String) {
+        if (downloadedChapters.contains(name)) return
+        stopDownload(name)
+    }
+
     private class ReadViews(val cover: View, val badge: View?)
+
+    private fun resetReadAnim(holder: RecyclerView.ViewHolder) {
+        val v = readViews(holder) ?: return
+        v.cover.animate().cancel()
+        v.badge?.animate()?.cancel()
+        EpisodeWatchAnimator.cancel(holder.itemView)
+        holder.itemView.animate().cancel()
+        v.cover.alpha = base(v.cover)
+        v.badge?.let {
+            it.alpha = base(it)
+            it.scaleX = 1f
+            it.scaleY = 1f
+        }
+        holder.itemView.scaleX = 1f
+        holder.itemView.scaleY = 1f
+    }
 
     private fun readViews(holder: RecyclerView.ViewHolder): ReadViews? = when (holder) {
         is ChapterCompactViewHolder -> ReadViews(holder.binding.itemEpisodeViewedCover, null)
@@ -118,7 +161,7 @@ class MangaChapterAdapter(
         views.cover.visibility = if (read) View.VISIBLE else View.GONE
         views.badge?.let {
             it.visibility = if (read) View.VISIBLE else View.GONE
-            it.alpha = 1f
+            it.alpha = base(it)
             it.scaleX = 1f
             it.scaleY = 1f
         }
@@ -130,7 +173,9 @@ class MangaChapterAdapter(
         val read = isRead(chapter)
         if (read == (views.cover.visibility == View.VISIBLE)) return
 
+        views.cover.animate().cancel()
         views.badge?.animate()?.cancel()
+        views.cover.alpha = base(views.cover)
         if (read) {
             val stagger = EpisodeWatchAnimator.markWatched(card, views.cover, null)
             views.badge?.let {
@@ -138,7 +183,7 @@ class MangaChapterAdapter(
                 it.scaleX = 0.2f
                 it.scaleY = 0.2f
                 it.visibility = View.VISIBLE
-                it.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                it.animate().alpha(base(it)).scaleX(1f).scaleY(1f)
                     .setStartDelay(stagger + EpisodeWatchAnimator.BADGE_DELAY_MS).setDuration(520)
                     .setInterpolator(OvershootInterpolator(2.4f)).start()
             }
@@ -147,7 +192,7 @@ class MangaChapterAdapter(
             views.badge?.let { badge ->
                 badge.animate().alpha(0f).scaleX(0.2f).scaleY(0.2f).setDuration(260).withEndAction {
                     badge.visibility = View.GONE
-                    badge.alpha = 1f
+                    badge.alpha = base(badge)
                     badge.scaleX = 1f
                     badge.scaleY = 1f
                 }.start()
@@ -486,6 +531,8 @@ class MangaChapterAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        resetReadAnim(holder)
+        if (position in arr.indices) boundKeys[arr[position].uniqueNumber()] = contentKey(arr[position])
         when (holder) {
             is ChapterCompactViewHolder -> {
                 val binding = holder.binding
