@@ -222,7 +222,9 @@ class AnimeWatchAdapter(
                         binding.mediaSource.onItemClickListener
                             ?.onItemClick(null, null, index, index.toLong())
                     },
-                    onDismiss = { sourceCard?.closed() }
+                    onDismiss = { sourceCard?.closed() },
+                    origin = binding.sourceBadge.parent as? View,
+                    onLift = { lifted -> sourceCard?.setBadgeLifted(lifted) }
                 )
             }
         ).also { it.bind() }
