@@ -3,6 +3,7 @@ package nox.kiwami.connections.anilist
 import nox.kiwami.Mapper
 import nox.kiwami.connections.anilist.api.Query
 import nox.kiwami.currContext
+import nox.kiwami.media.Media
 import nox.kiwami.others.SmartCache
 import kotlinx.serialization.encodeToString
 import java.io.File
@@ -11,6 +12,18 @@ object MediaDetailsCache {
     private const val TTL_MS = 30L * 24 * 60 * 60 * 1000
     private const val MAX_FILES = 200
     private const val LIBRARY_FILE = "_library.txt"
+
+    private const val MEMORY_MAX = 40
+
+    private val memory = object : LinkedHashMap<Int, Media>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Media>?) = size > MEMORY_MAX
+    }
+
+    fun getMemory(id: Int): Media? = synchronized(memory) { memory[id] }
+
+    fun putMemory(id: Int, media: Media) {
+        synchronized(memory) { memory[id] = media }
+    }
 
     @Volatile
     private var libraryIds: Set<String>? = null
@@ -71,10 +84,12 @@ object MediaDetailsCache {
     }
 
     fun remove(id: Int) {
+        synchronized(memory) { memory.remove(id) }
         runCatching { entry(id)?.delete() }
     }
 
     fun clear() {
+        synchronized(memory) { memory.clear() }
         runCatching {
             dir()?.listFiles { f -> f.name.endsWith(".json") }?.forEach { it.delete() }
         }

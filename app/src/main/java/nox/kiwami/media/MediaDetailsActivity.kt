@@ -575,11 +575,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
         })
 
+        var initialLoadDone = false
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
         live.observe(this) {
             if (it) {
+                val isRefresh = initialLoadDone
+                initialLoadDone = true
                 scope.launch(Dispatchers.IO) {
-                    model.loadMedia(media)
+                    model.loadMedia(media, bypassMemory = isRefresh)
                     live.postValue(false)
                 }
             }

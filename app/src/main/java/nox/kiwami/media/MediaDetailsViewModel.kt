@@ -128,7 +128,35 @@ class MediaDetailsViewModel : ViewModel() {
     private val detailsOutdated = MutableLiveData(false)
     fun getDetailsOutdated(): LiveData<Boolean> = detailsOutdated
     fun clearDetailsOutdated() = detailsOutdated.postValue(false)
-    fun loadMedia(m: Media) {
+    private fun loadImdbId(target: Media) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (target.idIMDB == null) {
+                    target.idIMDB = nox.kiwami.others.IdMappers.getImdbId(target.id)
+                }
+            } catch (e: Exception) {
+                nox.kiwami.util.Logger.log(e)
+            }
+        }
+    }
+
+    fun loadMedia(m: Media, bypassMemory: Boolean = false) {
+        if (!bypassMemory && m.id != 0) {
+            val remembered = nox.kiwami.connections.anilist.MediaDetailsCache.getMemory(m.id)
+            if (remembered != null) {
+                remembered.cameFromContinue = false
+                media.postValue(remembered)
+                loadImdbId(remembered)
+                if (nox.kiwami.connections.anilist.MediaDetailsCache.has(m.id)) {
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val changed = runCatching { Anilist.query.detailsChangedSinceCache(m.id) }
+                            .getOrDefault(false)
+                        if (changed) detailsOutdated.postValue(true)
+                    }
+                }
+                return
+            }
+        }
         if (!loading) {
             loading = true
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -174,7 +202,11 @@ class MediaDetailsViewModel : ViewModel() {
                     media.postValue(m)
                 } else {
                     val servedFromCache = nox.kiwami.connections.anilist.MediaDetailsCache.has(m.id)
-                    media.postValue(Anilist.query.mediaDetails(m))
+                    val details = Anilist.query.mediaDetails(m)
+                    if (details.shareLink != null) {
+                        nox.kiwami.connections.anilist.MediaDetailsCache.putMemory(m.id, details)
+                    }
+                    media.postValue(details)
                     if (servedFromCache) {
                         viewModelScope.launch(Dispatchers.IO) {
                             val changed = runCatching { Anilist.query.detailsChangedSinceCache(m.id) }
@@ -187,15 +219,7 @@ class MediaDetailsViewModel : ViewModel() {
             }
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (m.idIMDB == null) {
-                    m.idIMDB = nox.kiwami.others.IdMappers.getImdbId(m.id)
-                }
-            } catch (e: Exception) {
-                nox.kiwami.util.Logger.log(e)
-            }
-        }
+        loadImdbId(m)
     }
 
     fun setMedia(m: Media) {
