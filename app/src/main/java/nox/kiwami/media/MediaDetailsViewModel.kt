@@ -140,7 +140,7 @@ class MediaDetailsViewModel : ViewModel() {
         }
     }
 
-    fun loadMedia(m: Media, bypassMemory: Boolean = false) {
+    fun loadMedia(m: Media, bypassMemory: Boolean = false, downloaded: Boolean = false) {
         if (!bypassMemory && m.id != 0) {
             val remembered = nox.kiwami.connections.anilist.MediaDetailsCache.getMemory(m.id)
             if (remembered != null) {
@@ -200,6 +200,16 @@ class MediaDetailsViewModel : ViewModel() {
                 } else if (m.id == 0) {
                     m.folderName = m.folderName ?: m.name
                     media.postValue(m)
+                } else if (downloaded && !bypassMemory) {
+                    media.postValue(m)
+                    val localCover = m.cover?.takeUnless { it.startsWith("http") }
+                    val localBanner = m.banner?.takeUnless { it.startsWith("http") }
+                    val details = runCatching { Anilist.query.mediaDetails(m.copy()) }.getOrNull()
+                    if (details != null && details.shareLink != null) {
+                        localCover?.let { details.cover = it }
+                        localBanner?.let { details.banner = it }
+                        media.postValue(details)
+                    }
                 } else {
                     val servedFromCache = nox.kiwami.connections.anilist.MediaDetailsCache.has(m.id)
                     val details = Anilist.query.mediaDetails(m)

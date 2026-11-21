@@ -582,7 +582,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 val isRefresh = initialLoadDone
                 initialLoadDone = true
                 scope.launch(Dispatchers.IO) {
-                    model.loadMedia(media, bypassMemory = isRefresh)
+                    model.loadMedia(media, bypassMemory = isRefresh, downloaded = isDownload)
                     live.postValue(false)
                 }
             }
