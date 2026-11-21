@@ -44,7 +44,17 @@ class SourceCardController(
     private val onOpen: () -> Unit
 ) {
 
-    private enum class Phase { SEARCHING, FOUND, MISSING }
+    enum class Phase { SEARCHING, FOUND, MISSING }
+
+    data class Snapshot(
+        val name: String,
+        val icon: Drawable?,
+        val color: Int,
+        val phase: Phase,
+        val count: Int
+    )
+
+    var onSnapshot: ((Snapshot) -> Unit)? = null
 
     private val density = card.resources.displayMetrics.density
     private var phase = Phase.SEARCHING
@@ -53,6 +63,8 @@ class SourceCardController(
     private var count = 0
     private var settled = false
     private var pulse: ObjectAnimator? = null
+    private var currentIcon: Drawable? = null
+    private var currentColor = 0
 
     private val nameWatcher = watcher { applyName() }
     private val titleWatcher = watcher { applyTitle() }
@@ -110,6 +122,26 @@ class SourceCardController(
         rotateChevron(false)
     }
 
+    fun setBadgeLifted(lifted: Boolean) {
+        val holder = badge.parent as? View ?: return
+        holder.animate().cancel()
+        if (lifted) {
+            holder.animate().alpha(0f).setDuration(120).start()
+            return
+        }
+        holder.alpha = 0f
+        holder.scaleX = 0.6f
+        holder.scaleY = 0.6f
+        holder.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420)
+            .setInterpolator(OvershootInterpolator(3f)).start()
+    }
+
+    private fun emit() {
+        onSnapshot?.invoke(
+            Snapshot(nameView.text.toString(), currentIcon, currentColor, phase, count)
+        )
+    }
+
     fun onLoading() {
         if (phase == Phase.SEARCHING) return
         phase = Phase.SEARCHING
@@ -124,6 +156,8 @@ class SourceCardController(
         nameView.text = name
         val icon = iconFor(name)
         val color = SourceVisuals.colorFor(name, icon)
+        currentIcon = icon
+        currentColor = color
         glow.setGlowColor(color, settled)
         if (icon != null) {
             badge.setImageDrawable(icon)
@@ -135,6 +169,7 @@ class SourceCardController(
             letter.text = name.take(1).uppercase()
             letter.visibility = View.VISIBLE
         }
+        emit()
         if (settled && previous.isNotEmpty() && previous != name) {
             badge.animate().cancel()
             badge.scaleX = 0.75f
@@ -205,6 +240,7 @@ class SourceCardController(
                 if (changed && settled) shake()
             }
         }
+        emit()
     }
 
     private fun startPulse() {
