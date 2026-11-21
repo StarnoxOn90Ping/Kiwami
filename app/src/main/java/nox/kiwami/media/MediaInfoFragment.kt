@@ -162,6 +162,7 @@ class MediaInfoFragment : Fragment() {
         }
     }
     private var loaded = false
+    private var entrancePlayed = false
     private var type = "ANIME"
     private val genreModel: GenresViewModel by activityViewModels()
 
@@ -176,6 +177,8 @@ class MediaInfoFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        _binding?.mediaInfoContainer?.let { InfoEntranceAnimator.cancel(it) }
+        entrancePlayed = false
         themePlayer?.stop()
         themePlayer = null
         themeRows.clear()
@@ -1406,6 +1409,11 @@ class MediaInfoFragment : Fragment() {
                         root.tag = "dynamic_view"
                         parent.addView(root)
                     }
+                }
+
+                if (!entrancePlayed) {
+                    entrancePlayed = true
+                    InfoEntranceAnimator.play(parent)
                 }
             }
         }
