@@ -505,7 +505,7 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     private fun onSyncState(state: CalendarRepository.State) {
         val failed = state == CalendarRepository.State.FAILED || state == CalendarRepository.State.OFFLINE
-        if (failed && loadState == LoadState.LOADING) {
+        if (failed && (loadState == LoadState.LOADING || raw.isEmpty())) {
             raw = emptyList()
             loadState = LoadState.ERROR
             applyFilters()
@@ -657,7 +657,12 @@ class AiringCalendarActivity : AppCompatActivity() {
             }
         }
         binding.calendarEmptyTitle.setText(title)
-        binding.calendarEmptyText.setText(text)
+        val issue = CalendarRepository.mangaIssue
+        if (isManga() && issue != null && loadState != LoadState.NEEDS_LOGIN) {
+            binding.calendarEmptyText.text = getString(text) + "\n\n" + issue
+        } else {
+            binding.calendarEmptyText.setText(text)
+        }
         binding.calendarEmptyAction.setText(action)
         binding.calendarEmptyAction.setPressBounce(0.92f)
         binding.calendarEmptyAction.setOnClickListener { onAction() }

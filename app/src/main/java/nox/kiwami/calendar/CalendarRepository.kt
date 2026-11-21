@@ -48,7 +48,8 @@ object CalendarRepository {
         val chapter: Double?,
         val fetchedAt: Long,
         val none: Boolean,
-        val transient: Boolean = false
+        val transient: Boolean = false,
+        val reason: String? = null
     )
 
     private sealed class Plan {
@@ -90,6 +91,10 @@ object CalendarRepository {
 
     private val _state = MutableStateFlow(State.IDLE)
     val state: StateFlow<State> = _state
+
+    @Volatile
+    var mangaIssue: String? = null
+        private set
 
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version
@@ -248,6 +253,9 @@ object CalendarRepository {
             throw e
         } catch (e: Exception) {
             Logger.log(e)
+            if (source == CalendarPrefs.SOURCE_MANGA) {
+                mangaIssue = e.javaClass.simpleName + (e.message?.let { ": $it" } ?: "")
+            }
             _state.value = State.FAILED
         }
     }
@@ -323,9 +331,13 @@ object CalendarRepository {
     private suspend fun runFullManga(from: Long, to: Long, old: Snapshot?, force: Boolean): Boolean {
         val userId = Anilist.userid ?: return true
         val now = System.currentTimeMillis()
+        mangaIssue = null
         val library = Anilist.query.getMediaLists(false, userId)["All"] ?: arrayListOf()
         if (library.isEmpty()) {
-            if (old != null) return false
+            if (old != null) {
+                mangaIssue = "couldn't read your AniList manga list"
+                return false
+            }
             val fullAt = now - MANGA_MAX_AGE_MS + RETRY_AGE_MS
             saveSnapshot(CalendarPrefs.SOURCE_MANGA, Snapshot(now, fullAt, from, to, emptyList()))
             _version.value = _version.value + 1
@@ -372,8 +384,17 @@ object CalendarRepository {
         }
         savePredictions(fresh)
 
-        if (tracked.isNotEmpty() && fresh.values.all { it.transient }) return false
+        if (tracked.isNotEmpty() && fresh.values.all { it.transient }) {
+            mangaIssue = fresh.values.firstNotNullOfOrNull { it.reason }
+            return false
+        }
 
+        val usable = fresh.values.count { !it.none }
+        if (tracked.isNotEmpty() && usable == 0) {
+            val sample = fresh.values.firstNotNullOfOrNull { it.reason }
+            mangaIssue = "${tracked.size} releasing series found but none had usable release data" +
+                    (sample?.let { " ($it)" } ?: "")
+        }
         saveSnapshot(
             CalendarPrefs.SOURCE_MANGA,
             Snapshot(now, now, from, to, entries.sortedBy { it.airingAt })
@@ -388,7 +409,13 @@ object CalendarRepository {
             val ttl = if (cached.none) PREDICTION_FAIL_TTL_MS else PREDICTION_TTL_MS
             if (now - cached.fetchedAt < ttl) return cached
         }
-        val result = try {
+
+        val primary = MangaReleaseSource.predict(media)
+        primary.guess?.let {
+            return Prediction(startOfDay(it.nextMs), it.intervalDays, it.nextChapter, now, false)
+        }
+
+        val fallback = try {
             val series = MangaAnimeUtil.getSeriesFromMedia(media)
             MangaAnimeUtil.getNextChapterPrediction(media, series)
         } catch (e: CancellationException) {
@@ -397,24 +424,27 @@ object CalendarRepository {
             Logger.log(e)
             null
         }
-        val date = result?.nextReleaseDate
-        if (result == null || result.error != null || date == null) {
-            val error = result?.error
-            val transient = result == null || error == null || PERMANENT_ERRORS.none { error.startsWith(it) }
-            val fetchedAt = if (transient) now - PREDICTION_FAIL_TTL_MS + RETRY_AGE_MS else now
-            val keep = cached?.takeIf { !it.none }
-            return keep?.let { Prediction(it.next, it.interval, it.chapter, fetchedAt, false) }
-                ?: Prediction(0L, 0, null, fetchedAt, true, transient)
+        val date = fallback?.nextReleaseDate
+        if (fallback != null && fallback.error == null && date != null) {
+            val chapter = fallback.nextChapter
+                ?.let { Regex("([0-9]+(?:[.][0-9]+)?)").find(it)?.groupValues?.get(1)?.toDoubleOrNull() }
+            return Prediction(
+                startOfDay(date.time),
+                (fallback.averageIntervalDays ?: 7).coerceAtLeast(1),
+                chapter,
+                now,
+                false
+            )
         }
-        val chapter = result.nextChapter
-            ?.let { Regex("([0-9]+(?:[.][0-9]+)?)").find(it)?.groupValues?.get(1)?.toDoubleOrNull() }
-        return Prediction(
-            startOfDay(date.time),
-            (result.averageIntervalDays ?: 7).coerceAtLeast(1),
-            chapter,
-            now,
-            false
-        )
+
+        val error = fallback?.error
+        val fallbackPermanent = error != null && PERMANENT_ERRORS.any { error.startsWith(it) }
+        val transient = !(primary.permanent && fallbackPermanent)
+        val reason = "MangaDex: ${primary.reason ?: "no data"}; MangaUpdates: ${error ?: "no response"}"
+        val fetchedAt = if (transient) now - PREDICTION_FAIL_TTL_MS + RETRY_AGE_MS else now
+        val keep = cached?.takeIf { !it.none }
+        return keep?.let { Prediction(it.next, it.interval, it.chapter, fetchedAt, false) }
+            ?: Prediction(0L, 0, null, fetchedAt, true, transient, reason)
     }
 
     private fun expandPrediction(media: Media, p: Prediction, from: Long, to: Long, now: Long): List<CalendarEntry> {
