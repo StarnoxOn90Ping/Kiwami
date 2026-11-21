@@ -47,7 +47,8 @@ object CalendarRepository {
         val interval: Int,
         val chapter: Double?,
         val fetchedAt: Long,
-        val none: Boolean
+        val none: Boolean,
+        val transient: Boolean = false
     )
 
     private sealed class Plan {
@@ -67,6 +68,14 @@ object CalendarRepository {
     private const val PREDICTION_FAIL_TTL_MS = 6L * 3600 * 1000
     private const val MANGA_FETCH_MASK = 1 or 2 or 4 or 8
     private const val MANGA_PARALLEL = 3
+    private const val MANGA_PUBLISH_EVERY = 3
+    private val PERMANENT_ERRORS = listOf(
+        "Series is not releasing",
+        "MangaBaka series not found",
+        "MU ID missing",
+        "Insufficient release data found",
+        "Numeric MU ID not found"
+    )
     private const val MINE_MAX_AGE_MS = 8L * 3600 * 1000
     private const val ALL_MAX_AGE_MS = 2L * 3600 * 1000
     private const val RETRY_AGE_MS = 5L * 60 * 1000
@@ -326,27 +335,44 @@ object CalendarRepository {
         val tracked = library.filter {
             val st = ListStatus.from(it.userStatus)
             st != null && (MANGA_FETCH_MASK and st.bit) != 0 && it.status?.uppercase() == "RELEASING"
+        }.sortedBy {
+            when (ListStatus.from(it.userStatus)) {
+                ListStatus.CURRENT -> 0
+                ListStatus.REPEATING -> 1
+                ListStatus.PLANNING -> 2
+                else -> 3
+            }
         }
 
         val cache = loadPredictions()
         val gate = Semaphore(MANGA_PARALLEL)
-        val fetched = coroutineScope {
-            tracked.map { media ->
-                async { gate.withPermit { media to predictionFor(media, cache[media.id], now, force) } }
-            }.awaitAll()
-        }
-
         val fresh = HashMap<Int, Prediction>()
         val entries = mutableListOf<CalendarEntry>()
-        fetched.forEach { (media, prediction) ->
-            fresh[media.id] = prediction
-            entries.addAll(expandPrediction(media, prediction, from, to, now))
+        var completed = 0
+        val partialFullAt = now - MANGA_MAX_AGE_MS + RETRY_AGE_MS
+
+        coroutineScope {
+            tracked.map { media ->
+                async {
+                    val prediction = gate.withPermit { predictionFor(media, cache[media.id], now, force) }
+                    val partial = synchronized(entries) {
+                        fresh[media.id] = prediction
+                        entries.addAll(expandPrediction(media, prediction, from, to, now))
+                        completed++
+                        if (completed % MANGA_PUBLISH_EVERY == 0 && completed < tracked.size && entries.isNotEmpty()) {
+                            entries.sortedBy { it.airingAt }
+                        } else null
+                    }
+                    if (partial != null) {
+                        saveSnapshot(CalendarPrefs.SOURCE_MANGA, Snapshot(now, partialFullAt, from, to, partial))
+                        _version.value = _version.value + 1
+                    }
+                }
+            }.awaitAll()
         }
         savePredictions(fresh)
 
-        val nowSec = now / 1000
-        val everyLookupFailed = tracked.isNotEmpty() && fresh.values.all { it.none }
-        if (everyLookupFailed && old?.entries?.any { it.airingAt > nowSec } == true) return false
+        if (tracked.isNotEmpty() && fresh.values.all { it.transient }) return false
 
         saveSnapshot(
             CalendarPrefs.SOURCE_MANGA,
@@ -373,10 +399,12 @@ object CalendarRepository {
         }
         val date = result?.nextReleaseDate
         if (result == null || result.error != null || date == null) {
+            val error = result?.error
+            val transient = result == null || error == null || PERMANENT_ERRORS.none { error.startsWith(it) }
+            val fetchedAt = if (transient) now - PREDICTION_FAIL_TTL_MS + RETRY_AGE_MS else now
             val keep = cached?.takeIf { !it.none }
-            return keep?.let {
-                Prediction(it.next, it.interval, it.chapter, now - PREDICTION_TTL_MS + PREDICTION_FAIL_TTL_MS, false)
-            } ?: Prediction(0L, 0, null, now, true)
+            return keep?.let { Prediction(it.next, it.interval, it.chapter, fetchedAt, false) }
+                ?: Prediction(0L, 0, null, fetchedAt, true, transient)
         }
         val chapter = result.nextChapter
             ?.let { Regex("([0-9]+(?:[.][0-9]+)?)").find(it)?.groupValues?.get(1)?.toDoubleOrNull() }
