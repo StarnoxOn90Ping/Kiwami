@@ -1,17 +1,25 @@
 package nox.kiwami.calendar
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.content.Intent
 import android.os.Bundle
 import android.text.format.DateFormat
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
-import android.view.animation.AccelerateInterpolator
+import android.view.animation.PathInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import kotlin.math.abs
 import kotlin.math.min
@@ -72,6 +80,9 @@ class AiringCalendarActivity : AppCompatActivity() {
     private var programmaticScroll = false
     private lateinit var segmentController: CategorySegmentController
     private var switching = false
+    private var dragProgress = 0f
+    private var contentAnimator: ValueAnimator? = null
+    private var settleAnimator: ValueAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -173,53 +184,155 @@ class AiringCalendarActivity : AppCompatActivity() {
     }
 
     private fun contentViews(): List<View> =
-        listOf(binding.calendarList, binding.calendarSummaryCard, binding.calendarStripScroll)
+        listOf(binding.calendarSummaryCard, binding.calendarStripScroll, binding.calendarContent)
+
+    private fun preparePivots() {
+        val root = binding.calendarRoot
+        val centerY = (binding.calendarSegment.bottom + root.height) / 2f
+        contentViews().forEach {
+            it.pivotX = root.width / 2f
+            it.pivotY = centerY - it.top
+        }
+    }
+
+    private fun applyOut(t: Float, outward: Float) {
+        val width = binding.calendarRoot.width.toFloat()
+        val scale = 1f - 0.07f * t
+        contentViews().forEach {
+            it.alpha = 1f - t * t
+            it.scaleX = scale
+            it.scaleY = scale
+            it.translationX = outward * 0.5f * t * width
+        }
+    }
+
+    private fun applyIn(s: Float, outward: Float) {
+        val width = binding.calendarRoot.width.toFloat()
+        val rest = 1f - s
+        val scale = 1f - 0.07f * rest
+        contentViews().forEach {
+            it.alpha = 1f - rest * rest
+            it.scaleX = scale
+            it.scaleY = scale
+            it.translationX = -outward * 0.5f * rest * width
+        }
+    }
+
+    private fun resetContent() {
+        contentViews().forEach {
+            it.alpha = 1f
+            it.scaleX = 1f
+            it.scaleY = 1f
+            it.translationX = 0f
+        }
+    }
+
+    private fun captureContent(top: Int): Bitmap? {
+        val root = binding.calendarRoot
+        val height = root.height - top
+        if (root.width <= 0 || height <= 0) return null
+        return try {
+            Bitmap.createBitmap(root.width, height, Bitmap.Config.ARGB_8888).also {
+                val canvas = Canvas(it)
+                canvas.translate(0f, -top.toFloat())
+                root.draw(canvas)
+            }
+        } catch (e: Throwable) {
+            Logger.log(e.toString())
+            null
+        }
+    }
+
+    private fun addOverlay(bitmap: Bitmap, top: Int): ImageView {
+        val root = binding.calendarRoot
+        val overlay = ImageView(this).apply {
+            setImageBitmap(bitmap)
+            scaleType = ImageView.ScaleType.FIT_XY
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            layoutParams = FrameLayout.LayoutParams(root.width, bitmap.height).apply {
+                gravity = Gravity.TOP or Gravity.START
+                topMargin = root.top + top
+            }
+            pivotX = root.width / 2f
+            pivotY = bitmap.height / 2f
+        }
+        (root.parent as ViewGroup).addView(overlay)
+        return overlay
+    }
 
     private fun setCategory(category: Int) {
         if (CalendarPrefs.category == category || switching) return
         runSwitch(category, if (category > CalendarPrefs.category) -1f else 1f)
     }
 
-    private fun runSwitch(category: Int, outward: Float) {
+    private fun runSwitch(category: Int, outward: Float, startT: Float = 0f) {
         switching = true
+        settleAnimator?.cancel()
+        contentAnimator?.cancel()
         CalendarPrefs.category = category
         segmentController.animateTo(category)
-        val width = binding.calendarRoot.width.toFloat()
-        contentViews().forEachIndexed { i, view ->
-            val animator = view.animate()
-                .translationX(outward * width * 0.22f * SWIPE_PARALLAX[i])
-                .alpha(0f)
-                .setStartDelay(0)
-                .setDuration(150)
-                .setInterpolator(AccelerateInterpolator(1.4f))
-            if (i == 0) animator.withEndAction { enterContent(outward) }
-            animator.start()
-        }
-    }
 
-    private fun enterContent(outward: Float) {
-        load()
+        resetContent()
+        preparePivots()
+        val top = binding.calendarSegment.bottom
+        val snapshot = captureContent(top)
+        val overlay = snapshot?.let { addOverlay(it, top) }
         val width = binding.calendarRoot.width.toFloat()
-        contentViews().forEachIndexed { i, view ->
-            view.animate().cancel()
-            view.translationX = -outward * width * 0.2f * SWIPE_PARALLAX[i]
-            view.alpha = 0f
-            view.animate()
-                .translationX(0f)
-                .alpha(1f)
-                .setStartDelay(i * 50L)
-                .setDuration(380)
-                .setInterpolator(DecelerateInterpolator(2.2f))
-                .start()
+
+        fun applyOverlay(t: Float) {
+            overlay ?: return
+            val scale = 1f - 0.07f * t
+            overlay.alpha = 1f - t * t
+            overlay.scaleX = scale
+            overlay.scaleY = scale
+            overlay.translationX = outward * 0.5f * t * width
         }
-        binding.calendarRoot.postDelayed({ switching = false }, 560)
+
+        applyOverlay(startT)
+        applyIn(0f, outward)
+        load()
+
+        contentAnimator = ValueAnimator.ofFloat(startT, 1f).apply {
+            duration = (520f * (1f - startT)).toLong().coerceAtLeast(320L)
+            interpolator = PathInterpolator(0.22f, 1f, 0.36f, 1f)
+            addUpdateListener {
+                val t = it.animatedValue as Float
+                val incoming = if (startT >= 1f) 1f else (t - startT) / (1f - startT)
+                applyOverlay(t)
+                applyIn(incoming, outward)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    overlay?.let { (it.parent as? ViewGroup)?.removeView(it) }
+                    snapshot?.recycle()
+                    resetContent()
+                    switching = false
+                }
+            })
+            start()
+        }
     }
 
     private fun settleContent() {
         segmentController.animateTo(CalendarPrefs.category)
-        contentViews().forEach { view ->
-            view.animate().translationX(0f).alpha(1f).setStartDelay(0).setDuration(320)
-                .setInterpolator(DecelerateInterpolator(2f)).start()
+        val views = contentViews()
+        val alpha = views[0].alpha
+        val scale = views[0].scaleX
+        val shift = views[0].translationX
+        settleAnimator?.cancel()
+        settleAnimator = ValueAnimator.ofFloat(1f, 0f).apply {
+            duration = 320
+            interpolator = PathInterpolator(0.22f, 1f, 0.36f, 1f)
+            addUpdateListener {
+                val f = it.animatedValue as Float
+                views.forEach { view ->
+                    view.alpha = 1f - (1f - alpha) * f
+                    view.scaleX = 1f - (1f - scale) * f
+                    view.scaleY = view.scaleX
+                    view.translationX = shift * f
+                }
+            }
+            start()
         }
     }
 
@@ -248,6 +361,8 @@ class AiringCalendarActivity : AppCompatActivity() {
                     if (!dragging && abs(dx) > slop * 1.5f && abs(dx) > abs(dy) * 1.6f) {
                         dragging = true
                         originX = e.x
+                        settleAnimator?.cancel()
+                        preparePivots()
                         rv.parent?.requestDisallowInterceptTouchEvent(true)
                     }
                 }
@@ -290,18 +405,20 @@ class AiringCalendarActivity : AppCompatActivity() {
             val width = binding.calendarRoot.width.toFloat().coerceAtLeast(1f)
             val current = CalendarPrefs.category
             val toOther = if (current == CalendarPrefs.CATEGORY_ANIME) 1f else -1f
-            val allowed = canSwitch(dx)
             val progress = (abs(dx) / (width * 0.5f)).coerceIn(0f, 1f)
-            val shift = if (allowed) dx * 0.55f else dx * 0.16f
-            if (allowed) {
+            if (canSwitch(dx)) {
+                dragProgress = progress
                 segmentController.drag(current + toOther * progress)
+                applyOut(progress, if (dx < 0f) -1f else 1f)
             } else {
+                dragProgress = 0f
                 segmentController.drag(current - toOther * min(abs(dx) / width * 0.3f, 0.06f))
-            }
-            contentViews().forEachIndexed { i, view ->
-                view.animate().cancel()
-                view.translationX = shift * SWIPE_PARALLAX[i]
-                view.alpha = if (allowed) 1f - 0.6f * progress else 1f
+                contentViews().forEach {
+                    it.alpha = 1f
+                    it.scaleX = 1f
+                    it.scaleY = 1f
+                    it.translationX = dx * 0.16f
+                }
             }
         }
 
@@ -312,7 +429,7 @@ class AiringCalendarActivity : AppCompatActivity() {
             val commit = allowCommit && canSwitch(dx) && (abs(dx) > width * 0.26f || towardOther > 900f)
             if (commit) {
                 val target = 1 - current
-                runSwitch(target, if (target > current) -1f else 1f)
+                runSwitch(target, if (target > current) -1f else 1f, dragProgress)
             } else {
                 settleContent()
             }
@@ -753,13 +870,14 @@ class AiringCalendarActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CATEGORY = "calendar_category"
-        private val SWIPE_PARALLAX = floatArrayOf(1f, 0.82f, 0.64f)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         spinner?.cancel()
         if (::segmentController.isInitialized) segmentController.cancel()
+        contentAnimator?.cancel()
+        settleAnimator?.cancel()
         if (::stripController.isInitialized) stripController.cancel()
         if (::binding.isInitialized) binding.calendarList.adapter = null
     }
