@@ -134,6 +134,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        create("prerelease") {
+            initWith(getByName("release"))
+            versionNameSuffix = "-prerelease$hashSuffix"
+            manifestPlaceholders["icon_placeholder"] = "@mipmap/ic_launcher_beta"
+            manifestPlaceholders["icon_placeholder_round"] = "@mipmap/ic_launcher_beta_round"
+        }
     }
 
     buildFeatures {
