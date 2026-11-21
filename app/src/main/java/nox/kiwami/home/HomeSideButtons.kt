@@ -12,6 +12,7 @@ import nox.kiwami.calendar.AiringCalendarActivity
 import nox.kiwami.databinding.ItemNavbarBinding
 import nox.kiwami.download.hub.DownloadActivityState
 import nox.kiwami.download.hub.DownloadArrowAnimator
+import nox.kiwami.download.hub.DownloadRingAnimator
 import nox.kiwami.download.hub.DownloadsActivity
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
@@ -26,6 +27,7 @@ class HomeSideButtons(
     private val density = activity.resources.displayMetrics.density
 
     private val arrow = DownloadArrowAnimator(nav.downloadsIcon, 32f * density)
+    private val ring = DownloadRingAnimator(nav.downloadsProgress)
     private var wasActive = false
     private var started = false
 
@@ -89,7 +91,7 @@ class HomeSideButtons(
         if (state.isActive) {
             startDownloading()
             val p = if (state.percent < 0) 4 else state.percent.coerceAtLeast(4)
-            nav.downloadsProgress.setProgressCompat(p, true)
+            ring.setPercent(p)
         } else {
             stopDownloading()
         }
@@ -98,7 +100,9 @@ class HomeSideButtons(
 
     private fun startDownloading() {
         if (arrow.isRunning) return
-        nav.downloadsProgress.animate().alpha(1f).setDuration(250).start()
+        nav.downloadsProgress.animate().cancel()
+        nav.downloadsProgress.animate().setStartDelay(0).alpha(1f).setDuration(250).start()
+        ring.start()
         arrow.start()
 
         val badge = nav.downloadsBadge
@@ -112,7 +116,11 @@ class HomeSideButtons(
         if (!arrow.isRunning) return
         arrow.stop()
 
-        nav.downloadsProgress.animate().alpha(0f).setDuration(300).start()
+        ring.finish {
+            nav.downloadsProgress.animate().alpha(0f).setStartDelay(120).setDuration(320)
+                .withEndAction { ring.reset() }
+                .start()
+        }
         val badge = nav.downloadsBadge
         badge.animate().setListener(null).cancel()
         badge.animate().scaleX(0f).scaleY(0f).setDuration(200)
