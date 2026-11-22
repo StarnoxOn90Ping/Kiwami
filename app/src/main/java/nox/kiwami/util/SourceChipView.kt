@@ -127,7 +127,7 @@ class SourceChipView @JvmOverloads constructor(
         popup.setBackgroundDrawable(
             GradientDrawable().apply {
                 cornerRadius = 18f * density
-                setColor(resolve(android.R.attr.colorBackground))
+                setColor(if (ThemeSurface.isOled(context)) Color.BLACK else resolve(android.R.attr.colorBackground))
                 setStroke(density.toInt().coerceAtLeast(1), ColorUtils.setAlphaComponent(onBackground, 0x30))
             }
         )

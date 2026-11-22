@@ -3,6 +3,7 @@ package nox.kiwami.media
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.text.Editable
@@ -15,6 +16,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -24,6 +26,7 @@ import nox.kiwami.R
 import nox.kiwami.databinding.DialogSourcePickerBinding
 import nox.kiwami.databinding.ItemSourcePickerBinding
 import nox.kiwami.settings.saving.PrefManager
+import nox.kiwami.util.ThemeSurface
 
 object SourcePicker {
 
@@ -54,7 +57,7 @@ object SourcePicker {
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         dialog.setOnShowListener {
             dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-                ?.setBackgroundResource(R.drawable.bg_source_sheet)
+                ?.background = sheetBackground(context)
         }
         dialog.setOnDismissListener { onDismiss() }
 
@@ -104,6 +107,19 @@ object SourcePicker {
         })
         binding.sourcePickerList.postDelayed({ adapter.animateIn = false }, 800)
         dialog.show()
+    }
+
+    private fun sheetBackground(context: Context): Drawable? {
+        if (!ThemeSurface.isOled(context)) {
+            return ContextCompat.getDrawable(context, R.drawable.bg_source_sheet)
+        }
+        val density = context.resources.displayMetrics.density
+        val radius = 28f * density
+        return GradientDrawable().apply {
+            cornerRadii = floatArrayOf(radius, radius, radius, radius, 0f, 0f, 0f, 0f)
+            setColor(Color.BLACK)
+            setStroke(density.toInt().coerceAtLeast(1), 0x26808080)
+        }
     }
 
     private class RowAdapter(
