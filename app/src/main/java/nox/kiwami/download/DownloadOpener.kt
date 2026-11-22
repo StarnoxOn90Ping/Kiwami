@@ -16,7 +16,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 object DownloadOpener {
-    private const val MAX_SNAPSHOT = 400
+    private const val MAX_SNAPSHOT = 100
 
     fun pressFeedback(tile: View) {
         tile.animate().cancel()
@@ -32,6 +32,9 @@ object DownloadOpener {
             ContextCompat.startActivity(activity, intent, null)
             return
         }
+        tile.animate().cancel()
+        tile.scaleX = 1f
+        tile.scaleY = 1f
         MediaSingleton.bitmap = snapshot(cover)
         val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
             activity,

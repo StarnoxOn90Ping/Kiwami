@@ -129,6 +129,38 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
         }
 
+    private var coverHandoffPending = false
+
+    private fun loadCoverAfterTransition(url: String?) {
+        var loaded = false
+        val load = {
+            if (!loaded) {
+                loaded = true
+                coverHandoffPending = false
+                binding.mediaCoverImage.loadImage(url)
+            }
+        }
+        val transition = window.sharedElementEnterTransition
+        if (transition == null) {
+            load()
+            return
+        }
+        transition.addListener(object : android.transition.Transition.TransitionListener {
+            override fun onTransitionStart(t: android.transition.Transition) {}
+            override fun onTransitionEnd(t: android.transition.Transition) {
+                t.removeListener(this)
+                load()
+            }
+            override fun onTransitionCancel(t: android.transition.Transition) {
+                t.removeListener(this)
+                load()
+            }
+            override fun onTransitionPause(t: android.transition.Transition) {}
+            override fun onTransitionResume(t: android.transition.Transition) {}
+        })
+        binding.root.postDelayed({ load() }, 900)
+    }
+
     private fun showImageViewer(kind: nox.kiwami.others.CustomMediaImages.Kind) {
         val isCover = kind == nox.kiwami.others.CustomMediaImages.Kind.COVER
         val title = getString(if (isCover) R.string.cover else R.string.banner, media.userPreferredName)
@@ -204,7 +236,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        coverHandoff?.let { binding.mediaCoverImage.setImageBitmap(it) }
+        coverHandoff?.let {
+            coverHandoffPending = true
+            binding.mediaCoverImage.setImageBitmap(it)
+        }
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
 
@@ -281,7 +316,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             val customBanner = nox.kiwami.others.CustomMediaImages.path(
                 this, media.id, nox.kiwami.others.CustomMediaImages.Kind.BANNER
             )
-            binding.mediaCoverImage.loadImage(customCover ?: media.cover)
+            val coverUrl = customCover ?: media.cover
+            if (coverHandoffPending) {
+                loadCoverAfterTransition(coverUrl)
+            } else {
+                binding.mediaCoverImage.loadImage(coverUrl)
+            }
             val realBanner = customBanner ?: media.banner
             if (!realBanner.isNullOrEmpty()) {
                 showSharpBanner(realBanner)
