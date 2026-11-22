@@ -32,6 +32,7 @@ import nox.kiwami.connections.crashlytics.CrashlyticsInterface
 import nox.kiwami.currActivity
 import nox.kiwami.currContext
 import nox.kiwami.download.DownloadCompat.Companion.loadMediaCompat
+import nox.kiwami.download.DownloadOpener
 import nox.kiwami.download.DownloadCompat.Companion.loadOfflineAnimeModelCompat
 import nox.kiwami.download.DownloadedType
 import nox.kiwami.download.OfflineLibraryCache
@@ -219,11 +220,12 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         }
         gridView.adapter = adapter
         gridView.scheduleLayoutAnimation()
-        gridView.setOnItemClickListener { _, _, position, _ ->
+        gridView.setOnItemClickListener { _, tile, position, _ ->
             val item = adapter.getItem(position) as OfflineAnimeModel
             val media =
                 downloadManager.animeDownloadedTypes.firstOrNull { it.titleName.compareName(item.title) }
             media?.let {
+                DownloadOpener.pressFeedback(tile)
                 lifecycleScope.launch {
                     val mediaModel = getMedia(it)
                     if (mediaModel == null) {
@@ -231,11 +233,11 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
                         return@launch
                     }
                     MediaDetailsActivity.mediaSingleton = mediaModel
-                    ContextCompat.startActivity(
+                    DownloadOpener.open(
                         requireActivity(),
+                        tile,
                         Intent(requireContext(), MediaDetailsActivity::class.java)
-                            .putExtra("download", true),
-                        null
+                            .putExtra("download", true)
                     )
                 }
             } ?: run {
