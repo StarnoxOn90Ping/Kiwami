@@ -11,17 +11,20 @@ import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
+import android.widget.AutoCompleteTextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.textfield.TextInputLayout
 import nox.kiwami.R
 import nox.kiwami.databinding.DialogSourcePickerBinding
 import nox.kiwami.databinding.ItemSourcePickerBinding
@@ -47,7 +50,11 @@ object SourcePicker {
         selected: String,
         recentsKey: String,
         onPick: (Int) -> Unit,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        title: String = "Choose source",
+        countText: String = "${items.size} installed",
+        keepOrder: Boolean = false,
+        searchable: Boolean = items.size > 5
     ) {
         val binding = DialogSourcePickerBinding.inflate(LayoutInflater.from(context))
         val dialog = BottomSheetDialog(context)
@@ -62,12 +69,12 @@ object SourcePicker {
         dialog.setOnDismissListener { onDismiss() }
 
         val key = "kiwami_recent_sources_$recentsKey"
-        val stored: String = PrefManager.getCustomVal(key, "")
+        val stored: String = if (recentsKey.isEmpty()) "" else PrefManager.getCustomVal(key, "")
         val recents = stored.split("\n").filter { name -> name.isNotEmpty() && items.any { it.name == name } }
         val recentNames = recents.filter { it != selected }.take(3)
 
         val selectedIndex = items.indexOfFirst { it.name == selected }
-        val ordered = buildList {
+        val ordered = if (keepOrder) items.indices.toList() else buildList {
             if (selectedIndex >= 0) add(selectedIndex)
             recentNames.forEach { name -> add(items.indexOfFirst { it.name == name }) }
             items.indices.forEach { if (!contains(it)) add(it) }
@@ -78,18 +85,22 @@ object SourcePicker {
             if (picked) return@RowAdapter
             picked = true
             row.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-            val updated = (listOf(items[index].name) + recents.filter { it != items[index].name }).take(5)
-            PrefManager.setCustomVal(key, updated.joinToString("\n"))
+            if (recentsKey.isNotEmpty()) {
+                val updated = (listOf(items[index].name) + recents.filter { it != items[index].name }).take(5)
+                PrefManager.setCustomVal(key, updated.joinToString("\n"))
+            }
             if (items[index].name != selected) onPick(index)
             row.postDelayed({ dialog.dismiss() }, 220)
         }
         adapter.rows = ordered
 
-        binding.sourcePickerCount.text = "${items.size} installed"
+        binding.sourcePickerTitle.text = title
+        binding.sourcePickerCount.text = countText
+        binding.sourcePickerCount.visibility = if (countText.isEmpty()) View.GONE else View.VISIBLE
         binding.sourcePickerList.layoutManager = LinearLayoutManager(context)
         binding.sourcePickerList.adapter = adapter
         binding.sourcePickerList.itemAnimator = null
-        binding.sourcePickerSearchBox.visibility = if (items.size > 5) View.VISIBLE else View.GONE
+        binding.sourcePickerSearchBox.visibility = if (searchable) View.VISIBLE else View.GONE
         binding.sourcePickerSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
@@ -107,6 +118,45 @@ object SourcePicker {
         })
         binding.sourcePickerList.postDelayed({ adapter.animateIn = false }, 800)
         dialog.show()
+    }
+
+    fun showOptions(
+        context: Context,
+        title: String,
+        names: List<String>,
+        selected: String,
+        onPick: (String) -> Unit
+    ) {
+        show(
+            context = context,
+            items = names.map { Item(it, "") },
+            selected = selected,
+            recentsKey = "",
+            onPick = { onPick(names[it]) },
+            onDismiss = {},
+            title = title,
+            countText = "",
+            keepOrder = true,
+            searchable = false
+        )
+    }
+
+    fun bindDropdown(
+        layout: TextInputLayout,
+        field: AutoCompleteTextView,
+        title: String,
+        names: List<String>
+    ) {
+        val open = {
+            showOptions(field.context, title, names, field.text.toString()) {
+                field.setText(it, false)
+            }
+        }
+        field.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_UP) open()
+            true
+        }
+        layout.setEndIconOnClickListener { open() }
     }
 
     fun sheetBackground(context: Context): Drawable? {
@@ -160,6 +210,7 @@ object SourcePicker {
 
             b.sourceRowName.text = item.name
             b.sourceRowSubtitle.text = item.subtitle
+            b.sourceRowSubtitle.visibility = if (item.subtitle.isEmpty()) View.GONE else View.VISIBLE
 
             val isSelected = item.name == selectedName
             val fill = GradientDrawable().apply {

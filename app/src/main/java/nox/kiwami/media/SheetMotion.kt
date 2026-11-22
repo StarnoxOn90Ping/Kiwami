@@ -1,10 +1,35 @@
 package nox.kiwami.media
 
+import android.app.Dialog
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 object SheetMotion {
+
+    fun expand(dialog: Dialog) {
+        if (dialog is BottomSheetDialog) {
+            dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+            dialog.behavior.skipCollapsed = true
+        }
+    }
+
+    fun style(dialog: Dialog?) {
+        val sheet = dialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            ?: return
+        sheet.background = SourcePicker.sheetBackground(sheet.context)
+    }
+
+    fun popInChildren(group: ViewGroup, startIndex: Int = 0) {
+        var index = startIndex
+        for (i in 0 until group.childCount) {
+            val child = group.getChildAt(i)
+            if (child.visibility == View.VISIBLE) popIn(child, index++)
+        }
+    }
 
     fun popIn(view: View, index: Int) {
         val density = view.resources.displayMetrics.density
