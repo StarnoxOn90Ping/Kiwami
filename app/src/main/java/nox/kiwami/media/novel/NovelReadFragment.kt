@@ -43,6 +43,7 @@ import nox.kiwami.download.novel.NovelDownloaderService
 import nox.kiwami.download.novel.NovelServiceDataSingleton
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
+import nox.kiwami.media.SourceSettingsSheet
 import nox.kiwami.media.MediaDetailsViewModel
 import nox.kiwami.media.MediaType
 import nox.kiwami.media.novel.novelreader.NovelReaderActivity
@@ -880,35 +881,23 @@ class NovelReadFragment : Fragment(),
     }
 
     fun openSettings(pkg: NovelExtension.Installed) {
-        val changeUIVisibility: (Boolean) -> Unit = { show ->
-            val activity = activity
-            if (activity is MediaDetailsActivity && isAdded) {
-                activity.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
-                activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
-                activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
-                activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
-                activity.navBar.isVisible = show
-                activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
-            }
-        }
         val configurable = pkg.sources.filterIsInstance<ConfigurableNovelSource>()
         val hasPrefMethod = pkg.sources.any { src ->
             src.javaClass.methods.any { it.name == "setupPreferenceScreen" }
         }
         if (configurable.isNotEmpty() || hasPrefMethod) {
-            changeUIVisibility(false)
-            val fragment = NovelSourcePreferencesFragment().getInstance(pkg.pkgName) {
-                changeUIVisibility(true)
-                val sel = media.selected?.sourceIndex ?: 0
-                lifecycleScope.launch {
-                    model.loadNovelChapters(media, sel, invalidate = true)
+            SourceSettingsSheet.show(
+                requireActivity().supportFragmentManager,
+                "Extension settings",
+                pkg.name
+            ) {
+                NovelSourcePreferencesFragment().getInstance(pkg.pkgName) {
+                    val sel = media.selected?.sourceIndex ?: 0
+                    lifecycleScope.launch {
+                        model.loadNovelChapters(media, sel, invalidate = true)
+                    }
                 }
             }
-            parentFragmentManager.beginTransaction()
-                .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                .replace(R.id.fragmentExtensionsContainer, fragment)
-                .addToBackStack(null)
-                .commit()
         } else {
             requireContext().customAlertDialog().apply {
                 setTitle(pkg.name)

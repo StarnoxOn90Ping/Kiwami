@@ -45,6 +45,7 @@ import nox.kiwami.dp
 import nox.kiwami.isOnline
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
+import nox.kiwami.media.SourceSettingsSheet
 import nox.kiwami.media.MediaDetailsViewModel
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.MediaType
@@ -780,71 +781,36 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     }
 
     fun openSettings(pkg: AnimeExtension.Installed) {
-        val changeUIVisibility: (Boolean) -> Unit = { show ->
-            val activity = activity
-            if (activity is MediaDetailsActivity && isAdded) {
-                activity.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
-                activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
-                activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
-                activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
-                activity.navBar.isVisible = show
-                activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
-            }
-        }
-        var itemSelected = false
         val allSettings = pkg.sources.filterIsInstance<ConfigurableAnimeSource>()
-        if (allSettings.isNotEmpty()) {
-            var selectedSetting = allSettings[0]
-            if (allSettings.size > 1) {
-                val names =
-                    allSettings.map { LanguageMapper.getLanguageName(it.lang) }.toTypedArray()
-                requireContext()
-                    .customAlertDialog()
-                    .apply {
-                        setTitle("Select a Source")
-                        singleChoiceItems(names) { which ->
-                            selectedSetting = allSettings[which]
-                            itemSelected = true
-                            requireActivity().runOnUiThread {
-                                val fragment =
-                                    AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
-                                        changeUIVisibility(true)
-                                        loadEpisodes(media.selected!!.sourceIndex, true)
-                                    }
-                                parentFragmentManager.beginTransaction()
-                                    .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                                    .replace(R.id.fragmentExtensionsContainer, fragment)
-                                    .addToBackStack(null)
-                                    .commit()
-                            }
-                        }
-                        onDismiss {
-                            if (!itemSelected) {
-                                changeUIVisibility(true)
-                            }
-                        }
-                        show()
-                    }
-            } else {
-                requireActivity().runOnUiThread {
-                    val fragment =
-                        AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
-                            changeUIVisibility(true)
-                            loadEpisodes(media.selected!!.sourceIndex, true)
-                        }
-                    parentFragmentManager.beginTransaction().apply {
-                        setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                        replace(R.id.fragmentExtensionsContainer, fragment)
-                        addToBackStack(null)
-                        commit()
-                    }
-                }
-            }
-
-            changeUIVisibility(false)
-        } else {
+        if (allSettings.isEmpty()) {
             Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
                 .show()
+            return
+        }
+        fun openSheet(setting: ConfigurableAnimeSource) {
+            SourceSettingsSheet.show(
+                requireActivity().supportFragmentManager,
+                "Extension settings",
+                pkg.name
+            ) {
+                AnimeSourcePreferencesFragment().getInstance(setting.id) {
+                    loadEpisodes(media.selected!!.sourceIndex, true)
+                }
+            }
+        }
+        if (allSettings.size > 1) {
+            val names = allSettings.map { LanguageMapper.getLanguageName(it.lang) }.toTypedArray()
+            requireContext()
+                .customAlertDialog()
+                .apply {
+                    setTitle("Select a Source")
+                    singleChoiceItems(names) { which ->
+                        requireActivity().runOnUiThread { openSheet(allSettings[which]) }
+                    }
+                    show()
+                }
+        } else {
+            openSheet(allSettings[0])
         }
     }
 
