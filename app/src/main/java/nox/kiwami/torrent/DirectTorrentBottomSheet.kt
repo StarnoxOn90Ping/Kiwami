@@ -1,6 +1,7 @@
 package nox.kiwami.torrent
 
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -28,6 +29,7 @@ import nox.kiwami.databinding.ItemTorrentFileBinding
 import nox.kiwami.loadImage
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaNameAdapter
+import nox.kiwami.media.SheetMotion
 import nox.kiwami.media.Selected
 import nox.kiwami.media.anime.Anime
 import nox.kiwami.media.anime.Episode
@@ -105,6 +107,17 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val dialog = super.onCreateDialog(savedInstanceState)
+        SheetMotion.expand(dialog)
+        return dialog
+    }
+
+    override fun onStart() {
+        super.onStart()
+        SheetMotion.style(dialog)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -116,6 +129,7 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        SheetMotion.popInChildren(binding.root as ViewGroup)
 
         torrentAdapter = TorrentFileAdapter(currentFileList) { clickedStat ->
             onFileClicked(clickedStat)
