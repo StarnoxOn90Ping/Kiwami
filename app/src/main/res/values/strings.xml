@@ -1448,6 +1448,16 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="hub_refresh_done">Refreshed %1$d of %2$d titles</string>
     <string name="hub_refresh_busy">Wait for downloads to finish first</string>
     <string name="hub_refresh_offline">You need an internet connection to refresh</string>
+    <string name="hub_refresh_running">A refresh is already running</string>
+    <string name="hub_refresh_warning_title">Refresh downloaded info?</string>
+    <string name="hub_refresh_warning_message">This fetches fresh covers, banners and details from the internet for each title you pick. It can take a while, and you may hit timeouts or rate limits. It keeps running in the background if you leave this screen.</string>
+    <string name="hub_refresh_continue">Continue</string>
+    <string name="hub_refresh_pick_title">Choose what to refresh</string>
+    <string name="hub_refresh_start">Refresh</string>
+    <string name="hub_refresh_select_all">Select all</string>
+    <string name="hub_refresh_select_none">Select none</string>
+    <string name="hub_refresh_nothing">No downloads to refresh</string>
+    <string name="hub_refresh_novel">Novel</string>
     <string name="hub_downloads_subtitle">%1$d anime · %2$d manga</string>
     <string name="hub_tab_count">%1$s · %2$d</string>
     <string name="hub_downloading">Downloading %1$d items…</string>

@@ -6,7 +6,9 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -52,7 +54,7 @@ class DownloadsActivity : AppCompatActivity() {
     private var lastMangaCount = -1
     private var lastCountsVersion = -1
     private var currentPage = 0
-    private var refreshing = false
+    private var seenRefreshId = DownloadRefresher.completed.value?.first ?: 0
     private var spinner: ObjectAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,7 +98,10 @@ class DownloadsActivity : AppCompatActivity() {
     }
 
     private fun refreshDownloads() {
-        if (refreshing) return
+        if (DownloadRefresher.isRunning) {
+            snackString(getString(R.string.hub_refresh_running))
+            return
+        }
         if (DownloadActivityState.snapshot().isActive) {
             snackString(getString(R.string.hub_refresh_busy))
             return
@@ -105,28 +110,87 @@ class DownloadsActivity : AppCompatActivity() {
             snackString(getString(R.string.hub_refresh_offline))
             return
         }
-        refreshing = true
-        spinner = ObjectAnimator.ofFloat(binding.downloadsRefreshIcon, View.ROTATION, 0f, 360f).apply {
-            duration = 900
-            repeatCount = ObjectAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            start()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.hub_refresh_warning_title)
+            .setMessage(R.string.hub_refresh_warning_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.hub_refresh_continue) { _, _ -> pickDownloadsToRefresh() }
+            .show()
+    }
+
+    private fun pickDownloadsToRefresh() {
+        val targets = DownloadRefresher.targets(downloadsManager)
+        if (targets.isEmpty()) {
+            snackString(getString(R.string.hub_refresh_nothing))
+            return
         }
-        lifecycleScope.launch {
-            try {
-                val result = DownloadRefresher.refreshAll(applicationContext, downloadsManager) { done, total ->
-                    runOnUiThread {
-                        binding.downloadsSubtitle.text = getString(R.string.hub_refreshing, done, total)
-                    }
-                }
-                OfflineLibraryCache.clear()
-                snackString(getString(R.string.hub_refresh_done, result.refreshed, result.total))
-                recreate()
-            } finally {
-                refreshing = false
-                spinner?.cancel()
-                binding.downloadsRefreshIcon.rotation = 0f
+        val labels = targets.map {
+            val kind = when (it.type) {
+                MediaType.ANIME -> getString(R.string.anime)
+                MediaType.MANGA -> getString(R.string.manga)
+                else -> getString(R.string.hub_refresh_novel)
             }
+            "${it.title} ($kind)"
+        }.toTypedArray()
+        val checked = BooleanArray(targets.size)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.hub_refresh_pick_title)
+            .setMultiChoiceItems(labels, checked) { dlg, which, isChecked ->
+                checked[which] = isChecked
+                (dlg as AlertDialog).getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = checked.any { it }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .setNeutralButton(R.string.hub_refresh_select_all, null)
+            .setPositiveButton(R.string.hub_refresh_start) { _, _ ->
+                val selected = targets.filterIndexed { index, _ -> checked[index] }
+                if (!DownloadRefresher.start(applicationContext, downloadsManager, selected)) {
+                    snackString(getString(R.string.hub_refresh_running))
+                }
+            }
+            .create()
+        dialog.setOnShowListener {
+            val positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            val neutral = dialog.getButton(AlertDialog.BUTTON_NEUTRAL)
+            positive.isEnabled = false
+            neutral.setOnClickListener {
+                val all = !checked.all { it }
+                checked.fill(all)
+                for (i in checked.indices) dialog.listView.setItemChecked(i, all)
+                positive.isEnabled = all
+                neutral.setText(if (all) R.string.hub_refresh_select_none else R.string.hub_refresh_select_all)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun renderRefresh() {
+        val progress = DownloadRefresher.progress.value
+        if (progress != null) {
+            if (spinner == null) {
+                spinner = ObjectAnimator.ofFloat(binding.downloadsRefreshIcon, View.ROTATION, 0f, 360f).apply {
+                    duration = 900
+                    repeatCount = ObjectAnimator.INFINITE
+                    interpolator = LinearInterpolator()
+                    start()
+                }
+            }
+            binding.downloadsSubtitle.text =
+                getString(R.string.hub_refreshing, progress.done, progress.total)
+            return
+        }
+        spinner?.let {
+            it.cancel()
+            spinner = null
+            binding.downloadsRefreshIcon.rotation = 0f
+            lastCountsVersion = -1
+            lastAnimeCount = -1
+            lastMangaCount = -1
+        }
+        val completed = DownloadRefresher.completed.value
+        if (completed != null && completed.first != seenRefreshId) {
+            seenRefreshId = completed.first
+            snackString(getString(R.string.hub_refresh_done, completed.second.refreshed, completed.second.total))
+            recreate()
         }
     }
 
@@ -237,6 +301,7 @@ class DownloadsActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
                     renderState(DownloadActivityState.snapshot())
+                    renderRefresh()
                     refreshCounts()
                     delay(600)
                 }

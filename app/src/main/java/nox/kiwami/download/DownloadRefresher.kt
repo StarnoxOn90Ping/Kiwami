@@ -10,9 +10,13 @@ import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.SEpisodeImpl
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SChapterImpl
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import nox.kiwami.FileUrl
 import nox.kiwami.connections.anilist.Anilist
 import nox.kiwami.media.Media
@@ -22,12 +26,14 @@ import nox.kiwami.util.Logger
 
 object DownloadRefresher {
     data class Result(val total: Int, val refreshed: Int)
+    data class Target(val type: MediaType, val title: String)
+    data class Progress(val done: Int, val total: Int)
 
     private const val COVER = "cover.jpg"
     private const val BANNER = "banner.jpg"
     private const val MEDIA_FILE = "media.json"
-    private const val TITLE_GAP_MS = 2000L
-    private const val RETRY_GAP_MS = 4000L
+    private const val TITLE_GAP_MS = 600L
+    private const val RETRY_GAP_MS = 2500L
     private const val MAX_ATTEMPTS = 3
 
     private val gson = GsonBuilder()
@@ -36,30 +42,57 @@ object DownloadRefresher {
         .registerTypeAdapter(SEpisode::class.java, InstanceCreator<SEpisode> { SEpisodeImpl() })
         .create()
 
-    suspend fun refreshAll(
-        context: Context,
-        manager: DownloadsManager,
-        onProgress: (Int, Int) -> Unit
-    ): Result = withContext(Dispatchers.IO) {
-        val groups = listOf(
-            MediaType.ANIME to manager.animeDownloadedTypes,
-            MediaType.MANGA to manager.mangaDownloadedTypes,
-            MediaType.NOVEL to manager.novelDownloadedTypes
-        ).flatMap { (type, list) ->
-            list.groupBy { it.titleName }.map { Triple(type, it.key, it.value) }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val _progress = MutableStateFlow<Progress?>(null)
+    val progress: StateFlow<Progress?> = _progress
+
+    private val _completed = MutableStateFlow<Pair<Int, Result>?>(null)
+    val completed: StateFlow<Pair<Int, Result>?> = _completed
+
+    val isRunning: Boolean get() = _progress.value != null
+
+    fun targets(manager: DownloadsManager): List<Target> = listOf(
+        MediaType.ANIME to manager.animeDownloadedTypes,
+        MediaType.MANGA to manager.mangaDownloadedTypes,
+        MediaType.NOVEL to manager.novelDownloadedTypes
+    ).flatMap { (type, list) ->
+        list.map { it.titleName }.distinct().sortedBy { it.lowercase() }.map { Target(type, it) }
+    }
+
+    fun start(context: Context, manager: DownloadsManager, selected: List<Target>): Boolean {
+        if (selected.isEmpty()) return false
+        synchronized(this) {
+            if (_progress.value != null) return false
+            _progress.value = Progress(0, selected.size)
         }
-        var refreshed = 0
-        groups.forEachIndexed { index, (type, title, items) ->
-            if (index > 0) delay(TITLE_GAP_MS)
-            onProgress(index + 1, groups.size)
+        val appContext = context.applicationContext
+        scope.launch {
+            var refreshed = 0
             try {
-                if (refreshTitle(context, type, title, items)) refreshed++
-            } catch (e: Exception) {
-                Logger.log("Failed to refresh $title: ${e.message}")
+                selected.forEachIndexed { index, target ->
+                    if (index > 0) delay(TITLE_GAP_MS)
+                    _progress.value = Progress(index + 1, selected.size)
+                    val items = (when (target.type) {
+                        MediaType.ANIME -> manager.animeDownloadedTypes
+                        MediaType.MANGA -> manager.mangaDownloadedTypes
+                        else -> manager.novelDownloadedTypes
+                    }).filter { it.titleName == target.title }
+                    try {
+                        if (refreshTitle(appContext, target.type, target.title, items)) refreshed++
+                    } catch (e: Exception) {
+                        Logger.log("Failed to refresh ${target.title}: ${e.message}")
+                    }
+                    OfflineLibraryCache.invalidate(target.title)
+                }
+            } finally {
+                OfflineLibraryCache.clear()
+                val id = (_completed.value?.first ?: 0) + 1
+                _completed.value = id to Result(selected.size, refreshed)
+                _progress.value = null
             }
-            OfflineLibraryCache.invalidate(title)
         }
-        Result(groups.size, refreshed)
+        return true
     }
 
     private suspend fun refreshTitle(
