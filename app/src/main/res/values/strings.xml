@@ -1264,6 +1264,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="auto_delete_downloads">Auto Delete Watched/Read Stuff</string>
     <string name="auto_delete_downloads_desc">Automatically clean up downloaded anime or manga once you’ve watched or read it</string>
     <string name="download_insights_header">Downloaded Content</string>
+    <string name="download_storage">Download storage</string>
+    <string name="download_storage_desc">See how much space each download takes</string>
+    <string name="download_storage_row_desc">%1$s used by downloads</string>
+    <string name="download_storage_summary">%1$s total • %2$s %3$s (%4$d titles)</string>
     <string name="download_queue_header">Queue</string>
     <string name="clear_media_confirm">Are you sure you want to delete all downloaded content for %1$s?</string>
 

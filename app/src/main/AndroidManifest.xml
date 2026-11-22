@@ -195,6 +195,9 @@
         <activity android:name=".settings.FAQActivity" />
         <activity android:name=".settings.DownloadQueueActivity" android:parentActivityName=".settings.SettingsActivity" />
         <activity
+            android:name=".download.storage.DownloadStorageActivity"
+            android:parentActivityName=".settings.data.SettingsDataActivity" />
+        <activity
             android:name=".download.hub.DownloadsActivity"
             android:parentActivityName=".MainActivity" />
         <activity
