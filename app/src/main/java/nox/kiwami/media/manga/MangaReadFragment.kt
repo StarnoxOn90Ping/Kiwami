@@ -209,8 +209,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         })
         sourcePill = SourcePillController(
             pill = binding.sourcePill,
-            badge = binding.sourcePillBadge,
-            letter = binding.sourcePillLetter,
             nameView = binding.sourcePillName,
             status = binding.sourcePillStatus,
             countView = binding.sourcePillCount,

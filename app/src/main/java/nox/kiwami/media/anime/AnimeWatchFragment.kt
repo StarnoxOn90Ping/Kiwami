@@ -208,8 +208,6 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
         })
         sourcePill = SourcePillController(
             pill = binding.sourcePill,
-            badge = binding.sourcePillBadge,
-            letter = binding.sourcePillLetter,
             nameView = binding.sourcePillName,
             status = binding.sourcePillStatus,
             countView = binding.sourcePillCount,

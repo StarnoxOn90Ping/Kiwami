@@ -94,10 +94,7 @@
                 android:contentDescription="@string/source"
                 android:focusable="true">
 
-                <nox.kiwami.util.SourceGlowView
-                    android:id="@+id/sourceGlow"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -111,33 +108,11 @@
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <FrameLayout
-                            android:layout_width="48dp"
-                            android:layout_height="48dp">
-
-                            <ImageView
-                                android:id="@+id/sourceBadge"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:importantForAccessibility="no"
-                                android:scaleType="centerCrop" />
-
-                            <TextView
-                                android:id="@+id/sourceBadgeLetter"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:fontFamily="@font/poppins_bold"
-                                android:gravity="center"
-                                android:includeFontPadding="false"
-                                android:textColor="#1A0B06"
-                                android:textSize="20sp"
-                                tools:text="A" />
-                        </FrameLayout>
+                        
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
                             android:layout_weight="1"
                             android:orientation="vertical">
 

@@ -4,7 +4,6 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.text.Editable
@@ -13,7 +12,6 @@ import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewOutlineProvider
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.AutoCompleteTextView
@@ -21,14 +19,10 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import nox.kiwami.R
-import nox.kiwami.util.SourceGlowView
 import nox.kiwami.util.SourceStatusView
 
 class SourceCardController(
     private val card: View,
-    private val glow: SourceGlowView,
-    private val badge: ImageView,
-    private val letter: TextView,
     private val nameView: TextView,
     private val indicator: SourceStatusView,
     private val statusText: TextView,
@@ -40,7 +34,6 @@ class SourceCardController(
     private val nameSource: AutoCompleteTextView,
     private val titleSource: TextView,
     private val unit: String,
-    private val iconFor: (String) -> Drawable?,
     private val onOpen: () -> Unit
 ) {
 
@@ -48,8 +41,6 @@ class SourceCardController(
 
     data class Snapshot(
         val name: String,
-        val icon: Drawable?,
-        val color: Int,
         val phase: Phase,
         val count: Int
     )
@@ -63,8 +54,6 @@ class SourceCardController(
     private var count = 0
     private var settled = false
     private var pulse: ObjectAnimator? = null
-    private var currentIcon: Drawable? = null
-    private var currentColor = 0
 
     private val nameWatcher = watcher { applyName() }
     private val titleWatcher = watcher { applyTitle() }
@@ -79,18 +68,6 @@ class SourceCardController(
         }
         pressScale(card)
         styleStatic()
-        badge.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: android.graphics.Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, 14f * density)
-            }
-        }
-        badge.clipToOutline = true
-        card.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: android.graphics.Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, 24f * density)
-            }
-        }
-        card.clipToOutline = true
         applyName()
         applyTitle()
         render()
@@ -122,23 +99,9 @@ class SourceCardController(
         rotateChevron(false)
     }
 
-    fun setBadgeLifted(lifted: Boolean) {
-        val holder = badge.parent as? View ?: return
-        holder.animate().cancel()
-        if (lifted) {
-            holder.animate().alpha(0f).setDuration(120).start()
-            return
-        }
-        holder.alpha = 0f
-        holder.scaleX = 0.6f
-        holder.scaleY = 0.6f
-        holder.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420)
-            .setInterpolator(OvershootInterpolator(3f)).start()
-    }
-
     private fun emit() {
         onSnapshot?.invoke(
-            Snapshot(nameView.text.toString(), currentIcon, currentColor, phase, count)
+            Snapshot(nameView.text.toString(), phase, count)
         )
     }
 
@@ -154,33 +117,7 @@ class SourceCardController(
         val previous = nameView.text.toString()
         if (name == previous && settled) return
         nameView.text = name
-        val icon = iconFor(name)
-        val color = SourceVisuals.colorFor(name, icon)
-        currentIcon = icon
-        currentColor = color
-        glow.setGlowColor(color, settled)
-        if (icon != null) {
-            badge.setImageDrawable(icon)
-            badge.background = null
-            letter.visibility = View.GONE
-        } else {
-            badge.setImageDrawable(null)
-            badge.background = SourceVisuals.letterBadge(color, 14f * density)
-            letter.text = name.take(1).uppercase()
-            letter.visibility = View.VISIBLE
-        }
         emit()
-        if (settled && previous.isNotEmpty() && previous != name) {
-            badge.animate().cancel()
-            badge.scaleX = 0.75f
-            badge.scaleY = 0.75f
-            letter.scaleX = 0.75f
-            letter.scaleY = 0.75f
-            badge.animate().scaleX(1f).scaleY(1f).setDuration(420)
-                .setInterpolator(OvershootInterpolator(3f)).start()
-            letter.animate().scaleX(1f).scaleY(1f).setDuration(420)
-                .setInterpolator(OvershootInterpolator(3f)).start()
-        }
     }
 
     private fun applyTitle() {

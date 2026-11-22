@@ -180,9 +180,6 @@ class AnimeWatchAdapter(
         sourceCard?.release()
         sourceCard = SourceCardController(
             card = binding.sourceCard,
-            glow = binding.sourceGlow,
-            badge = binding.sourceBadge,
-            letter = binding.sourceBadgeLetter,
             nameView = binding.sourceCardName,
             indicator = binding.sourceStatusIndicator,
             statusText = binding.sourceStatusText,
@@ -194,10 +191,6 @@ class AnimeWatchAdapter(
             nameSource = binding.mediaSource,
             titleSource = binding.mediaSourceTitle,
             unit = "eps",
-            iconFor = { name ->
-                val index = watchSources.names.indexOf(name)
-                if (index >= 0) watchSources[index].icon else null
-            },
             onOpen = {
                 binding.mediaSource.performClick()
                 SourcePicker.show(

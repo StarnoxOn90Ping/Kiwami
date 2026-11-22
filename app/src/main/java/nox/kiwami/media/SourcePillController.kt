@@ -2,10 +2,8 @@ package nox.kiwami.media
 
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewOutlineProvider
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -14,8 +12,6 @@ import nox.kiwami.util.SourceStatusView
 
 class SourcePillController(
     private val pill: View,
-    private val badge: ImageView,
-    private val letter: TextView,
     private val nameView: TextView,
     private val status: SourceStatusView,
     private val countView: TextView,
@@ -47,12 +43,6 @@ class SourcePillController(
             }
             false
         }
-        badge.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: android.graphics.Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, 8f * density)
-            }
-        }
-        badge.clipToOutline = true
     }
 
     fun release() {
@@ -63,16 +53,6 @@ class SourcePillController(
     fun update(next: SourceCardController.Snapshot) {
         snapshot = next
         nameView.text = next.name
-        if (next.icon != null) {
-            badge.setImageDrawable(next.icon)
-            badge.background = null
-            letter.visibility = View.GONE
-        } else {
-            badge.setImageDrawable(null)
-            badge.background = SourceVisuals.letterBadge(next.color, 8f * density)
-            letter.text = next.name.take(1).uppercase()
-            letter.visibility = View.VISIBLE
-        }
         status.setMode(
             when (next.phase) {
                 SourceCardController.Phase.SEARCHING -> SourceStatusView.Mode.SPIN

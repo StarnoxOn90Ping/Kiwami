@@ -163,9 +163,6 @@ class MangaReadAdapter(
         sourceCard?.release()
         sourceCard = SourceCardController(
             card = binding.sourceCard,
-            glow = binding.sourceGlow,
-            badge = binding.sourceBadge,
-            letter = binding.sourceBadgeLetter,
             nameView = binding.sourceCardName,
             indicator = binding.sourceStatusIndicator,
             statusText = binding.sourceStatusText,
@@ -177,10 +174,6 @@ class MangaReadAdapter(
             nameSource = binding.mediaSource,
             titleSource = binding.mediaSourceTitle,
             unit = "ch",
-            iconFor = { name ->
-                val index = mangaReadSources.names.indexOf(name)
-                if (index >= 0) mangaReadSources[index].icon else null
-            },
             onOpen = {
                 binding.mediaSource.performClick()
                 SourcePicker.show(
