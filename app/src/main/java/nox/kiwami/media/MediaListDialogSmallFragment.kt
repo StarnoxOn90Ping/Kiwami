@@ -1,5 +1,6 @@
 package nox.kiwami.media
 
+import android.app.Dialog
 import android.os.Bundle
 import android.text.InputFilter.LengthFilter
 import android.view.Gravity
@@ -49,8 +50,21 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         }
     }
 
+    private var introPlayed = false
+
     private var _binding: BottomSheetMediaListSmallBinding? = null
     private val binding get() = _binding!!
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val dialog = super.onCreateDialog(savedInstanceState)
+        SheetMotion.expand(dialog)
+        return dialog
+    }
+
+    override fun onStart() {
+        super.onStart()
+        SheetMotion.style(dialog)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -87,6 +101,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
         binding.mediaListProgressBar.visibility = View.GONE
         binding.mediaListLayout.visibility = View.VISIBLE
+        SheetMotion.popInChildren(binding.mediaListLayout)
         val statuses: Array<String> = resources.getStringArray(R.array.status)
         val statusStrings =
             if (media.manga == null) resources.getStringArray(R.array.status_anime) else resources.getStringArray(
@@ -102,6 +117,12 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                 R.layout.item_dropdown,
                 statusStrings
             )
+        )
+        SourcePicker.bindDropdown(
+            binding.mediaListStatusLayout,
+            binding.mediaListStatus,
+            getString(R.string.status),
+            statusStrings.toList()
         )
 
 
