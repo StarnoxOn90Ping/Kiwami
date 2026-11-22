@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.animesource.model.SEpisodeImpl
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SChapterImpl
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import nox.kiwami.FileUrl
 import nox.kiwami.connections.anilist.Anilist
@@ -25,6 +26,9 @@ object DownloadRefresher {
     private const val COVER = "cover.jpg"
     private const val BANNER = "banner.jpg"
     private const val MEDIA_FILE = "media.json"
+    private const val TITLE_GAP_MS = 2000L
+    private const val RETRY_GAP_MS = 4000L
+    private const val MAX_ATTEMPTS = 3
 
     private val gson = GsonBuilder()
         .registerTypeAdapter(SChapter::class.java, InstanceCreator<SChapter> { SChapterImpl() })
@@ -46,6 +50,7 @@ object DownloadRefresher {
         }
         var refreshed = 0
         groups.forEachIndexed { index, (type, title, items) ->
+            if (index > 0) delay(TITLE_GAP_MS)
             onProgress(index + 1, groups.size)
             try {
                 if (refreshTitle(context, type, title, items)) refreshed++
@@ -71,9 +76,15 @@ object DownloadRefresher {
             Logger.log("Failed to parse $MEDIA_FILE for $title: ${e.message}")
             null
         } ?: return false
-        val before = media.cover
-        Anilist.query.mediaDetails(media)
-        val fetched = media.cover != before || media.cover?.startsWith("http") == true
+        var fetched = false
+        for (attempt in 0 until MAX_ATTEMPTS) {
+            waitForRateLimit()
+            Anilist.query.mediaDetails(media)
+            fetched = media.cover?.startsWith("http") == true ||
+                media.banner?.startsWith("http") == true
+            if (fetched) break
+            delay(RETRY_GAP_MS * (attempt + 1))
+        }
 
         media.cover = refreshImage(context, media.cover, directory, COVER)
         media.banner = refreshImage(context, media.banner, directory, BANNER)
@@ -87,6 +98,11 @@ object DownloadRefresher {
 
         DownloadMetadata.writeText(context, directory, MEDIA_FILE, gson.toJson(media))
         return fetched
+    }
+
+    private suspend fun waitForRateLimit() {
+        val remaining = Anilist.rateLimitReset - System.currentTimeMillis() / 1000
+        if (remaining > 0) delay((remaining + 1) * 1000)
     }
 
     private fun refreshImage(
