@@ -451,7 +451,7 @@ class MangaReadAdapter(
 
                 if (media.userProgress != null && media.userProgress!!.toFloat() >= maxAvailableChapter && (media.userProgress ?: 0) >= appEp) {
                     binding.sourceContinue.visibility = View.GONE
-                    binding.sourceProgressBar.visibility = View.GONE
+                    fragment.showSkeleton(false)
                     return
                 }
 
@@ -513,7 +513,7 @@ class MangaReadAdapter(
                     binding.sourceContinue.visibility = View.GONE
                 }
 
-                binding.sourceProgressBar.visibility = View.GONE
+                fragment.showSkeleton(false)
 
                 val sourceFound = filteredChapters.isNotEmpty()
                 sourceCard?.onResult(sourceFound, filteredChapters.size)
@@ -559,7 +559,7 @@ class MangaReadAdapter(
                 binding.sourceNotFound.visibility = View.GONE
                 binding.faqbutton.visibility = View.GONE
                 clearChips()
-                binding.sourceProgressBar.visibility = View.VISIBLE
+                fragment.showSkeleton(true)
                 sourceCard?.onLoading()
                 countLabel?.hide()
             }

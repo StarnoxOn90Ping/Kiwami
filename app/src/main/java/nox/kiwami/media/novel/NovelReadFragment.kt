@@ -44,6 +44,8 @@ import nox.kiwami.download.novel.NovelServiceDataSingleton
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.SourceSettingsSheet
+import nox.kiwami.media.SkeletonAdapter
+import nox.kiwami.media.WatchSkeleton
 import nox.kiwami.media.MediaDetailsViewModel
 import nox.kiwami.media.MediaType
 import nox.kiwami.media.novel.novelreader.NovelReaderActivity
@@ -500,6 +502,11 @@ class NovelReadFragment : Fragment(),
             }
         }
         binding.mediaSourceRecycler.layoutManager = gridLayoutManager
+        WatchSkeleton.attach(
+            binding.mediaInfoProgressBar,
+            SkeletonAdapter.Kind.CHAPTER_LIST,
+            maxGridSize
+        )
 
         binding.mediaSourceSwipeRefresh.apply {
             val primaryColor = PrefManager.getVal<Int>(PrefName.PrimaryColor)

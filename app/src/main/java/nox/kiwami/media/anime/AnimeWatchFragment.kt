@@ -46,6 +46,8 @@ import nox.kiwami.isOnline
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.SourceSettingsSheet
+import nox.kiwami.media.SkeletonAdapter
+import nox.kiwami.media.WatchSkeleton
 import nox.kiwami.media.MediaDetailsViewModel
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.MediaType
@@ -106,6 +108,7 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
 
     var screenWidth = 0f
     private var progress = View.VISIBLE
+    private lateinit var skeletonAdapter: SkeletonAdapter
 
     var continueEp: Boolean = false
     var loaded = false
@@ -165,6 +168,11 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
         }
 
         binding.mediaSourceRecycler.layoutManager = gridLayoutManager
+        WatchSkeleton.attach(
+            binding.mediaInfoProgressBar,
+            SkeletonAdapter.Kind.forAnime(style ?: PrefManager.getVal(PrefName.AnimeDefaultView)),
+            maxGridSize
+        )
 
         binding.mediaSourceSwipeRefresh.apply {
             val primaryColor = PrefManager.getVal<Int>(PrefName.PrimaryColor)
@@ -258,8 +266,13 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
                             offlineMode = offlineMode
                         )
 
+                    skeletonAdapter = SkeletonAdapter(
+                        SkeletonAdapter.Kind.forAnime(style ?: PrefManager.getVal(PrefName.AnimeDefaultView)),
+                        maxGridSize
+                    )
+                    skeletonAdapter.show(true)
                     binding.mediaSourceRecycler.adapter =
-                        ConcatAdapter(headerAdapter, episodeAdapter)
+                        ConcatAdapter(headerAdapter, episodeAdapter, skeletonAdapter)
                     setupSelectionUi()
 
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -1076,7 +1089,15 @@ class AnimeWatchFragment : Fragment(), AnimeWatchAdapter.ScanlatorSelectionListe
     }
 
     @SuppressLint("NotifyDataSetChanged")
+    fun showSkeleton(show: Boolean) {
+        if (::skeletonAdapter.isInitialized) skeletonAdapter.show(show)
+    }
+
     private fun reload() {
+        if (::skeletonAdapter.isInitialized) {
+            skeletonAdapter.kind =
+                SkeletonAdapter.Kind.forAnime(style ?: PrefManager.getVal(PrefName.AnimeDefaultView))
+        }
         val selected = model.loadSelected(media)
 
         selected.latest =

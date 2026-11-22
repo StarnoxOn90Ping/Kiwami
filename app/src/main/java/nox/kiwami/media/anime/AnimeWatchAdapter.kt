@@ -533,7 +533,7 @@ class AnimeWatchAdapter(
 
                 if (media.userProgress != null && media.userProgress!!.toFloat() >= maxAvailableEp && (media.userProgress ?: 0) >= appEp) {
                     binding.sourceContinue.visibility = View.GONE
-                    binding.sourceProgressBar.visibility = View.GONE
+                    fragment.showSkeleton(false)
                     return
                 }
 
@@ -632,7 +632,7 @@ class AnimeWatchAdapter(
                     binding.sourceContinue.visibility = View.GONE
                 }
 
-                binding.sourceProgressBar.visibility = View.GONE
+                fragment.showSkeleton(false)
 
                 val sourceFound = media.anime.episodes!!.isNotEmpty()
                 sourceCard?.onResult(sourceFound, media.anime.episodes!!.size)
@@ -678,7 +678,7 @@ class AnimeWatchAdapter(
                 binding.sourceNotFound.visibility = View.GONE
                 binding.faqbutton.visibility = View.GONE
                 clearChips()
-                binding.sourceProgressBar.visibility = View.VISIBLE
+                fragment.showSkeleton(true)
                 sourceCard?.onLoading()
                 countLabel?.hide()
             }

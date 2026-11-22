@@ -48,6 +48,8 @@ import nox.kiwami.isOnline
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.media.SourceSettingsSheet
+import nox.kiwami.media.SkeletonAdapter
+import nox.kiwami.media.WatchSkeleton
 import nox.kiwami.media.MediaDetailsViewModel
 import nox.kiwami.media.MediaNameAdapter
 import nox.kiwami.media.MediaType
@@ -106,6 +108,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
     var screenWidth = 0f
     private var progress = View.VISIBLE
+    private lateinit var skeletonAdapter: SkeletonAdapter
 
     var continueEp: Boolean = false
     var loaded = false
@@ -172,6 +175,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
 
         binding.mediaSourceRecycler.layoutManager = gridLayoutManager
+        WatchSkeleton.attach(
+            binding.mediaInfoProgressBar,
+            SkeletonAdapter.Kind.forManga(style ?: PrefManager.getVal(PrefName.MangaDefaultView)),
+            maxGridSize
+        )
 
         binding.mediaSourceSwipeRefresh.apply {
             val primaryColor = PrefManager.getVal<Int>(PrefName.PrimaryColor)
@@ -257,8 +265,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                             }
                         }
 
+                        skeletonAdapter = SkeletonAdapter(
+                            SkeletonAdapter.Kind.forManga(style ?: PrefManager.getVal(PrefName.MangaDefaultView)),
+                            maxGridSize
+                        )
+                        skeletonAdapter.show(true)
                         binding.mediaSourceRecycler.adapter =
-                            ConcatAdapter(headerAdapter, chapterAdapter)
+                            ConcatAdapter(headerAdapter, chapterAdapter, skeletonAdapter)
                         setupSelectionUi()
 
                         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -865,7 +878,15 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     }
 
     @SuppressLint("NotifyDataSetChanged")
+    fun showSkeleton(show: Boolean) {
+        if (::skeletonAdapter.isInitialized) skeletonAdapter.show(show)
+    }
+
     private fun reload() {
+        if (::skeletonAdapter.isInitialized) {
+            skeletonAdapter.kind =
+                SkeletonAdapter.Kind.forManga(style ?: PrefManager.getVal(PrefName.MangaDefaultView))
+        }
         val selected = model.loadSelected(media)
 
         selected.latest =
