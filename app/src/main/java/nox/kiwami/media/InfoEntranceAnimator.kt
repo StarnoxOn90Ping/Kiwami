@@ -35,7 +35,10 @@ object InfoEntranceAnimator {
         for (i in 0 until root.childCount) {
             val child = root.getChildAt(i)
             if (child.visibility != View.VISIBLE) continue
-            if (child.id == R.id.mediaInfoSynopsis) continue
+            if (child.id == R.id.mediaInfoSynopsis) {
+                out.add(child)
+                continue
+            }
             val flatten = child is LinearLayout &&
                 child.orientation == LinearLayout.VERTICAL &&
                 child.background == null &&
