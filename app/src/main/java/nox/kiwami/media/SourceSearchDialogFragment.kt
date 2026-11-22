@@ -1,5 +1,6 @@
 package nox.kiwami.media
 
+import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,6 +13,8 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import nox.kiwami.BottomSheetDialogFragment
 import nox.kiwami.databinding.BottomSheetSourceSearchBinding
 import nox.kiwami.media.anime.AnimeSourceAdapter
@@ -39,6 +42,22 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
     var media: Media? = null
     var isNovel = false
     var onSourceSelected: ((nox.kiwami.parsers.ShowResponse) -> Unit)? = null
+    private var introPlayed = false
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val dialog = super.onCreateDialog(savedInstanceState)
+        if (dialog is BottomSheetDialog) {
+            dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+            dialog.behavior.skipCollapsed = true
+        }
+        return dialog
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            ?.background = SourcePicker.sheetBackground(requireContext())
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,6 +79,11 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
             if (media != null) {
                 binding.mediaListProgressBar.visibility = View.GONE
                 binding.mediaListLayout.visibility = View.VISIBLE
+                if (!introPlayed) {
+                    introPlayed = true
+                    SheetMotion.popIn(binding.searchSourceTitle, 0)
+                    SheetMotion.popIn(binding.searchBar, 1)
+                }
 
                 binding.searchRecyclerView.visibility = View.GONE
                 binding.searchProgress.visibility = View.VISIBLE
@@ -126,6 +150,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                 4
                             )
                         )
+                        SheetMotion.popInRows(binding.searchRecyclerView, 12, 2)
                     }
                 }
             }
