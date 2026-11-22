@@ -9,6 +9,7 @@ import android.view.animation.OvershootInterpolator
 import android.view.animation.PathInterpolator
 import android.widget.LinearLayout
 import androidx.core.view.doOnPreDraw
+import nox.kiwami.R
 
 object InfoEntranceAnimator {
     private const val MAX_ANIMATED = 16
@@ -34,6 +35,7 @@ object InfoEntranceAnimator {
         for (i in 0 until root.childCount) {
             val child = root.getChildAt(i)
             if (child.visibility != View.VISIBLE) continue
+            if (child.id == R.id.mediaInfoSynopsis) continue
             val flatten = child is LinearLayout &&
                 child.orientation == LinearLayout.VERTICAL &&
                 child.background == null &&
@@ -66,6 +68,14 @@ object InfoEntranceAnimator {
             val screenHeight = root.resources.displayMetrics.heightPixels
             val rise = root.resources.displayMetrics.density * 28f
             val location = IntArray(2)
+            val synopsisLocation = IntArray(2)
+            val synopsis = root.findViewById<View>(R.id.mediaInfoSynopsis)
+            val synopsisTop = if (synopsis != null && synopsis.visibility == View.VISIBLE) {
+                synopsis.getLocationOnScreen(synopsisLocation)
+                synopsisLocation[1]
+            } else {
+                Int.MAX_VALUE
+            }
             val pass = Pass()
             running[root] = pass
             var index = 0
@@ -73,6 +83,7 @@ object InfoEntranceAnimator {
                 if (index >= MAX_ANIMATED) break
                 view.getLocationOnScreen(location)
                 if (location[1] > screenHeight) continue
+                val viewRise = if (location[1] < synopsisTop) 0f else rise
                 val baseAlpha = view.alpha
                 val baseTranslation = view.translationY
                 val restore = {
@@ -85,7 +96,7 @@ object InfoEntranceAnimator {
                 view.pivotX = view.width / 2f
                 view.pivotY = 0f
                 view.alpha = 0f
-                view.translationY = baseTranslation + rise
+                view.translationY = baseTranslation + viewRise
                 view.scaleX = START_SCALE
                 view.scaleY = START_SCALE
                 val glide = PathInterpolator(0.16f, 1f, 0.3f, 1f)
@@ -98,7 +109,7 @@ object InfoEntranceAnimator {
                         val g = glide.getInterpolation(t)
                         val p = pop.getInterpolation(t)
                         view.alpha = (g * 1.4f).coerceAtMost(1f) * baseAlpha
-                        view.translationY = baseTranslation + rise * (1f - g)
+                        view.translationY = baseTranslation + viewRise * (1f - g)
                         val scale = START_SCALE + (1f - START_SCALE) * p
                         view.scaleX = scale
                         view.scaleY = scale
