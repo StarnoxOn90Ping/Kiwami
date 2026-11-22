@@ -1,6 +1,7 @@
 package nox.kiwami.settings.data
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -19,6 +20,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import nox.kiwami.R
 import nox.kiwami.databinding.ActivitySettingsDataBinding
 import nox.kiwami.download.DownloadsManager
+import nox.kiwami.download.storage.DownloadStorageActivity
+import nox.kiwami.download.storage.DownloadStorageStats
+import nox.kiwami.util.SizeFormatter
 import nox.kiwami.initActivity
 import nox.kiwami.media.MediaType
 import nox.kiwami.navBarHeight
@@ -100,6 +104,23 @@ class SettingsDataActivity : AppCompatActivity() {
         updateStorageInfo()
         setupRecyclerView(openDocumentLauncher)
         calculateCacheSize()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        calculateDownloadStorage()
+    }
+
+    private fun calculateDownloadStorage() {
+        val manager = Injekt.get<DownloadsManager>()
+        if (DownloadStorageStats.isCurrent(manager)) {
+            binding.dataSettingsRecyclerView.adapter?.notifyDataSetChanged()
+            return
+        }
+        lifecycleScope.launch {
+            DownloadStorageStats.calculate(this@SettingsDataActivity, manager)
+            binding.dataSettingsRecyclerView.adapter?.notifyDataSetChanged()
+        }
     }
 
     private fun updateStorageInfo() {
@@ -276,6 +297,38 @@ class SettingsDataActivity : AppCompatActivity() {
         val copyCounts = arrayOf("1", "2", "3", "5")
 
         val settingsList = arrayListOf(
+            Settings(
+                type = 1,
+                name = getString(R.string.download_storage),
+                desc = getString(R.string.download_storage_desc),
+                icon = R.drawable.ic_download_24,
+                attach = { b ->
+                    b.settingsDesc.text = if (DownloadStorageStats.calculatedOnce) {
+                        getString(
+                            R.string.download_storage_row_desc,
+                            SizeFormatter.formatBytes(DownloadStorageStats.totalBytes())
+                        )
+                    } else {
+                        getString(R.string.cache_calculating)
+                    }
+                },
+                onClick = {
+                    startActivity(Intent(context, DownloadStorageActivity::class.java))
+                },
+                isActivity = true
+            ),
+
+            Settings(
+                type = 2,
+                name = getString(R.string.auto_delete_downloads),
+                desc = getString(R.string.auto_delete_downloads_desc),
+                icon = R.drawable.ic_round_delete_24,
+                isChecked = PrefManager.getCustomVal("auto_delete_downloads", false),
+                switch = { isChecked, _ ->
+                    PrefManager.setCustomVal("auto_delete_downloads", isChecked)
+                }
+            ),
+
             Settings(
                 type = 1,
                 name = getString(R.string.clear_cache),
