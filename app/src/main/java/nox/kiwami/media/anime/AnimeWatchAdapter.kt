@@ -208,7 +208,6 @@ class AnimeWatchAdapter(
                         val extension = (parser as? DynamicAnimeParser)?.extension
                         SourcePicker.Item(
                             name,
-                            parser?.icon,
                             SourcePicker.subtitle(
                                 extension?.lang,
                                 extension?.versionName,
@@ -223,9 +222,7 @@ class AnimeWatchAdapter(
                         binding.mediaSource.onItemClickListener
                             ?.onItemClick(null, null, index, index.toLong())
                     },
-                    onDismiss = { sourceCard?.closed() },
-                    origin = binding.sourceBadge.parent as? View,
-                    onLift = { lifted -> sourceCard?.setBadgeLifted(lifted) }
+                    onDismiss = { sourceCard?.closed() }
                 )
             }
         ).also {

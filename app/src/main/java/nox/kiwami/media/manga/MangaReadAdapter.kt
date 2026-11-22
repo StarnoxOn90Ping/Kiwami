@@ -191,7 +191,6 @@ class MangaReadAdapter(
                         val extension = (parser as? DynamicMangaParser)?.extension
                         SourcePicker.Item(
                             name,
-                            parser?.icon,
                             SourcePicker.subtitle(
                                 extension?.lang,
                                 extension?.versionName,
@@ -206,9 +205,7 @@ class MangaReadAdapter(
                         binding.mediaSource.onItemClickListener
                             ?.onItemClick(null, null, index, index.toLong())
                     },
-                    onDismiss = { sourceCard?.closed() },
-                    origin = binding.sourceBadge.parent as? View,
-                    onLift = { lifted -> sourceCard?.setBadgeLifted(lifted) }
+                    onDismiss = { sourceCard?.closed() }
                 )
             }
         ).also {

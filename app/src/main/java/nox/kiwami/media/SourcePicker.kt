@@ -3,7 +3,6 @@ package nox.kiwami.media
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.text.Editable
@@ -13,11 +12,7 @@ import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
 import android.view.WindowManager
-import android.widget.FrameLayout
-import android.widget.ImageView
-import androidx.core.view.drawToBitmap
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.core.graphics.ColorUtils
@@ -32,7 +27,7 @@ import nox.kiwami.settings.saving.PrefManager
 
 object SourcePicker {
 
-    data class Item(val name: String, val icon: Drawable?, val subtitle: String)
+    data class Item(val name: String, val subtitle: String)
 
     fun subtitle(lang: String?, version: String?, nsfw: Boolean): String {
         if (lang == null && version == null) return "Built-in"
@@ -49,9 +44,7 @@ object SourcePicker {
         selected: String,
         recentsKey: String,
         onPick: (Int) -> Unit,
-        onDismiss: () -> Unit,
-        origin: View? = null,
-        onLift: (Boolean) -> Unit = {}
+        onDismiss: () -> Unit
     ) {
         val binding = DialogSourcePickerBinding.inflate(LayoutInflater.from(context))
         val dialog = BottomSheetDialog(context)
@@ -59,19 +52,11 @@ object SourcePicker {
         dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
         dialog.behavior.skipCollapsed = true
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        var cleanup: (() -> Unit)? = null
         dialog.setOnShowListener {
             dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
                 ?.setBackgroundResource(R.drawable.bg_source_sheet)
-            if (origin != null && items.any { it.name == selected }) {
-                cleanup = flyBadge(dialog, origin, binding.sourcePickerList, onLift)
-            }
         }
-        dialog.setOnDismissListener {
-            cleanup?.invoke()
-            if (origin != null) onLift(false)
-            onDismiss()
-        }
+        dialog.setOnDismissListener { onDismiss() }
 
         val key = "kiwami_recent_sources_$recentsKey"
         val stored: String = PrefManager.getCustomVal(key, "")
@@ -121,64 +106,6 @@ object SourcePicker {
         dialog.show()
     }
 
-    private fun flyBadge(
-        dialog: BottomSheetDialog,
-        origin: View,
-        list: RecyclerView,
-        onLift: (Boolean) -> Unit
-    ): (() -> Unit)? {
-        val decor = dialog.window?.decorView as? ViewGroup ?: return null
-        if (origin.width == 0 || origin.height == 0) return null
-        val fly = ImageView(dialog.context)
-        fly.setImageBitmap(origin.drawToBitmap())
-        val radius = 14f * origin.resources.displayMetrics.density
-        fly.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: android.graphics.Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, radius)
-            }
-        }
-        fly.clipToOutline = true
-        val from = IntArray(2)
-        origin.getLocationOnScreen(from)
-        val base = IntArray(2)
-        decor.getLocationOnScreen(base)
-        decor.addView(fly, FrameLayout.LayoutParams(origin.width, origin.height))
-        fly.pivotX = 0f
-        fly.pivotY = 0f
-        fly.x = (from[0] - base[0]).toFloat()
-        fly.y = (from[1] - base[1]).toFloat()
-        onLift(true)
-        list.postDelayed({
-            if (!dialog.isShowing) return@postDelayed
-            val holder = list.findViewHolderForAdapterPosition(0) as? RowAdapter.Holder
-            val target = holder?.binding?.sourceRowBadge?.parent as? View
-            if (target == null) {
-                decor.removeView(fly)
-                return@postDelayed
-            }
-            target.alpha = 0f
-            val to = IntArray(2)
-            target.getLocationOnScreen(to)
-            fly.animate()
-                .x((to[0] - base[0]).toFloat())
-                .y((to[1] - base[1]).toFloat())
-                .scaleX(target.width.toFloat() / origin.width)
-                .scaleY(target.height.toFloat() / origin.height)
-                .setDuration(520)
-                .setInterpolator(OvershootInterpolator(0.8f))
-                .withEndAction {
-                    decor.removeView(fly)
-                    target.alpha = 1f
-                    target.scaleX = 0.85f
-                    target.scaleY = 0.85f
-                    target.animate().scaleX(1f).scaleY(1f).setDuration(320)
-                        .setInterpolator(OvershootInterpolator(3f)).start()
-                }
-                .start()
-        }, 340)
-        return { decor.removeView(fly) }
-    }
-
     private class RowAdapter(
         private val items: List<Item>,
         private val selectedName: String,
@@ -193,17 +120,9 @@ object SourcePicker {
         class Holder(val binding: ItemSourcePickerBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-            val holder = Holder(
+            return Holder(
                 ItemSourcePickerBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             )
-            val radius = 12f * parent.resources.displayMetrics.density
-            holder.binding.sourceRowBadge.outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: android.graphics.Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, radius)
-                }
-            }
-            holder.binding.sourceRowBadge.clipToOutline = true
-            return holder
         }
 
         override fun getItemCount() = rows.size
@@ -225,17 +144,6 @@ object SourcePicker {
 
             b.sourceRowName.text = item.name
             b.sourceRowSubtitle.text = item.subtitle
-            val color = SourceVisuals.colorFor(item.name, item.icon)
-            if (item.icon != null) {
-                b.sourceRowBadge.setImageDrawable(item.icon)
-                b.sourceRowBadge.background = null
-                b.sourceRowLetter.visibility = View.GONE
-            } else {
-                b.sourceRowBadge.setImageDrawable(null)
-                b.sourceRowBadge.background = SourceVisuals.letterBadge(color, 12f * density)
-                b.sourceRowLetter.text = item.name.take(1).uppercase()
-                b.sourceRowLetter.visibility = View.VISIBLE
-            }
 
             val isSelected = item.name == selectedName
             val fill = GradientDrawable().apply {
