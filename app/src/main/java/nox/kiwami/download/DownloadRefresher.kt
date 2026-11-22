@@ -17,6 +17,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.bumptech.glide.Glide
 import nox.kiwami.FileUrl
 import nox.kiwami.connections.anilist.Anilist
 import nox.kiwami.media.Media
@@ -86,6 +88,10 @@ object DownloadRefresher {
                     OfflineLibraryCache.invalidate(target.title)
                 }
             } finally {
+                runCatching {
+                    Glide.get(appContext).clearDiskCache()
+                    withContext(Dispatchers.Main) { Glide.get(appContext).clearMemory() }
+                }
                 OfflineLibraryCache.clear()
                 val id = (_completed.value?.first ?: 0) + 1
                 _completed.value = id to Result(selected.size, refreshed)
@@ -148,7 +154,7 @@ object DownloadRefresher {
             DownloadMetadata.saveImage(context, url, directory, name)?.let { return it }
         }
         val existing = directory.findFile(name)
-        if (existing != null && existing.isFile && existing.length() > 0L) {
+        if (existing != null && DownloadMetadata.isUsableImage(context, existing)) {
             return existing.uri.toString()
         }
         return url

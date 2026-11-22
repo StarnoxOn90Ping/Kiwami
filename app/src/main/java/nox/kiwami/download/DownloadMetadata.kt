@@ -80,6 +80,17 @@ object DownloadMetadata {
         return true
     }
 
+    fun isUsableImage(context: Context, file: DocumentFile): Boolean {
+        return try {
+            if (!file.isFile || file.length() <= 0L) return false
+            val bytes = context.contentResolver.openInputStream(file.uri)?.use { it.readBytes() }
+                ?: return false
+            isComplete(bytes)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun readText(context: Context, directory: DocumentFile, name: String): String? {
         return try {
             val file = directory.findFile(name) ?: return null
@@ -132,13 +143,20 @@ object DownloadMetadata {
             connection = URL(url).openConnection() as HttpURLConnection
             connection.connectTimeout = 15000
             connection.readTimeout = 30000
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                Logger.log("Image request failed with ${connection.responseCode}")
+                return null
+            }
             val expected = connection.contentLengthLong
             val encoded = connection.contentEncoding != null
             val bytes = connection.inputStream.use { it.readBytes() }
             if (bytes.isEmpty()) return null
-            if (!encoded && expected > 0 && bytes.size.toLong() != expected) return null
-            if (!isComplete(bytes)) return null
+            Logger.log("Fetched image ${bytes.size} bytes, expected $expected")
+            if (!encoded && expected > 0) {
+                if (bytes.size.toLong() != expected) return null
+            } else if (!isComplete(bytes)) {
+                return null
+            }
             bytes
         } catch (e: Exception) {
             Logger.log("Failed to fetch image: ${e.message}")
@@ -148,7 +166,7 @@ object DownloadMetadata {
         }
     }
 
-    private fun isComplete(b: ByteArray): Boolean {
+    fun isComplete(b: ByteArray): Boolean {
         if (b.size < 12) return false
         val jpeg = b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte()
         if (jpeg) {
