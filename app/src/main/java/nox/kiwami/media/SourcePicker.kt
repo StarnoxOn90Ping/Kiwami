@@ -109,7 +109,7 @@ object SourcePicker {
         dialog.show()
     }
 
-    private fun sheetBackground(context: Context): Drawable? {
+    fun sheetBackground(context: Context): Drawable? {
         if (!ThemeSurface.isOled(context)) {
             return ContextCompat.getDrawable(context, R.drawable.bg_source_sheet)
         }
