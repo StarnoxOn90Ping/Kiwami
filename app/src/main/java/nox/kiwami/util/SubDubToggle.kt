@@ -64,6 +64,7 @@ class SubDubToggle @JvmOverloads constructor(
         addView(thumb, LayoutParams(segmentWidth, segmentHeight))
         val row = LinearLayout(context)
         row.orientation = LinearLayout.HORIZONTAL
+        row.elevation = 4f * density
         row.addView(sub, LinearLayout.LayoutParams(segmentWidth, segmentHeight))
         row.addView(dub, LinearLayout.LayoutParams(segmentWidth, segmentHeight))
         addView(row, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
