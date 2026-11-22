@@ -197,12 +197,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         launcher = LauncherWrapper(this, contract)
 
         mediaSingleton = null
+        val coverHandoff = if (intent.getBooleanExtra("download", false)) MediaSingleton.bitmap else null
         ThemeManager(this).applyTheme(MediaSingleton.bitmap)
         initActivity(this)
         MediaSingleton.bitmap = null
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        coverHandoff?.let { binding.mediaCoverImage.setImageBitmap(it) }
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
 
