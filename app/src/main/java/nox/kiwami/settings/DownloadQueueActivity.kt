@@ -74,11 +74,6 @@ class DownloadQueueActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        binding.autoDeleteSwitch.isChecked = PrefManager.getCustomVal("auto_delete_downloads", false)
-        binding.autoDeleteSwitch.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setCustomVal("auto_delete_downloads", isChecked)
-        }
-
         adapter = DownloadsAdapter(
             coverPathCache = coverPathCache,
             onCancelQueueClick = { item -> cancelTask(item) },
