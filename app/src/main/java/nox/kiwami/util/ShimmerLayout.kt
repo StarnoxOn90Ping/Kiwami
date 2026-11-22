@@ -12,6 +12,7 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Shader
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
@@ -135,7 +136,7 @@ class ShimmerLayout @JvmOverloads constructor(
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
             addUpdateListener {
-                sweep = it.animatedValue as Float
+                sweep = (SystemClock.uptimeMillis() % 1500L) / 1500f
                 invalidate()
             }
             start()
