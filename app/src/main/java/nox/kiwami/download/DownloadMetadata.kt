@@ -50,15 +50,24 @@ object DownloadMetadata {
         }
     }
 
-    fun <T> read(context: Context, directory: DocumentFile, name: String, type: Class<T>): T? {
+    fun readText(context: Context, directory: DocumentFile, name: String): String? {
         return try {
             val file = directory.findFile(name) ?: return null
-            val text = context.contentResolver.openInputStream(file.uri)?.use {
+            context.contentResolver.openInputStream(file.uri)?.use {
                 it.readBytes().toString(Charsets.UTF_8)
-            } ?: return null
-            gson.fromJson(text, type)
+            }
         } catch (e: Exception) {
             Logger.log("Failed to read $name: ${e.message}")
+            null
+        }
+    }
+
+    fun <T> read(context: Context, directory: DocumentFile, name: String, type: Class<T>): T? {
+        val text = readText(context, directory, name) ?: return null
+        return try {
+            gson.fromJson(text, type)
+        } catch (e: Exception) {
+            Logger.log("Failed to parse $name: ${e.message}")
             null
         }
     }

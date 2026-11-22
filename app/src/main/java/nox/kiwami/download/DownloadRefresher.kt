@@ -64,8 +64,13 @@ object DownloadRefresher {
         items: List<DownloadedType>
     ): Boolean {
         val directory = DownloadsManager.findSubDirectory(context, type, title) ?: return false
-        val media = DownloadMetadata.read(context, directory, MEDIA_FILE, Media::class.java)
-            ?: return false
+        val mediaText = DownloadMetadata.readText(context, directory, MEDIA_FILE) ?: return false
+        val media = try {
+            gson.fromJson(mediaText, Media::class.java)
+        } catch (e: Exception) {
+            Logger.log("Failed to parse $MEDIA_FILE for $title: ${e.message}")
+            null
+        } ?: return false
         val before = media.cover
         Anilist.query.mediaDetails(media)
         val fetched = media.cover != before || media.cover?.startsWith("http") == true
