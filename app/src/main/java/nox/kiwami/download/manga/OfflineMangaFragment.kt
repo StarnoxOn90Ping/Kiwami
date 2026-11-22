@@ -225,11 +225,16 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
             media?.let {
                 DownloadOpener.pressFeedback(tile)
                 lifecycleScope.launch {
+                    val mediaModel = withContext(Dispatchers.IO) { getMedia(it) }
+                    if (mediaModel == null) {
+                        snackString("Error loading media.json")
+                        return@launch
+                    }
+                    MediaDetailsActivity.mediaSingleton = mediaModel
                     DownloadOpener.open(
                         requireActivity(),
                         tile,
                         Intent(requireContext(), MediaDetailsActivity::class.java)
-                            .putExtra("media", getMedia(it))
                             .putExtra("download", true)
                     )
                 }

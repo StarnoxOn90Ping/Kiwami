@@ -227,7 +227,7 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
             media?.let {
                 DownloadOpener.pressFeedback(tile)
                 lifecycleScope.launch {
-                    val mediaModel = getMedia(it)
+                    val mediaModel = withContext(Dispatchers.IO) { getMedia(it) }
                     if (mediaModel == null) {
                         snackString("Error loading media.json")
                         return@launch
