@@ -362,9 +362,8 @@ class MediaAdaptor(
 
     private fun bindCarouselLogo(
         media: Media,
-        titleView: android.widget.TextView,
+        titleView: TextView,
         logoView: ImageView,
-        synopsisView: android.widget.TextView? = null,
         logoContainer: View? = null
     ) {
         val clearLogoEnabled: Boolean = PrefManager.getVal(PrefName.CarouselClearLogo)
@@ -372,7 +371,6 @@ class MediaAdaptor(
             titleView.visibility = View.VISIBLE
             logoView.visibility = View.GONE
             logoContainer?.visibility = View.GONE
-            synopsisView?.visibility = View.GONE
             return
         }
 
@@ -384,74 +382,12 @@ class MediaAdaptor(
             logoView.visibility = View.VISIBLE
             logoContainer?.visibility = View.VISIBLE
             titleView.visibility = View.GONE
-            if (synopsisView != null) {
-                val cleanDesc = media.description?.let { sanitizeDescription(it) }
-                if (!cleanDesc.isNullOrBlank()) {
-                    synopsisView.text = cleanDesc
-                    synopsisView.visibility = View.VISIBLE
-                    val oldListener = synopsisView.getTag(R.id.itemCompactSynopsis) as? View.OnLayoutChangeListener
-                    if (oldListener != null) {
-                        synopsisView.removeOnLayoutChangeListener(oldListener)
-                    }
-                    val newListener = View.OnLayoutChangeListener { v, _, top, _, bottom, _, _, _, _ ->
-                        val availableHeight = (bottom - top) - v.paddingTop - v.paddingBottom
-                        val lh = synopsisView.lineHeight
-                        if (lh > 0) {
-                            val maxL = (availableHeight / lh).coerceIn(1, 3)
-                            if (synopsisView.maxLines != maxL) {
-                                synopsisView.maxLines = maxL
-                            }
-                            synopsisView.alpha = 0.72f
-                        } else {
-                            synopsisView.alpha = 0f
-                        }
-                        v.post {
-                            if (!synopsisView.text.endsWith("...")) {
-                                val layout = synopsisView.layout ?: return@post
-                                val lineCount = layout.lineCount
-                                if (lineCount > 0) {
-                                    val lastLine = (lineCount - 1).coerceAtMost(synopsisView.maxLines - 1)
-                                    val lineEnd = layout.getLineEnd(lastLine)
-                                    if (lineEnd in 1 until cleanDesc.length) {
-                                        val ellipsisCount = layout.getEllipsisCount(lastLine)
-                                        if (ellipsisCount == 0) {
-                                            val currentText = synopsisView.text.toString()
-                                            val visible = if (lineEnd <= currentText.length) currentText.substring(0, lineEnd).trimEnd() else currentText.trimEnd()
-                                            val lastSpace = visible.lastIndexOf(' ')
-                                            val truncated = if (lastSpace > visible.length - 12 && lastSpace > 0) {
-                                                visible.substring(0, lastSpace).trimEnd() + "..."
-                                            } else if (visible.length > 3) {
-                                                visible.dropLast(3).trimEnd() + "..."
-                                            } else {
-                                                visible + "..."
-                                            }
-                                            synopsisView.text = truncated
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    synopsisView.setTag(R.id.itemCompactSynopsis, newListener)
-                    synopsisView.addOnLayoutChangeListener(newListener)
-                } else {
-                    synopsisView.visibility = View.GONE
-                }
-            }
         }
 
         fun showTitle() {
             titleView.visibility = View.VISIBLE
             logoView.visibility = View.GONE
             logoContainer?.visibility = View.GONE
-            if (synopsisView != null) {
-                val oldListener = synopsisView.getTag(R.id.itemCompactSynopsis) as? View.OnLayoutChangeListener
-                if (oldListener != null) {
-                    synopsisView.removeOnLayoutChangeListener(oldListener)
-                    synopsisView.setTag(R.id.itemCompactSynopsis, null)
-                }
-                synopsisView.visibility = View.GONE
-            }
         }
 
         if (!media.clearLogo.isNullOrBlank()) {
