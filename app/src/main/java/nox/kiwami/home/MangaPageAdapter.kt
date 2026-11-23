@@ -26,7 +26,6 @@ import nox.kiwami.media.Media
 import nox.kiwami.media.MediaAdaptor
 import nox.kiwami.media.MediaListViewActivity
 import nox.kiwami.media.SearchActivity
-import nox.kiwami.px
 import nox.kiwami.setSafeOnClickListener
 import nox.kiwami.setSlideIn
 import nox.kiwami.setSlideUp
@@ -53,10 +52,6 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
         binding = holder.binding
         trendingBinding = LayoutTrendingBinding.bind(binding.root)
         trendingViewPager = trendingBinding.trendingViewPager
-
-        if (PrefManager.getVal(PrefName.SmallView)) trendingBinding.trendingContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin = (-108f).px
-        }
 
         binding.mangaGenreImage.loadImage("https://s4.anilist.co/file/anilistcdn/media/manga/banner/105778-wk5qQ7zAaTGl.jpg")
         binding.mangaTopScoreImage.loadImage("https://s4.anilist.co/file/anilistcdn/media/manga/banner/30002-3TuoSMl20fUX.jpg")

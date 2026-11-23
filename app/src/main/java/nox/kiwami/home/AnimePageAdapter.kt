@@ -26,7 +26,6 @@ import nox.kiwami.media.GenreActivity
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaAdaptor
 import nox.kiwami.media.MediaListViewActivity
-import nox.kiwami.px
 import nox.kiwami.setSafeOnClickListener
 import nox.kiwami.setSlideIn
 import nox.kiwami.setSlideUp
@@ -53,10 +52,6 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         binding = holder.binding
         trendingBinding = LayoutTrendingBinding.bind(binding.root)
         trendingViewPager = trendingBinding.trendingViewPager
-
-        if (PrefManager.getVal(PrefName.SmallView)) trendingBinding.trendingContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin = (-108f).px
-        }
 
         listOf(
             binding.animePreviousSeason,
