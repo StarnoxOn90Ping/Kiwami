@@ -46,7 +46,7 @@
         android:paddingStart="20dp"
         android:paddingTop="16dp"
         android:paddingEnd="20dp"
-        android:paddingBottom="24dp">
+        android:paddingBottom="40dp">
 
         <FrameLayout
             android:layout_width="match_parent"

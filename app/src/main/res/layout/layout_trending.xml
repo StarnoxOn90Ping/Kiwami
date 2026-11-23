@@ -13,6 +13,13 @@
             android:layout_width="match_parent"
             android:layout_height="340dp" />
 
+        <nox.kiwami.util.PagerDots
+            android:id="@+id/trendingDots"
+            android:layout_width="wrap_content"
+            android:layout_height="12dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="14dp" />
+
         <ProgressBar
             android:id="@+id/trendingProgressBar"
             style="?android:attr/progressBarStyle"
@@ -22,12 +29,7 @@
             android:layout_marginTop="64dp" />
 
     </FrameLayout>
-</merge>extfield.TextInputLayout
-                android:id="@+id/searchBar"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginEnd="8dp"
+</merge>droid:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:textColorHint="@color/bg_opp"
                 android:transitionName="@string/search"

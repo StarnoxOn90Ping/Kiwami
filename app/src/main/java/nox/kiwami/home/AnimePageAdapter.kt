@@ -106,6 +106,8 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
     fun updateTrending(adaptor: MediaAdaptor) {
         trendingBinding.trendingProgressBar.visibility = View.GONE
         trendingBinding.trendingViewPager.adapter = adaptor
+        val dotCount = adaptor.itemCount
+        trendingBinding.trendingDots.setCount(dotCount)
         trendingBinding.trendingViewPager.offscreenPageLimit = 3
         trendingBinding.trendingViewPager.getChildAt(0).overScrollMode =
             RecyclerView.OVER_SCROLL_NEVER
@@ -118,6 +120,7 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
             object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
                     super.onPageSelected(position)
+                    if (dotCount > 0) trendingBinding.trendingDots.select(position % dotCount)
                     trendHandler?.removeCallbacks(trendRun)
                     if (PrefManager.getVal(PrefName.TrendingScroller)) {
                         trendHandler!!.postDelayed(trendRun, 4000)
