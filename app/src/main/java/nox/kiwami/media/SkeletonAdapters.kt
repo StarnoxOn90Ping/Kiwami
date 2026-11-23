@@ -41,19 +41,43 @@ class SkeletonAdapter(
     class Holder(view: View) : RecyclerView.ViewHolder(view)
 
     private var shown = 0
+    private var current = initialKind
+    private var host: RecyclerView? = null
 
-    var kind: Kind = initialKind
+    var kind: Kind
+        get() = current
         set(value) {
-            if (field == value) return
-            field = value
-            if (shown > 0) {
-                shown = value.count(maxGrid)
-                notifyDataSetChanged()
-            }
+            whenSafe { changeKind(value) }
         }
 
     fun show(on: Boolean) {
-        val target = if (on) kind.count(maxGrid) else 0
+        whenSafe { changeVisibility(on) }
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        host = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        if (host === recyclerView) host = null
+    }
+
+    private fun whenSafe(change: () -> Unit) {
+        val list = host
+        if (list != null && list.isComputingLayout) list.post(change) else change()
+    }
+
+    private fun changeKind(value: Kind) {
+        if (current == value) return
+        current = value
+        if (shown > 0) {
+            shown = value.count(maxGrid)
+            notifyDataSetChanged()
+        }
+    }
+
+    private fun changeVisibility(on: Boolean) {
+        val target = if (on) current.count(maxGrid) else 0
         if (target == shown) return
         if (target > shown) {
             notifyItemRangeInserted(shown, target - shown)
@@ -65,7 +89,7 @@ class SkeletonAdapter(
 
     override fun getItemCount(): Int = shown
 
-    override fun getItemViewType(position: Int): Int = kind.ordinal
+    override fun getItemViewType(position: Int): Int = current.ordinal
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val layout = Kind.values()[viewType].layout
