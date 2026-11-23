@@ -22,6 +22,7 @@ import nox.kiwami.download.ChapterInfo
 import nox.kiwami.download.DownloadMetadata
 import nox.kiwami.download.DownloadedType
 import nox.kiwami.download.DownloadsManager
+import nox.kiwami.download.queue.DownloadQueueActivity
 import nox.kiwami.download.DownloadsManager.Companion.getSubDirectory
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaType
@@ -87,6 +88,7 @@ class NovelDownloaderService : Service() {
         notificationManager = NotificationManagerCompat.from(this)
         builder = NotificationCompat.Builder(this, Notifications.CHANNEL_DOWNLOADER_PROGRESS).apply {
             setContentTitle("Novel Download Progress")
+            setContentIntent(DownloadQueueActivity.pendingIntent(this@NovelDownloaderService))
             setSmallIcon(R.drawable.ic_download_24)
             priority = NotificationCompat.PRIORITY_DEFAULT
             setOnlyAlertOnce(true)

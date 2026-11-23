@@ -27,6 +27,7 @@ import nox.kiwami.download.DownloadMetadata
 import nox.kiwami.download.DownloadedType
 import nox.kiwami.download.EpisodeInfo
 import nox.kiwami.download.DownloadsManager
+import nox.kiwami.download.queue.DownloadQueueActivity
 import nox.kiwami.download.DownloadsManager.Companion.getSubDirectory
 import nox.kiwami.download.video.DrmDownloader
 import nox.kiwami.download.anime.AnimeDownloaderService.AnimeDownloadTask.Companion.getTaskName
@@ -106,6 +107,7 @@ class AnimeDownloaderService : Service() {
         builder =
             NotificationCompat.Builder(this, Notifications.CHANNEL_DOWNLOADER_PROGRESS).apply {
                 setContentTitle("Anime Download Progress")
+                setContentIntent(DownloadQueueActivity.pendingIntent(this@AnimeDownloaderService))
                 setSmallIcon(R.drawable.ic_download_24)
                 priority = NotificationCompat.PRIORITY_DEFAULT
                 setOnlyAlertOnce(true)
