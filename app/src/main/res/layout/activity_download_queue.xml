@@ -89,7 +89,7 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- Section Tabs (Anime, Manga, Novel) -->
+        <!-- Section Tabs (Anime, Manga and Novel) -->
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/downloadQueueTabLayout"
             android:layout_width="match_parent"
@@ -126,7 +126,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:fontFamily="@font/poppins_bold"
-                android:text="@string/download_not_found"
+                android:text="@string/download_queue_empty"
                 android:textAlignment="center"
                 android:textColor="?attr/colorOnBackground"
                 android:textSize="16sp"

@@ -193,7 +193,9 @@
         <activity android:name=".settings.PlayerSettingsActivity" />
         <activity android:name=".settings.ReaderSettingsActivity" />
         <activity android:name=".settings.FAQActivity" />
-        <activity android:name=".settings.DownloadQueueActivity" android:parentActivityName=".settings.SettingsActivity" />
+        <activity
+            android:name=".download.queue.DownloadQueueActivity"
+            android:parentActivityName=".download.hub.DownloadsActivity" />
         <activity
             android:name=".download.storage.DownloadStorageActivity"
             android:parentActivityName=".settings.data.SettingsDataActivity" />

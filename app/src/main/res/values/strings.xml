@@ -1256,8 +1256,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
 
     <string name="ext_installer_shizuku_stopped">Shizuku is not running or has stopped.</string>
 
-    <string name="download_queue">Downloads</string>
-    <string name="download_queue_desc">Manage your downloaded content and queue</string>
+    <string name="download_queue">Download queue</string>
+    <string name="download_queue_desc">Downloads in progress and waiting</string>
     <string name="clear_queue">Clear Queue</string>
     <string name="clear_queue_confirm">Are you sure you want to clear the download queue?</string>
     <string name="no_active_downloads">No active downloads</string>
@@ -1269,6 +1269,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_storage_row_desc">%1$s used by downloads</string>
     <string name="download_storage_summary">%1$s total • %2$s %3$s (%4$d titles)</string>
     <string name="download_queue_header">Queue</string>
+    <string name="download_queue_tab_manga_novel">Manga &amp; Novel</string>
+    <string name="download_queue_empty">Nothing is downloading right now.\nDownloads you start will show up here.</string>
+    <string name="download_queue_status">Downloading: %1$d • Queued: %2$d</string>
+    <string name="download_state_downloading">Downloading</string>
+    <string name="download_state_queued">Queued</string>
+    <plurals name="download_queue_group_count">
+        <item quantity="one">%1$d download</item>
+        <item quantity="other">%1$d downloads</item>
+    </plurals>
     <string name="clear_media_confirm">Are you sure you want to delete all downloaded content for %1$s?</string>
 
     <string name="search_settings">Search settings</string>
