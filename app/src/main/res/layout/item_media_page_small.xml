@@ -22,6 +22,11 @@
         tools:ignore="ContentDescription,ImageContrastCheck"
         tools:srcCompat="@tools:sample/backgrounds/scenic[1]" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/hero_scrim" />
+
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
