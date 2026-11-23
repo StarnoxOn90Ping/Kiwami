@@ -28,6 +28,7 @@ import nox.kiwami.databinding.ItemMediaCompactBinding
 import nox.kiwami.databinding.ItemMediaLargeBinding
 import nox.kiwami.databinding.ItemMediaPageBinding
 import nox.kiwami.databinding.ItemMediaPageSmallBinding
+import nox.kiwami.loadBannerImage
 import nox.kiwami.loadImage
 import nox.kiwami.setAnimation
 import nox.kiwami.setSafeOnClickListener
@@ -215,7 +216,7 @@ class MediaAdaptor(
                                 AccelerateDecelerateInterpolator()
                             )
                         )
-                    blurImage(
+                    loadBannerImage(
                         if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
                         media.banner ?: media.cover
                     )
@@ -265,7 +266,7 @@ class MediaAdaptor(
                                 AccelerateDecelerateInterpolator()
                             )
                         )
-                    blurImage(
+                    loadBannerImage(
                         if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
                         media.banner ?: media.cover
                     )

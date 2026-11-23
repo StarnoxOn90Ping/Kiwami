@@ -1618,6 +1618,28 @@ fun blurImage(imageView: ImageView, originalBanner: String?) {
     }
 }
 
+private const val BANNER_SHARP_SIZE = 1080
+
+fun loadBannerImage(imageView: ImageView, originalBanner: String?) {
+    val banner = nox.kiwami.others.CustomMediaImages.overrideFor(originalBanner)?.absolutePath
+        ?: originalBanner
+    if (banner != null) {
+        val context = imageView.context
+        if (!(context as Activity).isDestroyed) {
+            val url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { banner }
+            Glide.with(context as Context)
+                .load(
+                    if (banner.startsWith("http")) GlideUrl(url) else if (banner.startsWith("content://")) url.toUri() else File(url)
+                )
+                .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                .override(BANNER_SHARP_SIZE)
+                .into(imageView)
+        }
+    } else {
+        imageView.setImageResource(R.drawable.linear_gradient_bg)
+    }
+}
+
 fun Context.getThemeColor(@AttrRes attribute: Int): Int {
     val typedValue = TypedValue()
     theme.resolveAttribute(attribute, typedValue, true)
