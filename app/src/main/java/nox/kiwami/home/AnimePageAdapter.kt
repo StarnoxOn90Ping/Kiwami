@@ -3,16 +3,13 @@ package nox.kiwami.home
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LayoutAnimationController
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
-import androidx.core.view.updatePadding
 import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,25 +20,19 @@ import nox.kiwami.connections.anilist.Anilist
 import nox.kiwami.databinding.ItemAnimePageBinding
 import nox.kiwami.databinding.LayoutTrendingBinding
 import nox.kiwami.getAppString
-import nox.kiwami.getThemeColor
 import nox.kiwami.loadImage
 import nox.kiwami.media.CalendarActivity
 import nox.kiwami.media.GenreActivity
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaAdaptor
 import nox.kiwami.media.MediaListViewActivity
-import nox.kiwami.media.SearchActivity
-import nox.kiwami.profile.ProfileActivity
 import nox.kiwami.px
 import nox.kiwami.setSafeOnClickListener
 import nox.kiwami.setSlideIn
 import nox.kiwami.setSlideUp
-import nox.kiwami.settings.SettingsDialogFragment
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.statusBarHeight
-import com.google.android.material.card.MaterialCardView
-import com.google.android.material.textfield.TextInputLayout
 
 class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHolder>() {
     private val cardPool = RecyclerView.RecycledViewPool().apply { setMaxRecycledViews(0, 16) }
@@ -63,64 +54,9 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         trendingBinding = LayoutTrendingBinding.bind(binding.root)
         trendingViewPager = trendingBinding.trendingViewPager
 
-        val textInputLayout = holder.itemView.findViewById<TextInputLayout>(R.id.searchBar)
-        val currentColor = textInputLayout.boxBackgroundColor
-        val semiTransparentColor = (currentColor and 0x00FFFFFF) or 0xA8000000.toInt()
-        textInputLayout.boxBackgroundColor = semiTransparentColor
-        val materialCardView =
-            holder.itemView.findViewById<MaterialCardView>(R.id.userAvatarContainer)
-        materialCardView.setCardBackgroundColor(semiTransparentColor)
-        val color = binding.root.context.getThemeColor(android.R.attr.windowBackground)
-        textInputLayout.boxBackgroundColor = (color and 0x00FFFFFF) or 0x28000000
-        materialCardView.setCardBackgroundColor((color and 0x00FFFFFF) or 0x28000000)
-
-        trendingBinding.titleContainer.updatePadding(top = statusBarHeight)
-
         if (PrefManager.getVal(PrefName.SmallView)) trendingBinding.trendingContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = (-108f).px
         }
-
-        updateAvatar()
-
-        trendingBinding.searchBar.hint = binding.root.context.getString(R.string.search)
-        trendingBinding.searchBarText.setOnClickListener {
-            val context = binding.root.context
-            if (PrefManager.getVal(PrefName.AniMangaSearchDirect) && Anilist.token != null) {
-                ContextCompat.startActivity(
-                    context,
-                    Intent(context, SearchActivity::class.java).putExtra("type", "ANIME"),
-                    null
-                )
-            } else {
-                SearchBottomSheet.newInstance().show(
-                    (context as AppCompatActivity).supportFragmentManager,
-                    "search"
-                )
-            }
-        }
-
-        trendingBinding.userAvatar.setSafeOnClickListener {
-            val dialogFragment =
-                SettingsDialogFragment.newInstance(SettingsDialogFragment.Companion.PageType.ANIME)
-            dialogFragment.show((it.context as AppCompatActivity).supportFragmentManager, "dialog")
-        }
-        trendingBinding.userAvatar.setOnLongClickListener { view ->
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            ContextCompat.startActivity(
-                view.context,
-                Intent(view.context, ProfileActivity::class.java)
-                    .putExtra("userId", Anilist.userid), null
-            )
-            false
-        }
-
-        trendingBinding.searchBar.setEndIconOnClickListener {
-            trendingBinding.searchBar.performClick()
-        }
-
-        trendingBinding.notificationCount.isVisible = Anilist.unreadNotificationCount > 0
-                && PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot) == true
-        trendingBinding.notificationCount.text = Anilist.unreadNotificationCount.toString()
 
         listOf(
             binding.animePreviousSeason,
@@ -197,7 +133,6 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
 
         trendingBinding.trendingViewPager.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
-        trendingBinding.titleContainer.startAnimation(setSlideUp())
         binding.animeListContainer.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
         binding.animeSeasonsCont.layoutAnimation =
@@ -303,22 +238,6 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         more.startAnimation(setSlideUp())
         recyclerView.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
-    }
-
-    fun updateAvatar() {
-        val avatarUrl = Anilist.avatar
-        if (avatarUrl != null && ready.value == true) {
-            trendingBinding.userAvatar.loadImage(avatarUrl)
-            trendingBinding.userAvatar.imageTintList = null
-        }
-    }
-
-    fun updateNotificationCount() {
-        if (this::binding.isInitialized) {
-            trendingBinding.notificationCount.isVisible = Anilist.unreadNotificationCount > 0
-                    && PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot) == true
-            trendingBinding.notificationCount.text = Anilist.unreadNotificationCount.toString()
-        }
     }
 
     inner class AnimePageViewHolder(val binding: ItemAnimePageBinding) :

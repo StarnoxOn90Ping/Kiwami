@@ -210,7 +210,6 @@ class MangaFragment : Fragment() {
                                     viewPager = mangaPageAdapter.trendingViewPager
                                 )
                             )
-                            mangaPageAdapter.updateAvatar()
                         }
                     }
                 }
@@ -256,10 +255,6 @@ class MangaFragment : Fragment() {
             }
         }
 
-        fun load() = scope.launch(Dispatchers.Main) {
-            mangaPageAdapter.updateAvatar()
-        }
-
         var running = false
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
         live.observe(viewLifecycleOwner) {
@@ -270,15 +265,7 @@ class MangaFragment : Fragment() {
                         Anilist.userid =
                             PrefManager.getNullableVal<String>(PrefName.AnilistUserId, null)
                                 ?.toIntOrNull()
-                        if (Anilist.userid == null) {
-                            getUserId(context) {
-                                load()
-                            }
-                        } else {
-                            getUserId(context) {
-                                load()
-                            }
-                        }
+                        getUserId(context) {}
                     }
                     model.loaded = true
                     if (_binding?.mangaRefresh?.isRefreshing == true) {
@@ -304,9 +291,6 @@ class MangaFragment : Fragment() {
         if (mangaPageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()
-        }
-        if (this::mangaPageAdapter.isInitialized && _binding != null) {
-            mangaPageAdapter.updateNotificationCount()
         }
         super.onResume()
     }

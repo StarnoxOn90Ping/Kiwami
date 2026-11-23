@@ -244,7 +244,6 @@ class AnimeFragment : Fragment() {
                                     viewPager = animePageAdapter.trendingViewPager
                                 )
                             )
-                            animePageAdapter.updateAvatar()
                         }
                     }
                 }
@@ -253,10 +252,6 @@ class AnimeFragment : Fragment() {
             }
         }
 
-
-        fun load() = scope.launch(Dispatchers.Main) {
-            animePageAdapter.updateAvatar()
-        }
 
         animePageAdapter.onSeasonClick = { i ->
             scope.launch(Dispatchers.IO) {
@@ -288,15 +283,7 @@ class AnimeFragment : Fragment() {
                         Anilist.userid =
                             PrefManager.getNullableVal<String>(PrefName.AnilistUserId, null)
                                 ?.toIntOrNull()
-                        if (Anilist.userid == null) {
-                            getUserId(context) {
-                                load()
-                            }
-                        } else {
-                            getUserId(context) {
-                                load()
-                            }
-                        }
+                        getUserId(context) {}
                     }
                     model.loaded = true
                     if (_binding?.animeRefresh?.isRefreshing == true) {
@@ -321,9 +308,6 @@ class AnimeFragment : Fragment() {
         if (animePageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()
-        }
-        if (this::animePageAdapter.isInitialized && _binding != null) {
-            animePageAdapter.updateNotificationCount()
         }
         super.onResume()
     }

@@ -11,17 +11,18 @@
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/trendingViewPager"
             android:layout_width="match_parent"
-            android:layout_height="464dp" />
+            android:layout_height="380dp" />
 
-        <LinearLayout
-            android:id="@+id/titleContainer"
-            android:layout_width="match_parent"
+        <ProgressBar
+            android:id="@+id/trendingProgressBar"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="32dp"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:layout_gravity="center"
+            android:layout_marginTop="64dp" />
 
-            <com.google.android.material.textfield.TextInputLayout
+    </FrameLayout>
+</merge>extfield.TextInputLayout
                 android:id="@+id/searchBar"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
