@@ -1,111 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="4dp"
-    app:cardBackgroundColor="?attr/colorSurfaceVariant"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp">
+    android:background="?attr/selectableItemBackground"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="10dp">
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_centerVertical="true"
-                android:layout_toStartOf="@id/queueTaskAction"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/queueTaskName"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/poppins_bold"
-                    android:maxLines="1"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="14sp"
-                    tools:text="Episode 12" />
-
-                <TextView
-                    android:id="@+id/queueTaskState"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:alpha="0.7"
-                    android:fontFamily="@font/poppins_family"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    tools:text="Downloading • Anime" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/queueTaskAction"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:layout_toStartOf="@id/queueTaskCancel"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_round_pause_24"
-                app:tint="?attr/colorPrimary"
-                tools:ignore="ContentDescription" />
-
-            <ImageButton
-                android:id="@+id/queueTaskCancel"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_circle_cancel"
-                app:tint="?attr/colorError"
-                tools:ignore="ContentDescription" />
-        </RelativeLayout>
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <LinearLayout
-            android:id="@+id/queueTaskProgressLayout"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/queueTaskProgress"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:indicatorColor="?attr/colorPrimary"
-                app:trackColor="?attr/colorSurface"
-                app:trackCornerRadius="4dp"
-                app:trackThickness="6dp" />
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/queueTaskPercent"
-                android:layout_width="wrap_content"
+                android:id="@+id/queueTaskTitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:ellipsize="end"
                 android:fontFamily="@font/poppins_bold"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="12sp"
-                tools:text="45%" />
+                android:maxLines="1"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="16sp"
+                tools:text="Dragon Ball Super: Beerus" />
+
+            <TextView
+                android:id="@+id/queueTaskName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.75"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_family"
+                android:maxLines="1"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="14sp"
+                tools:text="Episode 1" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/queueTaskState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:alpha="0.75"
+            android:fontFamily="@font/poppins_bold"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="13sp"
+            tools:text="19%" />
+
+        <ImageButton
+            android:id="@+id/queueTaskMenu"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/download_queue_more"
+            android:padding="10dp"
+            app:srcCompat="@drawable/ic_round_dots_vertical_24"
+            app:tint="?attr/colorOnBackground" />
     </LinearLayout>
-</androidx.cardview.widget.CardView>
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/queueTaskProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="16dp"
+        android:max="100"
+        app:trackCornerRadius="4dp"
+        app:trackThickness="4dp" />
+</LinearLayout>
