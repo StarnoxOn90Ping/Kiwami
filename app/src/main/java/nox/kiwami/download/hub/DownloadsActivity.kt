@@ -29,7 +29,7 @@ import nox.kiwami.initActivity
 import nox.kiwami.isOnline
 import nox.kiwami.snackString
 import nox.kiwami.navBarHeight
-import nox.kiwami.settings.DownloadQueueActivity
+import nox.kiwami.download.queue.DownloadQueueActivity
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.statusBarHeight
 import nox.kiwami.themes.ThemeManager
@@ -86,6 +86,8 @@ class DownloadsActivity : AppCompatActivity() {
             startActivity(Intent(this, DownloadQueueActivity::class.java))
         }
         binding.downloadsBanner.setOnClickListener(openQueue)
+        binding.downloadsQueueButton.setPressBounce()
+        binding.downloadsQueueButton.setOnClickListener(openQueue)
         binding.downloadsRefreshButton.setOnClickListener { refreshDownloads() }
 
         bannerArrow = DownloadArrowAnimator(
@@ -311,6 +313,13 @@ class DownloadsActivity : AppCompatActivity() {
 
     private fun renderState(state: DownloadActivityState) {
         val banner = binding.downloadsBanner
+        val badge = binding.downloadsQueueBadge
+        if (state.isActive) {
+            badge.text = if (state.total > 99) "99+" else state.total.toString()
+            badge.visibility = View.VISIBLE
+        } else {
+            badge.visibility = View.GONE
+        }
         if (state.isActive) {
             val pct = state.percent
             binding.downloadsBannerText.text =

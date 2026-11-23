@@ -50,7 +50,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="60dp"
+                android:layout_marginStart="60dp"
+                android:layout_marginEnd="112dp"
                 android:gravity="center_horizontal"
                 android:orientation="vertical">
 
@@ -64,7 +65,7 @@
                     android:maxLines="1"
                     android:text="@string/downloads"
                     android:textColor="?attr/colorPrimary"
-                    android:textSize="32sp" />
+                    android:textSize="28sp" />
 
                 <TextView
                     android:id="@+id/downloadsSubtitle"
@@ -78,6 +79,46 @@
                     android:textSize="11sp"
                     tools:text="12 anime · 5 manga" />
             </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/downloadsQueueButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="end|top"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="56dp"
+                android:background="@drawable/bottom_circle"
+                android:clickable="true"
+                android:contentDescription="@string/download_queue"
+                android:elevation="4dp"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    app:srcCompat="@drawable/ic_round_playlist_play_24"
+                    app:tint="?attr/colorPrimary" />
+
+                <TextView
+                    android:id="@+id/downloadsQueueBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="16dp"
+                    android:layout_gravity="end|top"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginEnd="2dp"
+                    android:background="@drawable/bg_badge_dot"
+                    android:fontFamily="@font/poppins_bold"
+                    android:gravity="center"
+                    android:minWidth="16dp"
+                    android:paddingHorizontal="4dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="9sp"
+                    android:visibility="gone"
+                    tools:text="3"
+                    tools:visibility="visible" />
+            </FrameLayout>
 
             <FrameLayout
                 android:id="@+id/downloadsRefreshButton"
