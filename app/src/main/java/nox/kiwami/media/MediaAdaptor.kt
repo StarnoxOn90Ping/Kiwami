@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -208,7 +209,6 @@ class MediaAdaptor(
                 if (media != null) {
 
                     val bannerAnimations: Boolean = PrefManager.getVal(PrefName.BannerAnimations)
-                    b.itemCompactImage.loadImage(media.cover)
                     if (bannerAnimations)
                         b.itemCompactBanner.setTransitionGenerator(
                             RandomTransitionGenerator(
@@ -220,30 +220,19 @@ class MediaAdaptor(
                         if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
                         media.banner ?: media.cover
                     )
-                    b.itemCompactOngoing.isVisible =
-                        media.status == releasingText
-                    b.itemCompactTitle.text = media.userPreferredName
-                    bindCarouselLogo(media, b.itemCompactTitle, b.itemCompactLogo)
-                    b.itemCompactScore.text =
-                        ((if (media.userScore == 0) (media.meanScore
-                            ?: 0) else media.userScore) / 10.0).toString()
-                    b.itemCompactScoreBG.setBackgroundResource(if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
-                    if (media.anime != null) {
-                        b.itemTotal.text = " " + if ((media.anime.totalEpisodes
-                                ?: 0) != 1
-                        ) episodePlural
-                        else episodeSingular
-                        b.itemCompactTotal.text =
-                            if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
-                                ?: "??").toString()) else (media.anime.totalEpisodes
-                                ?: "??").toString()
-                    } else if (media.manga != null) {
-                        b.itemTotal.text = " " + if ((media.manga.totalChapters
-                                ?: 0) != 1
-                        ) chapterPlural
-                        else chapterSingular
-                        b.itemCompactTotal.text = "${media.manga.totalChapters ?: "??"}"
-                    }
+                    bindHeroContent(
+                        media,
+                        b.itemCompactTitle,
+                        b.itemCompactLogo,
+                        b.itemCompactLogoContainer,
+                        b.itemCompactSynopsis,
+                        b.itemCompactStatus,
+                        b.itemCompactTotal,
+                        b.itemTotal,
+                        b.itemCompactScore,
+                        b.itemCompactScoreBG,
+                        b.itemCompactGenreChips
+                    )
                     @SuppressLint("NotifyDataSetChanged")
                     if (position == mediaList.size - 2 && viewPager != null) viewPager.post {
                         val size = mediaList.size
@@ -258,7 +247,6 @@ class MediaAdaptor(
                 val media = mediaList?.get(position)
                 if (media != null) {
                     val bannerAnimations: Boolean = PrefManager.getVal(PrefName.BannerAnimations)
-                    b.itemCompactImage.loadImage(media.cover)
                     if (bannerAnimations)
                         b.itemCompactBanner.setTransitionGenerator(
                             RandomTransitionGenerator(
@@ -270,44 +258,19 @@ class MediaAdaptor(
                         if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
                         media.banner ?: media.cover
                     )
-                    b.itemCompactOngoing.isVisible =
-                        media.status == releasingText
-                    b.itemCompactTitle.text = media.userPreferredName
-                    bindCarouselLogo(
+                    bindHeroContent(
                         media,
                         b.itemCompactTitle,
                         b.itemCompactLogo,
+                        b.itemCompactLogoContainer,
                         b.itemCompactSynopsis,
-                        b.itemCompactLogoContainer
+                        b.itemCompactStatus,
+                        b.itemCompactTotal,
+                        b.itemTotal,
+                        b.itemCompactScore,
+                        b.itemCompactScoreBG,
+                        b.itemCompactGenreChips
                     )
-                    b.itemCompactScore.text =
-                        ((if (media.userScore == 0) (media.meanScore
-                            ?: 0) else media.userScore) / 10.0).toString()
-                    b.itemCompactScoreBG.setBackgroundResource(if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
-                    if (media.genres.isNotEmpty()) {
-                        b.itemCompactGenres.text = media.genres.joinToString(" • ")
-                    } else if (media.tags.isNotEmpty()) {
-                        b.itemCompactGenres.text = media.tags.take(3).joinToString(" • ")
-                    } else {
-                        b.itemCompactGenres.text = ""
-                    }
-                    b.itemCompactStatus.text = media.status ?: ""
-                    if (media.anime != null) {
-                        b.itemTotal.text = " " + if ((media.anime.totalEpisodes
-                                ?: 0) != 1
-                        ) episodePlural
-                        else episodeSingular
-                        b.itemCompactTotal.text =
-                            if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
-                                ?: "??").toString()) else (media.anime.totalEpisodes
-                                ?: "??").toString()
-                    } else if (media.manga != null) {
-                        b.itemTotal.text = " " + if ((media.manga.totalChapters
-                                ?: 0) != 1
-                        ) chapterPlural
-                        else chapterSingular
-                        b.itemCompactTotal.text = "${media.manga.totalChapters ?: "??"}"
-                    }
                     @SuppressLint("NotifyDataSetChanged")
                     if (position == mediaList.size - 2 && viewPager != null) viewPager.post {
                         val size = mediaList.size
@@ -316,6 +279,50 @@ class MediaAdaptor(
                     }
                 }
             }
+        }
+    }
+
+    private fun bindHeroContent(
+        media: Media,
+        title: TextView,
+        logo: ImageView,
+        logoContainer: View,
+        synopsis: TextView,
+        status: TextView,
+        total: TextView,
+        totalLabel: TextView,
+        score: TextView,
+        scoreBackground: View,
+        chips: ViewGroup
+    ) {
+        title.text = media.userPreferredName
+        bindCarouselLogo(media, title, logo, logoContainer = logoContainer)
+
+        val description = media.description?.let { sanitizeDescription(it) }
+        synopsis.text = description
+        synopsis.isVisible = !description.isNullOrBlank()
+
+        status.text = media.status ?: ""
+        score.text = ((if (media.userScore == 0) (media.meanScore ?: 0) else media.userScore) / 10.0).toString()
+        scoreBackground.setBackgroundResource(if (media.userScore != 0) R.drawable.hero_score_pill_user else R.drawable.hero_score_pill)
+
+        if (media.anime != null) {
+            totalLabel.text = " " + if ((media.anime.totalEpisodes ?: 0) != 1) episodePlural else episodeSingular
+            total.text =
+                if (media.anime.nextAiringEpisode != null) "${media.anime.nextAiringEpisode} / ${media.anime.totalEpisodes ?: "??"}"
+                else (media.anime.totalEpisodes ?: "??").toString()
+        } else if (media.manga != null) {
+            totalLabel.text = " " + if ((media.manga.totalChapters ?: 0) != 1) chapterPlural else chapterSingular
+            total.text = "${media.manga.totalChapters ?: "??"}"
+        }
+
+        chips.removeAllViews()
+        val labels = media.genres.ifEmpty { media.tags }.take(4)
+        val inflater = LayoutInflater.from(chips.context)
+        labels.forEach {
+            val chip = inflater.inflate(R.layout.item_hero_genre_chip, chips, false) as TextView
+            chip.text = it
+            chips.addView(chip)
         }
     }
 
@@ -547,20 +554,16 @@ class MediaAdaptor(
     inner class MediaPageViewHolder(val binding: ItemMediaPageBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            binding.itemCompactImage.setSafeOnClickListener {
+            binding.itemCompactTitleContainer.setSafeOnClickListener {
                 val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setSafeOnClickListener
                 val media = currentAdapter.mediaList?.getOrNull(pos)
                 if (media == null || media.id < 0) return@setSafeOnClickListener
-                currentAdapter.clicked(
-                    pos,
-                    binding.itemCompactImage,
-                    resizeBitmap(getBitmapFromImageView(binding.itemCompactImage), 100)
-                )
+                currentAdapter.clicked(pos, null)
             }
             itemView.setOnTouchListener { _, _ -> true }
-            binding.itemCompactImage.setOnLongClickListener {
+            binding.itemCompactTitleContainer.setOnLongClickListener {
                 val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
                 currentAdapter.longClicked(bindingAdapterPosition)
             }
@@ -571,32 +574,16 @@ class MediaAdaptor(
     inner class MediaPageSmallViewHolder(val binding: ItemMediaPageSmallBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            binding.itemCompactImage.setSafeOnClickListener {
-                val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
-                val pos = bindingAdapterPosition
-                if (pos == RecyclerView.NO_POSITION) return@setSafeOnClickListener
-                val media = currentAdapter.mediaList?.getOrNull(pos)
-                if (media == null || media.id < 0) return@setSafeOnClickListener
-                currentAdapter.clicked(
-                    pos,
-                    binding.itemCompactImage,
-                    resizeBitmap(getBitmapFromImageView(binding.itemCompactImage), 100)
-                )
-            }
             binding.itemCompactTitleContainer.setSafeOnClickListener {
                 val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
                 val pos = bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setSafeOnClickListener
                 val media = currentAdapter.mediaList?.getOrNull(pos)
                 if (media == null || media.id < 0) return@setSafeOnClickListener
-                currentAdapter.clicked(
-                    pos,
-                    binding.itemCompactImage,
-                    resizeBitmap(getBitmapFromImageView(binding.itemCompactImage), 100)
-                )
+                currentAdapter.clicked(pos, null)
             }
             itemView.setOnTouchListener { _, _ -> true }
-            binding.itemCompactImage.setOnLongClickListener {
+            binding.itemCompactTitleContainer.setOnLongClickListener {
                 val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
                 currentAdapter.longClicked(bindingAdapterPosition)
             }
