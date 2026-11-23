@@ -176,8 +176,10 @@ class MangaDownloaderService : Service() {
                     continue
                 }
                 val taskKey = "${task.title}_${task.chapter}"
+                MangaServiceDataSingleton.waitingTasks.add(task)
                 val job = serviceScope.launch {
                     semaphore.withPermit {
+                        MangaServiceDataSingleton.waitingTasks.remove(task)
                         DownloadHolds.release(task)
                         MangaServiceDataSingleton.currentTasks.add(task)
                         updateNotification()
@@ -194,6 +196,7 @@ class MangaDownloaderService : Service() {
                         }
                     }
                 }
+                job.invokeOnCompletion { MangaServiceDataSingleton.waitingTasks.remove(task) }
                 mutex.withLock {
                     downloadJobs[taskKey] = job
                 }
@@ -226,7 +229,7 @@ class MangaDownloaderService : Service() {
     }
 
     fun cancelDownload(chapter: String, title: String? = null) {
-        val tasks = MangaServiceDataSingleton.downloadQueue.filter {
+        val tasks = (MangaServiceDataSingleton.downloadQueue.toList() + MangaServiceDataSingleton.waitingTasks.toList()).filter {
             (it.chapter == chapter || it.uniqueName == chapter) && (title == null || it.title == title)
         }
         tasks.forEach { task ->
@@ -243,6 +246,9 @@ class MangaDownloaderService : Service() {
                     j.cancel()
                     downloadJobs.remove(k)
                 }
+                MangaServiceDataSingleton.waitingTasks.removeAll {
+                    (it.chapter == chapter || it.uniqueName == chapter) && (title == null || it.title == title)
+                }
                 MangaServiceDataSingleton.downloadQueue.removeAll {
                     (it.chapter == chapter || it.uniqueName == chapter) && (title == null || it.title == title)
                 }
@@ -252,7 +258,8 @@ class MangaDownloaderService : Service() {
     }
 
     private fun updateNotification() {
-        val pendingDownloads = MangaServiceDataSingleton.downloadQueue.size + MangaServiceDataSingleton.currentTasks.size
+        val pendingDownloads = MangaServiceDataSingleton.downloadQueue.size +
+            MangaServiceDataSingleton.waitingTasks.size + MangaServiceDataSingleton.currentTasks.size
         if (pendingDownloads <= 0 && downloadJobs.isEmpty()) {
             notificationManager.cancel(NOTIFICATION_ID)
             return
@@ -628,6 +635,7 @@ object MangaServiceDataSingleton {
     var sourceMedia: Media? = null
     var downloadQueue: Queue<MangaDownloaderService.DownloadTask> = ConcurrentLinkedQueue()
     val currentTasks = java.util.Collections.synchronizedList(mutableListOf<MangaDownloaderService.DownloadTask>())
+    val waitingTasks = java.util.Collections.synchronizedList(mutableListOf<MangaDownloaderService.DownloadTask>())
     val progress = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     @Volatile

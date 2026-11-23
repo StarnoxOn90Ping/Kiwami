@@ -159,8 +159,10 @@ class NovelDownloaderService : Service() {
                     continue
                 }
                 val taskKey = "${task.title}_${task.chapter}"
+                NovelServiceDataSingleton.waitingTasks.add(task)
                 val job = serviceScope.launch {
                     semaphore.withPermit {
+                        NovelServiceDataSingleton.waitingTasks.remove(task)
                         DownloadHolds.release(task)
                         NovelServiceDataSingleton.currentTasks.add(task)
                         updateNotification()
@@ -177,6 +179,7 @@ class NovelDownloaderService : Service() {
                         }
                     }
                 }
+                job.invokeOnCompletion { NovelServiceDataSingleton.waitingTasks.remove(task) }
                 mutex.withLock { downloadJobs[taskKey] = job }
                 activeJobs[taskKey] = job
             } else {
@@ -207,7 +210,7 @@ class NovelDownloaderService : Service() {
     }
 
     fun cancelDownload(chapter: String, title: String? = null) {
-        val tasks = NovelServiceDataSingleton.downloadQueue.filter {
+        val tasks = (NovelServiceDataSingleton.downloadQueue.toList() + NovelServiceDataSingleton.waitingTasks.toList()).filter {
             it.chapter == chapter && (title == null || it.title == title)
         }
         tasks.forEach { task ->
@@ -223,6 +226,9 @@ class NovelDownloaderService : Service() {
                     j.cancel()
                     downloadJobs.remove(k)
                 }
+                NovelServiceDataSingleton.waitingTasks.removeAll {
+                    it.chapter == chapter && (title == null || it.title == title)
+                }
                 NovelServiceDataSingleton.downloadQueue.removeAll {
                     it.chapter == chapter && (title == null || it.title == title)
                 }
@@ -232,7 +238,8 @@ class NovelDownloaderService : Service() {
     }
 
     private fun updateNotification() {
-        val pendingDownloads = NovelServiceDataSingleton.downloadQueue.size + NovelServiceDataSingleton.currentTasks.size
+        val pendingDownloads = NovelServiceDataSingleton.downloadQueue.size +
+            NovelServiceDataSingleton.waitingTasks.size + NovelServiceDataSingleton.currentTasks.size
         if (pendingDownloads <= 0 && downloadJobs.isEmpty()) {
             notificationManager.cancel(NOTIFICATION_ID)
             return
@@ -614,6 +621,7 @@ class NovelDownloaderService : Service() {
 object NovelServiceDataSingleton {
     var downloadQueue: Queue<NovelDownloaderService.DownloadTask> = ConcurrentLinkedQueue()
     val currentTasks = java.util.Collections.synchronizedList(mutableListOf<NovelDownloaderService.DownloadTask>())
+    val waitingTasks = java.util.Collections.synchronizedList(mutableListOf<NovelDownloaderService.DownloadTask>())
     val progress = java.util.concurrent.ConcurrentHashMap<String, Int>()
     @Volatile var isServiceRunning: Boolean = false
 }

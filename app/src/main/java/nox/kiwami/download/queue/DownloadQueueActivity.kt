@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
+import androidx.appcompat.widget.PopupMenu
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
@@ -18,17 +19,13 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.tabs.TabLayout
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import nox.kiwami.R
 import nox.kiwami.databinding.ActivityDownloadQueueBinding
 import nox.kiwami.databinding.ItemQueueDownloadBinding
-import nox.kiwami.databinding.ItemQueueGroupHeaderBinding
-import nox.kiwami.download.DownloadsManager
 import nox.kiwami.download.anime.AnimeDownloaderService
 import nox.kiwami.download.anime.AnimeServiceDataSingleton
 import nox.kiwami.download.manga.MangaDownloaderService
@@ -36,10 +33,8 @@ import nox.kiwami.download.manga.MangaServiceDataSingleton
 import nox.kiwami.download.novel.NovelDownloaderService
 import nox.kiwami.download.novel.NovelServiceDataSingleton
 import nox.kiwami.initActivity
-import nox.kiwami.loadImage
 import nox.kiwami.media.MediaType
 import nox.kiwami.navBarHeight
-import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.statusBarHeight
 import nox.kiwami.themes.ThemeManager
 import nox.kiwami.util.customAlertDialog
@@ -52,7 +47,6 @@ class DownloadQueueActivity : AppCompatActivity() {
     private lateinit var adapter: QueueAdapter
     private var updateJob: Job? = null
     private var selectedTab = 0
-    private val coverCache = HashMap<String, String?>()
     private val selected = LinkedHashSet<String>()
     private var currentItems: List<QueueItem> = emptyList()
     private val selectionBackCallback = object : OnBackPressedCallback(false) {
@@ -94,12 +88,10 @@ class DownloadQueueActivity : AppCompatActivity() {
         }
 
         adapter = QueueAdapter(
-            coverCache,
             onAction = { item -> toggleHold(item) },
             onCancel = { item -> cancelTask(item) },
             onToggle = { item -> toggleSelection(item) },
-            onStartSelection = { item -> startSelection(item) },
-            onToggleGroup = { key -> toggleGroup(key) }
+            onStartSelection = { item -> startSelection(item) }
         )
         binding.downloadQueueRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.downloadQueueRecyclerView.adapter = adapter
@@ -145,23 +137,27 @@ class DownloadQueueActivity : AppCompatActivity() {
     private fun tasksOf(type: MediaType): List<QueueItem> {
         val active: List<QueueItem>
         val queued: List<QueueItem>
+        val waiting: List<QueueItem>
         when (type) {
             MediaType.ANIME -> {
                 active = AnimeServiceDataSingleton.currentTasks.toList().map { QueueItem.Anime(it, true) }
+                waiting = AnimeServiceDataSingleton.waitingTasks.toList().map { QueueItem.Anime(it, false) }
                 queued = AnimeServiceDataSingleton.downloadQueue.toList().map { QueueItem.Anime(it, false) }
             }
             MediaType.MANGA -> {
                 active = MangaServiceDataSingleton.currentTasks.toList().map { QueueItem.Manga(it, true) }
+                waiting = MangaServiceDataSingleton.waitingTasks.toList().map { QueueItem.Manga(it, false) }
                 queued = MangaServiceDataSingleton.downloadQueue.toList().map { QueueItem.Manga(it, false) }
             }
             MediaType.NOVEL -> {
                 active = NovelServiceDataSingleton.currentTasks.toList().map { QueueItem.Novel(it, true) }
+                waiting = NovelServiceDataSingleton.waitingTasks.toList().map { QueueItem.Novel(it, false) }
                 queued = NovelServiceDataSingleton.downloadQueue.toList().map { QueueItem.Novel(it, false) }
             }
         }
         val held = DownloadHolds.all().filter { it.mediaType == type }
         val all = ArrayList<QueueItem>()
-        for (item in active + queued) {
+        for (item in active + waiting + queued) {
             val isHeld = held.any { it.title == item.title && it.uniqueId == item.uniqueId }
             if (!isHeld && all.none { it.title == item.title && it.uniqueId == item.uniqueId }) all.add(item)
         }
@@ -207,19 +203,13 @@ class DownloadQueueActivity : AppCompatActivity() {
         selected.retainAll(items.map { keyOf(it) }.toSet())
         selectionBackCallback.isEnabled = selected.isNotEmpty()
         val selecting = selected.isNotEmpty()
-        val rows = ArrayList<QueueRow>()
-        items.groupBy { "${it.mediaType.name}|${it.title}" }.forEach { (key, group) ->
-            val allSelected = selecting && group.all { selected.contains(keyOf(it)) }
-            rows.add(QueueRow.Group(key, group.first().title, group.size, allSelected, selecting))
-            group.forEach {
-                rows.add(QueueRow.Task(it, progressOf(it), selected.contains(keyOf(it)), selecting))
-            }
+        val rows = items.map {
+            QueueRow(it, progressOf(it), selected.contains(keyOf(it)), selecting)
         }
         adapter.submitList(rows)
         binding.downloadQueueEmptyState.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
         binding.downloadQueueRecyclerView.visibility = if (rows.isEmpty()) View.GONE else View.VISIBLE
         updateSelectionBar()
-        loadMissingCovers(items)
     }
 
     private fun keyOf(item: QueueItem) = "${item.mediaType.name}|${item.title}|${item.uniqueId}"
@@ -234,14 +224,6 @@ class DownloadQueueActivity : AppCompatActivity() {
     private fun toggleSelection(item: QueueItem) {
         val key = keyOf(item)
         if (!selected.remove(key)) selected.add(key)
-        refresh()
-    }
-
-    private fun toggleGroup(groupKey: String) {
-        val keys = currentItems
-            .filter { "${it.mediaType.name}|${it.title}" == groupKey }
-            .map { keyOf(it) }
-        if (keys.all { selected.contains(it) }) selected.removeAll(keys.toSet()) else selected.addAll(keys)
         refresh()
     }
 
@@ -305,31 +287,6 @@ class DownloadQueueActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadMissingCovers(items: List<QueueItem>) {
-        val missing = items.filter { !coverCache.containsKey(it.title) }.distinctBy { it.title }
-        if (missing.isEmpty()) return
-        missing.forEach { coverCache[it.title] = null }
-        lifecycleScope.launch {
-            val found = withContext(Dispatchers.IO) {
-                missing.associate { item ->
-                    val folder = DownloadsManager.getSubDirectory(
-                        this@DownloadQueueActivity, item.mediaType, false, item.title, null
-                    )
-                    val file = folder?.findFile("cover.jpg")
-                    val path = if (file != null && file.exists()) {
-                        file.uri.toString()
-                    } else {
-                        PrefManager.getCustomVal<String>("local_cover_${item.title}", "")
-                            .takeIf { it.isNotEmpty() && it != "null" }
-                    }
-                    item.title to path
-                }
-            }
-            coverCache.putAll(found)
-            adapter.notifyDataSetChanged()
-        }
-    }
-
     private fun toggleHold(item: QueueItem) {
         if (item.heldReason == null) {
             DownloadControl.pause(this, item)
@@ -350,19 +307,22 @@ class DownloadQueueActivity : AppCompatActivity() {
         MangaServiceDataSingleton.downloadQueue.clear()
         NovelServiceDataSingleton.downloadQueue.clear()
 
-        for (task in AnimeServiceDataSingleton.currentTasks.toList()) {
+        val animeWaiting = AnimeServiceDataSingleton.waitingTasks.toList()
+        val mangaWaiting = MangaServiceDataSingleton.waitingTasks.toList()
+        val novelWaiting = NovelServiceDataSingleton.waitingTasks.toList()
+        for (task in AnimeServiceDataSingleton.currentTasks.toList() + animeWaiting) {
             sendBroadcast(
                 Intent(AnimeDownloaderService.ACTION_CANCEL_DOWNLOAD)
                     .putExtra(AnimeDownloaderService.EXTRA_TASK_NAME, task.getTaskName())
             )
         }
-        for (task in MangaServiceDataSingleton.currentTasks.toList()) {
+        for (task in MangaServiceDataSingleton.currentTasks.toList() + mangaWaiting) {
             sendBroadcast(
                 Intent(MangaDownloaderService.ACTION_CANCEL_DOWNLOAD)
                     .putExtra(MangaDownloaderService.EXTRA_CHAPTER, task.chapter)
             )
         }
-        for (task in NovelServiceDataSingleton.currentTasks.toList()) {
+        for (task in NovelServiceDataSingleton.currentTasks.toList() + novelWaiting) {
             sendBroadcast(
                 Intent(NovelDownloaderService.ACTION_CANCEL_DOWNLOAD)
                     .putExtra(NovelDownloaderService.EXTRA_CHAPTER, task.chapter)
@@ -383,161 +343,97 @@ class DownloadQueueActivity : AppCompatActivity() {
     }
 }
 
-sealed class QueueRow {
-    data class Group(
-        val key: String,
-        val title: String,
-        val count: Int,
-        val selected: Boolean = false,
-        val selecting: Boolean = false
-    ) : QueueRow()
-
-    data class Task(
-        val item: QueueItem,
-        val progress: Int?,
-        val selected: Boolean = false,
-        val selecting: Boolean = false
-    ) : QueueRow()
-}
+data class QueueRow(
+    val item: QueueItem,
+    val progress: Int?,
+    val selected: Boolean,
+    val selecting: Boolean
+)
 
 private class QueueDiff : DiffUtil.ItemCallback<QueueRow>() {
-    override fun areItemsTheSame(oldItem: QueueRow, newItem: QueueRow): Boolean = when {
-        oldItem is QueueRow.Group && newItem is QueueRow.Group -> oldItem.key == newItem.key
-        oldItem is QueueRow.Task && newItem is QueueRow.Task ->
-            oldItem.item.mediaType == newItem.item.mediaType &&
-                oldItem.item.uniqueId == newItem.item.uniqueId
-        else -> false
-    }
+    override fun areItemsTheSame(oldItem: QueueRow, newItem: QueueRow) =
+        oldItem.item.mediaType == newItem.item.mediaType &&
+            oldItem.item.title == newItem.item.title &&
+            oldItem.item.uniqueId == newItem.item.uniqueId
 
-    override fun areContentsTheSame(oldItem: QueueRow, newItem: QueueRow): Boolean = when {
-        oldItem is QueueRow.Group && newItem is QueueRow.Group -> oldItem == newItem
-        oldItem is QueueRow.Task && newItem is QueueRow.Task ->
-            oldItem.progress == newItem.progress &&
-                oldItem.selected == newItem.selected &&
-                oldItem.selecting == newItem.selecting &&
-                oldItem.item.isActive == newItem.item.isActive &&
-                oldItem.item.heldReason == newItem.item.heldReason
-        else -> false
-    }
+    override fun areContentsTheSame(oldItem: QueueRow, newItem: QueueRow) =
+        oldItem.progress == newItem.progress &&
+            oldItem.selected == newItem.selected &&
+            oldItem.selecting == newItem.selecting &&
+            oldItem.item.isActive == newItem.item.isActive &&
+            oldItem.item.heldReason == newItem.item.heldReason
 }
 
 private class QueueAdapter(
-    private val covers: Map<String, String?>,
     private val onAction: (QueueItem) -> Unit,
     private val onCancel: (QueueItem) -> Unit,
     private val onToggle: (QueueItem) -> Unit,
-    private val onStartSelection: (QueueItem) -> Unit,
-    private val onToggleGroup: (String) -> Unit
-) : ListAdapter<QueueRow, RecyclerView.ViewHolder>(QueueDiff()) {
+    private val onStartSelection: (QueueItem) -> Unit
+) : ListAdapter<QueueRow, QueueAdapter.Holder>(QueueDiff()) {
 
-    private class GroupHolder(val binding: ItemQueueGroupHeaderBinding) :
-        RecyclerView.ViewHolder(binding.root)
+    class Holder(val binding: ItemQueueDownloadBinding) : RecyclerView.ViewHolder(binding.root)
 
-    private class TaskHolder(val binding: ItemQueueDownloadBinding) :
-        RecyclerView.ViewHolder(binding.root)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+        Holder(ItemQueueDownloadBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
-    override fun getItemViewType(position: Int) = if (getItem(position) is QueueRow.Group) 0 else 1
+    override fun onBindViewHolder(holder: Holder, position: Int) {
+        val row = getItem(position)
+        val item = row.item
+        val b = holder.binding
+        val context = b.root.context
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        val inflater = LayoutInflater.from(parent.context)
-        return if (viewType == 0) {
-            GroupHolder(ItemQueueGroupHeaderBinding.inflate(inflater, parent, false))
-        } else {
-            TaskHolder(ItemQueueDownloadBinding.inflate(inflater, parent, false))
+        b.queueTaskTitle.text = item.title
+        val sub = item.subTitle
+        b.queueTaskName.text = when {
+            sub.firstOrNull()?.isDigit() != true -> sub
+            item.mediaType == MediaType.ANIME -> context.getString(R.string.download_queue_episode, sub)
+            else -> context.getString(R.string.download_queue_chapter, sub)
         }
-    }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        when (val row = getItem(position)) {
-            is QueueRow.Group -> {
-                val b = (holder as GroupHolder).binding
-                b.queueGroupTitle.text = row.title
-                val context = b.root.context
-                b.queueGroupCount.text = context.resources.getQuantityString(
-                    R.plurals.download_queue_group_count, row.count, row.count
-                )
-                b.root.setBackgroundColor(
-                    if (row.selected) {
-                        MaterialColors.getColor(b.root, com.google.android.material.R.attr.colorPrimaryContainer)
-                    } else {
-                        0
-                    }
-                )
-                b.root.setOnClickListener { if (row.selecting) onToggleGroup(row.key) }
-                b.root.setOnLongClickListener { onToggleGroup(row.key); true }
-                val cover = covers[row.title]
-                if (cover != null) {
-                    b.queueGroupImage.loadImage(cover)
-                    b.queueGroupImageCard.visibility = View.VISIBLE
-                } else {
-                    b.queueGroupImageCard.visibility = View.GONE
-                }
+        val held = item.heldReason
+        b.queueTaskState.text = when {
+            held == HoldReason.PAUSED -> context.getString(R.string.download_state_paused)
+            held == HoldReason.FAILED -> context.getString(R.string.download_state_failed)
+            item.isActive -> "${row.progress ?: 0}%"
+            else -> context.getString(R.string.download_state_queued)
+        }
+
+        val bar = b.queueTaskProgress
+        if (item.isActive && row.progress == null) {
+            bar.isIndeterminate = true
+        } else {
+            bar.isIndeterminate = false
+            bar.setProgressCompat(if (item.isActive || held != null) row.progress ?: 0 else 0, false)
+        }
+
+        b.queueTaskMenu.visibility = if (row.selecting) View.INVISIBLE else View.VISIBLE
+        b.queueTaskMenu.setOnClickListener { anchor ->
+            val menu = PopupMenu(context, anchor)
+            val actionLabel = when (held) {
+                HoldReason.PAUSED -> R.string.download_resume
+                HoldReason.FAILED -> R.string.download_retry
+                null -> R.string.download_pause
             }
-
-            is QueueRow.Task -> {
-                val b = (holder as TaskHolder).binding
-                val item = row.item
-                val context = b.root.context
-                b.queueTaskName.text = item.subTitle
-                val state = context.getString(
-                    when {
-                        item.heldReason == HoldReason.PAUSED -> R.string.download_state_paused
-                        item.heldReason == HoldReason.FAILED -> R.string.download_state_failed
-                        item.isActive -> R.string.download_state_downloading
-                        else -> R.string.download_state_queued
-                    }
-                )
-                b.queueTaskState.text = "$state • ${item.type}"
-                if (item.isActive) {
-                    b.queueTaskProgressLayout.visibility = View.VISIBLE
-                    if (row.progress != null) {
-                        b.queueTaskProgress.isIndeterminate = false
-                        b.queueTaskProgress.progress = row.progress
-                        b.queueTaskPercent.text = "${row.progress}%"
-                    } else {
-                        b.queueTaskProgress.isIndeterminate = true
-                        b.queueTaskPercent.text = "0%"
-                    }
-                } else {
-                    b.queueTaskProgressLayout.visibility = View.GONE
-                }
-                when (item.heldReason) {
-                    HoldReason.PAUSED -> {
-                        b.queueTaskAction.setImageResource(R.drawable.ic_round_play_arrow_24)
-                        b.queueTaskAction.contentDescription = context.getString(R.string.download_resume)
-                    }
-
-                    HoldReason.FAILED -> {
-                        b.queueTaskAction.setImageResource(R.drawable.ic_round_refresh_24)
-                        b.queueTaskAction.contentDescription = context.getString(R.string.download_retry)
-                    }
-
-                    null -> {
-                        b.queueTaskAction.setImageResource(R.drawable.ic_round_pause_24)
-                        b.queueTaskAction.contentDescription = context.getString(R.string.download_pause)
-                    }
-                }
-                b.queueTaskAction.setOnClickListener { onAction(item) }
-                b.queueTaskCancel.setOnClickListener { onCancel(item) }
-                val controlsVisibility = if (row.selecting) View.INVISIBLE else View.VISIBLE
-                b.queueTaskAction.visibility = controlsVisibility
-                b.queueTaskCancel.visibility = controlsVisibility
-                b.root.setCardBackgroundColor(
-                    MaterialColors.getColor(
-                        b.root,
-                        if (row.selected) {
-                            com.google.android.material.R.attr.colorPrimaryContainer
-                        } else {
-                            com.google.android.material.R.attr.colorSurfaceVariant
-                        }
-                    )
-                )
-                b.root.setOnClickListener { if (row.selecting) onToggle(item) }
-                b.root.setOnLongClickListener {
-                    if (row.selecting) onToggle(item) else onStartSelection(item)
-                    true
-                }
+            menu.menu.add(0, 1, 0, actionLabel)
+            menu.menu.add(0, 2, 1, R.string.cancel)
+            menu.setOnMenuItemClickListener {
+                if (it.itemId == 1) onAction(item) else onCancel(item)
+                true
             }
+            menu.show()
+        }
+
+        b.root.setBackgroundColor(
+            if (row.selected) {
+                MaterialColors.getColor(b.root, com.google.android.material.R.attr.colorPrimaryContainer)
+            } else {
+                0
+            }
+        )
+        b.root.setOnClickListener { if (row.selecting) onToggle(item) }
+        b.root.setOnLongClickListener {
+            if (row.selecting) onToggle(item) else onStartSelection(item)
+            true
         }
     }
 }

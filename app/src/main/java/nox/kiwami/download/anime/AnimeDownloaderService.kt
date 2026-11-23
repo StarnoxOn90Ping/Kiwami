@@ -184,8 +184,10 @@ class AnimeDownloaderService : Service() {
                     continue
                 }
                 val taskName = task.getTaskName()
+                AnimeServiceDataSingleton.waitingTasks.add(task)
                 val job = serviceScope.launch {
                     semaphore.withPermit {
+                        AnimeServiceDataSingleton.waitingTasks.remove(task)
                         DownloadHolds.release(task)
                         currentTasks.add(task)
                         updateNotification()
@@ -201,6 +203,7 @@ class AnimeDownloaderService : Service() {
                         }
                     }
                 }
+                job.invokeOnCompletion { AnimeServiceDataSingleton.waitingTasks.remove(task) }
                 mutex.withLock {
                     downloadJobs[taskName] = job
                 }
@@ -237,6 +240,7 @@ class AnimeDownloaderService : Service() {
         val tasks = mutableListOf<AnimeDownloadTask>()
         tasks.addAll(AnimeServiceDataSingleton.downloadQueue.filter { it.getTaskName() == taskName })
         tasks.addAll(currentTasks.filter { it.getTaskName() == taskName })
+        tasks.addAll(AnimeServiceDataSingleton.waitingTasks.toList().filter { it.getTaskName() == taskName })
 
         tasks.forEach { it.cancelled = true }
 
@@ -252,6 +256,7 @@ class AnimeDownloaderService : Service() {
 
         currentTasks.removeAll { it.getTaskName() == taskName }
         AnimeServiceDataSingleton.downloadQueue.removeAll { it.getTaskName() == taskName }
+        AnimeServiceDataSingleton.waitingTasks.removeAll { it.getTaskName() == taskName }
         AnimeServiceDataSingleton.progress.remove(taskName)
 
         CoroutineScope(Dispatchers.Default).launch {
@@ -274,7 +279,8 @@ class AnimeDownloaderService : Service() {
     }
 
     private fun updateNotification() {
-        val pendingDownloads = AnimeServiceDataSingleton.downloadQueue.size + currentTasks.size
+        val pendingDownloads = AnimeServiceDataSingleton.downloadQueue.size +
+            AnimeServiceDataSingleton.waitingTasks.size + currentTasks.size
         if (pendingDownloads <= 0 && downloadJobs.isEmpty()) {
             notificationManager.cancel(NOTIFICATION_ID)
             return
@@ -827,6 +833,7 @@ object AnimeServiceDataSingleton {
     var video: Video? = null
     var downloadQueue: Queue<AnimeDownloaderService.AnimeDownloadTask> = ConcurrentLinkedQueue()
     val currentTasks = java.util.Collections.synchronizedList(mutableListOf<AnimeDownloaderService.AnimeDownloadTask>())
+    val waitingTasks = java.util.Collections.synchronizedList(mutableListOf<AnimeDownloaderService.AnimeDownloadTask>())
     val progress = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     @Volatile

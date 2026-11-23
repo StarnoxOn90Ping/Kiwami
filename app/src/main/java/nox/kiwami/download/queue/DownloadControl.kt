@@ -37,6 +37,7 @@ object DownloadControl {
                 val task = item.task.copy(sessionId = -1L, cancelled = false)
                 val name = task.getTaskName()
                 val busy = AnimeServiceDataSingleton.downloadQueue.any { it.getTaskName() == name } ||
+                    AnimeServiceDataSingleton.waitingTasks.toList().any { it.getTaskName() == name } ||
                     AnimeServiceDataSingleton.currentTasks.toList().any { it.getTaskName() == name }
                 if (busy) return
                 DownloadHolds.remove(item.mediaType, item.title, item.uniqueId)
@@ -53,6 +54,8 @@ object DownloadControl {
                 val task = item.task
                 val busy = MangaServiceDataSingleton.downloadQueue
                     .any { it.title == task.title && it.chapter == task.chapter } ||
+                    MangaServiceDataSingleton.waitingTasks.toList()
+                        .any { it.title == task.title && it.chapter == task.chapter } ||
                     MangaServiceDataSingleton.currentTasks.toList()
                         .any { it.title == task.title && it.chapter == task.chapter }
                 if (busy) return
@@ -69,6 +72,8 @@ object DownloadControl {
                 val task = item.task
                 val busy = NovelServiceDataSingleton.downloadQueue
                     .any { it.title == task.title && it.chapter == task.chapter } ||
+                    NovelServiceDataSingleton.waitingTasks.toList()
+                        .any { it.title == task.title && it.chapter == task.chapter } ||
                     NovelServiceDataSingleton.currentTasks.toList()
                         .any { it.title == task.title && it.chapter == task.chapter }
                 if (busy) return
