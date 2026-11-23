@@ -214,6 +214,7 @@ class AlertDialogBuilder(private val context: Context) {
         }
         dialog.window?.apply {
             setDimAmount(0.5f)
+            if (ThemeSurface.isOled(context)) setBackgroundDrawable(OledSurface.drawable(context, 28f))
             attributes.windowAnimations = android.R.style.Animation_Dialog
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val params = attributes

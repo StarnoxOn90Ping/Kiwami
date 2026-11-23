@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
+import nox.kiwami.util.OledSurface
 import nox.kiwami.BottomSheetDialogFragment
 import nox.kiwami.DatePickerFragment
 import nox.kiwami.InputFilterMinMax
@@ -78,6 +79,9 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin += navBarHeight }
+        OledSurface.dropdown(binding.mediaListStatus)
+        OledSurface.dropdown(binding.mediaListProgress)
+        OledSurface.dropdown(binding.mediaListScore)
         val scope = viewLifecycleOwner.lifecycleScope
         binding.mediaListDelete.setOnClickListener {
             scope.launch {

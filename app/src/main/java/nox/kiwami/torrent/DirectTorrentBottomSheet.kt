@@ -42,6 +42,7 @@ import nox.kiwami.parsers.VideoType
 import nox.kiwami.snackString
 import nox.kiwami.toast
 import nox.kiwami.util.Logger
+import nox.kiwami.util.OledSurface
 import nox.kiwami.util.customAlertDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import eu.kanade.tachiyomi.animesource.model.SEpisode
@@ -130,6 +131,8 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         SheetMotion.popInChildren(binding.root as ViewGroup)
+        OledSurface.view(binding.torrentLinkAnilistRow, 16f)
+        OledSurface.dropdown(binding.torrentFolderDropdown)
 
         torrentAdapter = TorrentFileAdapter(currentFileList) { clickedStat ->
             onFileClicked(clickedStat)
@@ -754,6 +757,7 @@ class DirectTorrentBottomSheet : BottomSheetDialogFragment() {
                 binding.fileEpisodeBadge.text = epNum
                 binding.fileNameText.text = rawName
                 binding.fileSizeText.text = formatFileSize(fileStat.length)
+                OledSurface.card(binding.torrentFileCard, 12f)
                 binding.torrentFileCard.setOnClickListener { onClick(fileStat) }
             }
         }

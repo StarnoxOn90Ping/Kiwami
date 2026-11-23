@@ -4,10 +4,10 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.View
+import androidx.appcompat.R as AppCompatR
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.color.MaterialColors
 import kotlin.math.roundToInt
-import com.google.android.material.R as MaterialR
 
 object OledNavStyle {
 
@@ -22,7 +22,7 @@ object OledNavStyle {
 
     private fun style(view: View, shape: Int, radiusDp: Float) {
         val density = view.resources.displayMetrics.density
-        val accent = MaterialColors.getColor(view, MaterialR.attr.colorPrimary)
+        val accent = MaterialColors.getColor(view, AppCompatR.attr.colorPrimary)
         view.background = GradientDrawable().apply {
             this.shape = shape
             cornerRadius = radiusDp * density
@@ -37,4 +37,6 @@ object OledNavStyle {
             view.outlineAmbientShadowColor = ColorUtils.setAlphaComponent(accent, AMBIENT_GLOW_ALPHA)
         }
     }
+}
+   }
 }
