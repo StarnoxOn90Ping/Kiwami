@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.color.MaterialColors
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
@@ -16,7 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import nox.kiwami.R
 import nox.kiwami.databinding.ActivityDownloadStorageBinding
-import nox.kiwami.databinding.ItemDownloadQueueBinding
+import nox.kiwami.databinding.ItemDownloadStorageBinding
 import nox.kiwami.download.DownloadsManager
 import nox.kiwami.initActivity
 import nox.kiwami.loadImage
@@ -59,8 +60,7 @@ class DownloadStorageActivity : AppCompatActivity() {
 
         val tabs = binding.downloadStorageTabs
         tabs.addTab(tabs.newTab().setText(R.string.anime))
-        tabs.addTab(tabs.newTab().setText(R.string.manga))
-        tabs.addTab(tabs.newTab().setText(R.string.hub_refresh_novel))
+        tabs.addTab(tabs.newTab().setText(R.string.download_queue_tab_manga_novel))
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 selectedTab = tab.position
@@ -85,12 +85,6 @@ class DownloadStorageActivity : AppCompatActivity() {
         calculating = false
     }
 
-    private fun currentType() = when (selectedTab) {
-        0 -> MediaType.ANIME
-        1 -> MediaType.MANGA
-        else -> MediaType.NOVEL
-    }
-
     private fun startCalculation() {
         if (DownloadStorageStats.isCurrent(manager)) return
         calculateJob?.cancel()
@@ -107,30 +101,44 @@ class DownloadStorageActivity : AppCompatActivity() {
         }
     }
 
-    private fun render() {
-        val type = currentType()
-        val entries = DownloadStorageStats.entries(manager, type)
-        adapter.submitList(entries)
-        binding.downloadStorageEmpty.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
-        binding.downloadStorageList.visibility = if (entries.isEmpty()) View.GONE else View.VISIBLE
+    private fun tabEntries(): List<DownloadStorageStats.Entry> {
+        val list = if (selectedTab == 0) {
+            DownloadStorageStats.entries(manager, MediaType.ANIME)
+        } else {
+            DownloadStorageStats.entries(manager, MediaType.MANGA) +
+                DownloadStorageStats.entries(manager, MediaType.NOVEL)
+        }
+        return list.sortedWith(compareByDescending<DownloadStorageStats.Entry> { it.sizeBytes }.thenBy { it.title })
+    }
 
-        val typeLabel = getString(
-            when (type) {
-                MediaType.ANIME -> R.string.anime
-                MediaType.MANGA -> R.string.manga
-                MediaType.NOVEL -> R.string.hub_refresh_novel
-            }
-        )
+    private fun render() {
+        val entries = tabEntries()
+        val tabTotal = entries.sumOf { it.sizeBytes }
+        val accent = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+        val secondary = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorTertiary)
+        val rows = entries.map { entry ->
+            val share = if (tabTotal > 0) (entry.sizeBytes * 1000 / tabTotal).toInt() else 0
+            StorageRow(entry, share, if (entry.type == MediaType.ANIME) accent else secondary)
+        }
+        adapter.submitList(rows)
+        binding.downloadStorageEmpty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
+        binding.downloadStorageList.visibility = if (rows.isEmpty()) View.GONE else View.VISIBLE
+
+        val animeBytes = DownloadStorageStats.totalBytes(MediaType.ANIME)
+        val otherBytes = DownloadStorageStats.totalBytes(MediaType.MANGA) +
+            DownloadStorageStats.totalBytes(MediaType.NOVEL)
+        val track = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOutline)
+        binding.downloadStorageChart.setData(listOf(animeBytes to accent, otherBytes to secondary), track)
+        binding.downloadStorageChartTotal.text = SizeFormatter.formatBytes(animeBytes + otherBytes)
+        binding.downloadStorageLegendAnime.text = SizeFormatter.formatBytes(animeBytes)
+        binding.downloadStorageLegendOther.text = SizeFormatter.formatBytes(otherBytes)
+        binding.downloadStorageDotAnime.background.mutate().setTint(accent)
+        binding.downloadStorageDotOther.background.mutate().setTint(secondary)
+
         binding.downloadStorageSummary.text = if (calculating) {
             getString(R.string.cache_calculating)
         } else {
-            getString(
-                R.string.download_storage_summary,
-                SizeFormatter.formatBytes(DownloadStorageStats.totalBytes()),
-                typeLabel,
-                SizeFormatter.formatBytes(DownloadStorageStats.totalBytes(type)),
-                entries.size
-            )
+            getString(R.string.download_storage_tab_summary, SizeFormatter.formatBytes(tabTotal), entries.size)
         }
     }
 
@@ -149,44 +157,49 @@ class DownloadStorageActivity : AppCompatActivity() {
     }
 }
 
-private class StorageDiff : DiffUtil.ItemCallback<DownloadStorageStats.Entry>() {
-    override fun areItemsTheSame(
-        oldItem: DownloadStorageStats.Entry,
-        newItem: DownloadStorageStats.Entry
-    ) = oldItem.title == newItem.title && oldItem.type == newItem.type
+data class StorageRow(
+    val entry: DownloadStorageStats.Entry,
+    val share: Int,
+    val color: Int
+)
 
-    override fun areContentsTheSame(
-        oldItem: DownloadStorageStats.Entry,
-        newItem: DownloadStorageStats.Entry
-    ) = oldItem == newItem
+private class StorageDiff : DiffUtil.ItemCallback<StorageRow>() {
+    override fun areItemsTheSame(oldItem: StorageRow, newItem: StorageRow) =
+        oldItem.entry.title == newItem.entry.title && oldItem.entry.type == newItem.entry.type
+
+    override fun areContentsTheSame(oldItem: StorageRow, newItem: StorageRow) = oldItem == newItem
 }
 
 private class StorageAdapter(
     private val onDelete: (DownloadStorageStats.Entry) -> Unit
-) : ListAdapter<DownloadStorageStats.Entry, StorageAdapter.Holder>(StorageDiff()) {
+) : ListAdapter<StorageRow, StorageAdapter.Holder>(StorageDiff()) {
 
-    class Holder(val binding: ItemDownloadQueueBinding) : RecyclerView.ViewHolder(binding.root)
+    class Holder(val binding: ItemDownloadStorageBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        Holder(ItemDownloadQueueBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        Holder(ItemDownloadStorageBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
-        val entry = getItem(position)
+        val row = getItem(position)
+        val entry = row.entry
         val b = holder.binding
-        b.itemDownloadTitle.text = entry.title
-        val unit = when (entry.type) {
-            MediaType.ANIME -> if (entry.count == 1) "episode" else "episodes"
-            else -> if (entry.count == 1) "chapter" else "chapters"
+        b.itemStorageTitle.text = entry.title
+        val (unit, label) = when (entry.type) {
+            MediaType.ANIME -> (if (entry.count == 1) "episode" else "episodes") to "Anime"
+            MediaType.MANGA -> (if (entry.count == 1) "chapter" else "chapters") to "Manga"
+            MediaType.NOVEL -> (if (entry.count == 1) "chapter" else "chapters") to "Novel"
         }
-        b.itemDownloadSubtitle.text = "${entry.count} $unit • ${SizeFormatter.formatBytes(entry.sizeBytes)}"
+        b.itemStorageSubtitle.text = "${entry.count} $unit • $label"
+        b.itemStorageSize.text = SizeFormatter.formatBytes(entry.sizeBytes)
+        b.itemStorageSize.setTextColor(row.color)
+        b.itemStorageBar.setIndicatorColor(row.color)
+        b.itemStorageBar.setProgressCompat(row.share, false)
         if (entry.cover != null) {
-            b.itemDownloadImage.loadImage(entry.cover)
-            b.itemDownloadImageCard.visibility = View.VISIBLE
+            b.itemStorageImage.loadImage(entry.cover)
+            b.itemStorageImageCard.visibility = View.VISIBLE
         } else {
-            b.itemDownloadImageCard.visibility = View.GONE
+            b.itemStorageImageCard.visibility = View.GONE
         }
-        b.itemDownloadCancel.setImageResource(R.drawable.ic_round_delete_24)
-        b.itemDownloadCancel.setOnClickListener { onDelete(entry) }
-        b.itemDownloadProgressLayout.visibility = View.GONE
+        b.itemStorageDelete.setOnClickListener { onDelete(entry) }
     }
 }

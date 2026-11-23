@@ -1581,4 +1581,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_queue_selected">%1$d selected</string>
     <string name="download_queue_cancel_selected">Cancel selected downloads</string>
     <string name="download_queue_cancel_selected_confirm">Cancel %1$d selected downloads? Partial files will be removed.</string>
+    <string name="download_storage_chart_caption">Downloads</string>
+    <string name="download_storage_tab_summary">%1$s • %2$d titles</string>
 </resources>
