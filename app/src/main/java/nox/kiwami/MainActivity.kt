@@ -42,6 +42,7 @@ import nox.kiwami.home.HomeFragment
 import nox.kiwami.home.LoginFragment
 import nox.kiwami.home.MangaFragment
 import nox.kiwami.home.OfflineScreen
+import nox.kiwami.home.OledNavStyle
 import nox.kiwami.home.OfflineLaunchDialog
 import nox.kiwami.home.OfflinePill
 import nox.kiwami.media.MediaDetailsActivity
@@ -61,6 +62,7 @@ import nox.kiwami.settings.saving.SharedPreferenceBooleanLiveData
 import nox.kiwami.settings.saving.internal.PreferenceKeystore
 import nox.kiwami.settings.saving.internal.PreferencePackager
 import nox.kiwami.themes.ThemeManager
+import nox.kiwami.util.ThemeSurface
 import nox.kiwami.util.AudioHelper
 import nox.kiwami.util.Logger
 import nox.kiwami.util.customAlertDialog
@@ -148,6 +150,7 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNavBar = findViewById<AnimatedBottomBar>(R.id.navbar)
         bottomNavBar.background = ContextCompat.getDrawable(this, R.drawable.bottom_nav_gray)
+        if (ThemeSurface.isOled(this)) OledNavStyle.pill(bottomNavBar)
 
         val offset = try {
             val statusBarHeightId = resources.getIdentifier("status_bar_height", "dimen", "android")

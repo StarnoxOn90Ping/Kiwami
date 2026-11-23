@@ -16,6 +16,7 @@ import nox.kiwami.download.hub.DownloadRingAnimator
 import nox.kiwami.download.hub.DownloadsActivity
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
+import nox.kiwami.util.ThemeSurface
 import nox.kiwami.util.setPressBounce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,6 +33,10 @@ class HomeSideButtons(
     private var started = false
 
     fun attach() {
+        if (ThemeSurface.isOled(activity)) {
+            OledNavStyle.circle(nav.calendarButton)
+            OledNavStyle.circle(nav.downloadsButton)
+        }
         nav.calendarButton.setPressBounce(0.82f)
         nav.downloadsButton.setPressBounce(0.82f)
         nav.calendarButton.setOnClickListener { openCalendar() }
