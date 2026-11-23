@@ -2,7 +2,7 @@ name: Artifact Cleanup
 
 on:
   workflow_run:
-    workflows: ["Alpha apk", "Beta apk", "Release apk"]
+    workflows: ["Alpha apk", "Pre-release apk", "Beta apk", "Release apk"]
     types: [completed]
   schedule:
     - cron: "*/30 * * * *"
