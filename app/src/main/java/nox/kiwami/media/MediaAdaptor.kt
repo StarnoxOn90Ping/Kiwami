@@ -231,6 +231,7 @@ class MediaAdaptor(
                         b.itemTotal,
                         b.itemCompactScore,
                         b.itemCompactScoreBG,
+                        b.itemCompactAddToList,
                         b.itemCompactGenreChips
                     )
                     @SuppressLint("NotifyDataSetChanged")
@@ -269,6 +270,7 @@ class MediaAdaptor(
                         b.itemTotal,
                         b.itemCompactScore,
                         b.itemCompactScoreBG,
+                        b.itemCompactAddToList,
                         b.itemCompactGenreChips
                     )
                     @SuppressLint("NotifyDataSetChanged")
@@ -293,6 +295,7 @@ class MediaAdaptor(
         totalLabel: TextView,
         score: TextView,
         scoreBackground: View,
+        addToList: TextView,
         chips: ViewGroup
     ) {
         title.text = media.userPreferredName
@@ -303,6 +306,7 @@ class MediaAdaptor(
         synopsis.isVisible = !description.isNullOrBlank()
 
         status.text = media.status ?: ""
+        addToList.text = activity.getString(if (media.userStatus != null) R.string.hero_edit_list else R.string.hero_add_to_list)
         score.text = ((if (media.userScore == 0) (media.meanScore ?: 0) else media.userScore) / 10.0).toString()
         scoreBackground.setBackgroundResource(if (media.userScore != 0) R.drawable.hero_score_pill_user else R.drawable.hero_score_pill)
 
@@ -490,19 +494,11 @@ class MediaAdaptor(
     inner class MediaPageViewHolder(val binding: ItemMediaPageBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            binding.itemCompactTitleContainer.setSafeOnClickListener {
-                val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
-                val pos = bindingAdapterPosition
-                if (pos == RecyclerView.NO_POSITION) return@setSafeOnClickListener
-                val media = currentAdapter.mediaList?.getOrNull(pos)
-                if (media == null || media.id < 0) return@setSafeOnClickListener
-                currentAdapter.clicked(pos, null)
-            }
+            binding.itemCompactTitleContainer.setSafeOnClickListener { openHeroMedia(this) }
+            binding.itemCompactDetails.setSafeOnClickListener { openHeroMedia(this) }
+            binding.itemCompactAddToList.setSafeOnClickListener { editHeroList(this) }
             itemView.setOnTouchListener { _, _ -> true }
-            binding.itemCompactTitleContainer.setOnLongClickListener {
-                val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
-                currentAdapter.longClicked(bindingAdapterPosition)
-            }
+            binding.itemCompactTitleContainer.setOnLongClickListener { editHeroList(this) }
         }
     }
 
@@ -510,20 +506,26 @@ class MediaAdaptor(
     inner class MediaPageSmallViewHolder(val binding: ItemMediaPageSmallBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            binding.itemCompactTitleContainer.setSafeOnClickListener {
-                val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
-                val pos = bindingAdapterPosition
-                if (pos == RecyclerView.NO_POSITION) return@setSafeOnClickListener
-                val media = currentAdapter.mediaList?.getOrNull(pos)
-                if (media == null || media.id < 0) return@setSafeOnClickListener
-                currentAdapter.clicked(pos, null)
-            }
+            binding.itemCompactTitleContainer.setSafeOnClickListener { openHeroMedia(this) }
+            binding.itemCompactDetails.setSafeOnClickListener { openHeroMedia(this) }
+            binding.itemCompactAddToList.setSafeOnClickListener { editHeroList(this) }
             itemView.setOnTouchListener { _, _ -> true }
-            binding.itemCompactTitleContainer.setOnLongClickListener {
-                val currentAdapter = bindingAdapter as? MediaAdaptor ?: this@MediaAdaptor
-                currentAdapter.longClicked(bindingAdapterPosition)
-            }
+            binding.itemCompactTitleContainer.setOnLongClickListener { editHeroList(this) }
         }
+    }
+
+    private fun openHeroMedia(holder: RecyclerView.ViewHolder) {
+        val currentAdapter = holder.bindingAdapter as? MediaAdaptor ?: this
+        val pos = holder.bindingAdapterPosition
+        if (pos == RecyclerView.NO_POSITION) return
+        val media = currentAdapter.mediaList?.getOrNull(pos)
+        if (media == null || media.id < 0) return
+        currentAdapter.clicked(pos, null)
+    }
+
+    private fun editHeroList(holder: RecyclerView.ViewHolder): Boolean {
+        val currentAdapter = holder.bindingAdapter as? MediaAdaptor ?: this
+        return currentAdapter.longClicked(holder.bindingAdapterPosition)
     }
 
     fun clicked(position: Int, itemCompactImage: ImageView?, bitmap: Bitmap? = null) {

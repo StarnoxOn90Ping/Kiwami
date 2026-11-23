@@ -189,6 +189,51 @@
             android:layout_marginTop="14dp"
             app:flexWrap="wrap"
             app:maxLine="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/itemCompactDetails"
+                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_bold"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/details"
+                android:textAllCaps="false"
+                android:textColor="?attr/colorOnPrimary"
+                android:textSize="15dp"
+                app:backgroundTint="?attr/colorPrimary"
+                app:cornerRadius="24dp"
+                tools:ignore="SpUsage" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/itemCompactAddToList"
+                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_bold"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/hero_add_to_list"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15dp"
+                app:backgroundTint="#B31C1C20"
+                app:cornerRadius="24dp"
+                app:strokeColor="#26FFFFFF"
+                app:strokeWidth="1dp"
+                tools:ignore="SpUsage" />
+        </LinearLayout>
     </LinearLayout>
 
 </FrameLayout>

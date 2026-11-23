@@ -164,6 +164,8 @@
 
     <string name="roles">Roles</string>
     <string name="details">Details</string>
+    <string name="hero_add_to_list">+ Add to list</string>
+    <string name="hero_edit_list">Edit list</string>
 
     <string name="play_yt">Play on Youtube</string>
     <string name="eps">Episodes</string>
