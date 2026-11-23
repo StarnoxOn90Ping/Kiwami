@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.TaskStackBuilder
 import androidx.core.view.updateLayoutParams
@@ -15,6 +16,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,6 +53,13 @@ class DownloadQueueActivity : AppCompatActivity() {
     private var updateJob: Job? = null
     private var selectedTab = 0
     private val coverCache = HashMap<String, String?>()
+    private val selected = LinkedHashSet<String>()
+    private var currentItems: List<QueueItem> = emptyList()
+    private val selectionBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            clearSelection()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +72,14 @@ class DownloadQueueActivity : AppCompatActivity() {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
+        onBackPressedDispatcher.addCallback(this, selectionBackCallback)
+        binding.downloadQueueSelectionBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = navBarHeight + 12.toPx()
+        }
+        binding.downloadQueueSelectionClose.setOnClickListener { clearSelection() }
+        binding.downloadQueueSelectionPause.setOnClickListener { pauseSelected() }
+        binding.downloadQueueSelectionResume.setOnClickListener { resumeSelected() }
+        binding.downloadQueueSelectionCancel.setOnClickListener { confirmCancelSelected() }
         binding.downloadQueueBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -79,7 +96,10 @@ class DownloadQueueActivity : AppCompatActivity() {
         adapter = QueueAdapter(
             coverCache,
             onAction = { item -> toggleHold(item) },
-            onCancel = { item -> cancelTask(item) }
+            onCancel = { item -> cancelTask(item) },
+            onToggle = { item -> toggleSelection(item) },
+            onStartSelection = { item -> startSelection(item) },
+            onToggleGroup = { key -> toggleGroup(key) }
         )
         binding.downloadQueueRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.downloadQueueRecyclerView.adapter = adapter
@@ -90,7 +110,7 @@ class DownloadQueueActivity : AppCompatActivity() {
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 selectedTab = tab.position
-                refresh()
+                clearSelection()
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab) {}
@@ -183,15 +203,106 @@ class DownloadQueueActivity : AppCompatActivity() {
             parts.joinToString(" • ")
         }
 
+        currentItems = items
+        selected.retainAll(items.map { keyOf(it) }.toSet())
+        selectionBackCallback.isEnabled = selected.isNotEmpty()
+        val selecting = selected.isNotEmpty()
         val rows = ArrayList<QueueRow>()
         items.groupBy { "${it.mediaType.name}|${it.title}" }.forEach { (key, group) ->
-            rows.add(QueueRow.Group(key, group.first().title, group.size))
-            group.forEach { rows.add(QueueRow.Task(it, progressOf(it))) }
+            val allSelected = selecting && group.all { selected.contains(keyOf(it)) }
+            rows.add(QueueRow.Group(key, group.first().title, group.size, allSelected, selecting))
+            group.forEach {
+                rows.add(QueueRow.Task(it, progressOf(it), selected.contains(keyOf(it)), selecting))
+            }
         }
         adapter.submitList(rows)
         binding.downloadQueueEmptyState.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
         binding.downloadQueueRecyclerView.visibility = if (rows.isEmpty()) View.GONE else View.VISIBLE
+        updateSelectionBar()
         loadMissingCovers(items)
+    }
+
+    private fun keyOf(item: QueueItem) = "${item.mediaType.name}|${item.title}|${item.uniqueId}"
+
+    private fun Int.toPx() = (this * resources.displayMetrics.density).toInt()
+
+    private fun startSelection(item: QueueItem) {
+        selected.add(keyOf(item))
+        refresh()
+    }
+
+    private fun toggleSelection(item: QueueItem) {
+        val key = keyOf(item)
+        if (!selected.remove(key)) selected.add(key)
+        refresh()
+    }
+
+    private fun toggleGroup(groupKey: String) {
+        val keys = currentItems
+            .filter { "${it.mediaType.name}|${it.title}" == groupKey }
+            .map { keyOf(it) }
+        if (keys.all { selected.contains(it) }) selected.removeAll(keys.toSet()) else selected.addAll(keys)
+        refresh()
+    }
+
+    private fun clearSelection() {
+        selected.clear()
+        refresh()
+    }
+
+    private fun selectedItems() = currentItems.filter { selected.contains(keyOf(it)) }
+
+    private fun updateSelectionBar() {
+        val bar = binding.downloadQueueSelectionBar
+        val chosen = selectedItems()
+        if (chosen.isEmpty()) {
+            bar.visibility = View.GONE
+            binding.downloadQueueRecyclerView.setPadding(0, 0, 0, 64.toPx())
+            return
+        }
+        bar.visibility = View.VISIBLE
+        binding.downloadQueueRecyclerView.setPadding(0, 0, 0, 100.toPx())
+        binding.downloadQueueSelectionCount.text = getString(R.string.download_queue_selected, chosen.size)
+        val running = chosen.filter { it.heldReason == null }
+        val held = chosen.filter { it.heldReason != null }
+        binding.downloadQueueSelectionPause.isEnabled = running.isNotEmpty()
+        binding.downloadQueueSelectionPause.alpha = if (running.isNotEmpty()) 1f else 0.4f
+        binding.downloadQueueSelectionResume.isEnabled = held.isNotEmpty()
+        binding.downloadQueueSelectionResume.alpha = if (held.isNotEmpty()) 1f else 0.4f
+        val onlyFailed = held.isNotEmpty() && held.all { it.heldReason == HoldReason.FAILED }
+        binding.downloadQueueSelectionResume.setText(
+            if (onlyFailed) R.string.download_retry else R.string.download_resume
+        )
+        binding.downloadQueueSelectionResume.setIconResource(
+            if (onlyFailed) R.drawable.ic_round_refresh_24 else R.drawable.ic_round_play_arrow_24
+        )
+    }
+
+    private fun pauseSelected() {
+        val targets = selectedItems().filter { it.heldReason == null }
+        targets.forEach { DownloadControl.pause(this, it) }
+        clearSelection()
+    }
+
+    private fun resumeSelected() {
+        val targets = selectedItems().filter { it.heldReason != null }
+        targets.forEach { DownloadControl.resume(this, it) }
+        clearSelection()
+    }
+
+    private fun confirmCancelSelected() {
+        val targets = selectedItems()
+        if (targets.isEmpty()) return
+        customAlertDialog().apply {
+            setTitle(R.string.download_queue_cancel_selected)
+            setMessage(getString(R.string.download_queue_cancel_selected_confirm, targets.size))
+            setPosButton(R.string.yes) {
+                targets.forEach { DownloadControl.cancel(this@DownloadQueueActivity, it) }
+                clearSelection()
+            }
+            setNegButton(R.string.no)
+            show()
+        }
     }
 
     private fun loadMissingCovers(items: List<QueueItem>) {
@@ -273,8 +384,20 @@ class DownloadQueueActivity : AppCompatActivity() {
 }
 
 sealed class QueueRow {
-    data class Group(val key: String, val title: String, val count: Int) : QueueRow()
-    data class Task(val item: QueueItem, val progress: Int?) : QueueRow()
+    data class Group(
+        val key: String,
+        val title: String,
+        val count: Int,
+        val selected: Boolean = false,
+        val selecting: Boolean = false
+    ) : QueueRow()
+
+    data class Task(
+        val item: QueueItem,
+        val progress: Int?,
+        val selected: Boolean = false,
+        val selecting: Boolean = false
+    ) : QueueRow()
 }
 
 private class QueueDiff : DiffUtil.ItemCallback<QueueRow>() {
@@ -290,6 +413,8 @@ private class QueueDiff : DiffUtil.ItemCallback<QueueRow>() {
         oldItem is QueueRow.Group && newItem is QueueRow.Group -> oldItem == newItem
         oldItem is QueueRow.Task && newItem is QueueRow.Task ->
             oldItem.progress == newItem.progress &&
+                oldItem.selected == newItem.selected &&
+                oldItem.selecting == newItem.selecting &&
                 oldItem.item.isActive == newItem.item.isActive &&
                 oldItem.item.heldReason == newItem.item.heldReason
         else -> false
@@ -299,7 +424,10 @@ private class QueueDiff : DiffUtil.ItemCallback<QueueRow>() {
 private class QueueAdapter(
     private val covers: Map<String, String?>,
     private val onAction: (QueueItem) -> Unit,
-    private val onCancel: (QueueItem) -> Unit
+    private val onCancel: (QueueItem) -> Unit,
+    private val onToggle: (QueueItem) -> Unit,
+    private val onStartSelection: (QueueItem) -> Unit,
+    private val onToggleGroup: (String) -> Unit
 ) : ListAdapter<QueueRow, RecyclerView.ViewHolder>(QueueDiff()) {
 
     private class GroupHolder(val binding: ItemQueueGroupHeaderBinding) :
@@ -328,6 +456,15 @@ private class QueueAdapter(
                 b.queueGroupCount.text = context.resources.getQuantityString(
                     R.plurals.download_queue_group_count, row.count, row.count
                 )
+                b.root.setBackgroundColor(
+                    if (row.selected) {
+                        MaterialColors.getColor(b.root, com.google.android.material.R.attr.colorPrimaryContainer)
+                    } else {
+                        0
+                    }
+                )
+                b.root.setOnClickListener { if (row.selecting) onToggleGroup(row.key) }
+                b.root.setOnLongClickListener { onToggleGroup(row.key); true }
                 val cover = covers[row.title]
                 if (cover != null) {
                     b.queueGroupImage.loadImage(cover)
@@ -382,6 +519,24 @@ private class QueueAdapter(
                 }
                 b.queueTaskAction.setOnClickListener { onAction(item) }
                 b.queueTaskCancel.setOnClickListener { onCancel(item) }
+                val controlsVisibility = if (row.selecting) View.INVISIBLE else View.VISIBLE
+                b.queueTaskAction.visibility = controlsVisibility
+                b.queueTaskCancel.visibility = controlsVisibility
+                b.root.setCardBackgroundColor(
+                    MaterialColors.getColor(
+                        b.root,
+                        if (row.selected) {
+                            com.google.android.material.R.attr.colorPrimaryContainer
+                        } else {
+                            com.google.android.material.R.attr.colorSurfaceVariant
+                        }
+                    )
+                )
+                b.root.setOnClickListener { if (row.selecting) onToggle(item) }
+                b.root.setOnLongClickListener {
+                    if (row.selecting) onToggle(item) else onStartSelection(item)
+                    true
+                }
             }
         }
     }
