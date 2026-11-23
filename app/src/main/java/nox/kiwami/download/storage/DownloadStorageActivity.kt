@@ -114,7 +114,7 @@ class DownloadStorageActivity : AppCompatActivity() {
     private fun render() {
         val entries = tabEntries()
         val tabTotal = entries.sumOf { it.sizeBytes }
-        val accent = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+        val accent = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
         val secondary = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorTertiary)
         val rows = entries.map { entry ->
             val share = if (tabTotal > 0) (entry.sizeBytes * 1000 / tabTotal).toInt() else 0
