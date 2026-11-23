@@ -46,7 +46,9 @@ import nox.kiwami.snackString
 import nox.kiwami.toast
 import nox.kiwami.util.Logger
 import nox.kiwami.util.SizeFormatter
+import com.anggrayudi.storage.file.deleteRecursively
 import com.anggrayudi.storage.file.forceDelete
+import nox.kiwami.download.queue.DownloadHolds
 import com.anggrayudi.storage.file.openOutputStream
 import com.google.gson.GsonBuilder
 import com.google.gson.InstanceCreator
@@ -175,6 +177,7 @@ class AnimeDownloaderService : Service() {
             if (task != null) {
                 if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@AnimeDownloaderService)) {
                     broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
+                    DownloadHolds.holdFailed(task)
                     withContext(Dispatchers.Main) {
                         snackString(getString(R.string.download_wifi_only_warning))
                     }
@@ -183,6 +186,7 @@ class AnimeDownloaderService : Service() {
                 val taskName = task.getTaskName()
                 val job = serviceScope.launch {
                     semaphore.withPermit {
+                        DownloadHolds.release(task)
                         currentTasks.add(task)
                         updateNotification()
                         try {
@@ -298,6 +302,7 @@ class AnimeDownloaderService : Service() {
                 task.sourceMedia?.id?.let { mediaId ->
                     broadcastDownloadFailed(task.episode, mediaId)
                 }
+                DownloadHolds.holdFailed(task)
                 withContext(Dispatchers.Main) {
                     snackString(getString(R.string.download_wifi_only_warning))
                 }
@@ -488,6 +493,7 @@ class AnimeDownloaderService : Service() {
                             )
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
+                        DownloadHolds.holdFailed(task)
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
                         break
                     }
@@ -534,6 +540,7 @@ class AnimeDownloaderService : Service() {
                             )
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
+                        DownloadHolds.holdFailed(task)
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
                         return@withContext
                     }
@@ -555,12 +562,25 @@ class AnimeDownloaderService : Service() {
                     e.printStackTrace()
                     Injekt.get<CrashlyticsInterface>().logException(e)
                     if (!task.cancelled) {
+                        DownloadHolds.holdFailed(task)
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
                     }
                 }
             } finally {
                 if (task.cancelled && task.sessionId != -1L) {
                     runCatching { ffExtension?.cancelDownload(task.sessionId) }
+                }
+                val rerun = AnimeServiceDataSingleton.downloadQueue.any { it.getTaskName() == task.getTaskName() } ||
+                    currentTasks.toList().any { it.getTaskName() == task.getTaskName() }
+                if (task.cancelled && !rerun) {
+                    runCatching {
+                        DownloadsManager.findSubDirectory(
+                            this@AnimeDownloaderService,
+                            MediaType.ANIME,
+                            task.title,
+                            task.episode
+                        )?.deleteRecursively(this@AnimeDownloaderService, false)
+                    }
                 }
                 task.sourceMedia?.id?.let { mediaId ->
                     AnimeDownloader.stopDownload(mediaId, task.episode)

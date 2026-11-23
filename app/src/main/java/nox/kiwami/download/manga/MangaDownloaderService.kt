@@ -45,6 +45,8 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import com.anggrayudi.storage.file.deleteRecursively
+import nox.kiwami.download.queue.DownloadControl
+import nox.kiwami.download.queue.DownloadHolds
 import com.anggrayudi.storage.file.forceDelete
 import com.anggrayudi.storage.file.openOutputStream
 import com.google.gson.GsonBuilder
@@ -167,6 +169,7 @@ class MangaDownloaderService : Service() {
                 if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@MangaDownloaderService)) {
                     broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
                     broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
+                    DownloadHolds.holdFailed(task)
                     withContext(Dispatchers.Main) {
                         snackString(getString(R.string.download_wifi_only_warning))
                     }
@@ -175,6 +178,7 @@ class MangaDownloaderService : Service() {
                 val taskKey = "${task.title}_${task.chapter}"
                 val job = serviceScope.launch {
                     semaphore.withPermit {
+                        DownloadHolds.release(task)
                         MangaServiceDataSingleton.currentTasks.add(task)
                         updateNotification()
                         try {
@@ -221,20 +225,27 @@ class MangaDownloaderService : Service() {
         }
     }
 
-    fun cancelDownload(chapter: String) {
-        val tasks = MangaServiceDataSingleton.downloadQueue.filter { it.chapter == chapter || it.uniqueName == chapter }
+    fun cancelDownload(chapter: String, title: String? = null) {
+        val tasks = MangaServiceDataSingleton.downloadQueue.filter {
+            (it.chapter == chapter || it.uniqueName == chapter) && (title == null || it.title == title)
+        }
         tasks.forEach { task ->
             broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
             broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
         }
         serviceScope.launch {
             mutex.withLock {
-                val toCancel = downloadJobs.filter { it.key == chapter || it.key.endsWith("_$chapter") }
+                val toCancel = downloadJobs.filter {
+                    if (title != null) it.key == "${title}_$chapter"
+                    else it.key == chapter || it.key.endsWith("_$chapter")
+                }
                 toCancel.forEach { (k, j) ->
                     j.cancel()
                     downloadJobs.remove(k)
                 }
-                MangaServiceDataSingleton.downloadQueue.removeAll { it.chapter == chapter || it.uniqueName == chapter }
+                MangaServiceDataSingleton.downloadQueue.removeAll {
+                    (it.chapter == chapter || it.uniqueName == chapter) && (title == null || it.title == title)
+                }
                 updateNotification()
             }
         }
@@ -266,6 +277,7 @@ class MangaDownloaderService : Service() {
         if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@MangaDownloaderService)) {
             broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
             broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
+            DownloadHolds.holdFailed(task)
             withContext(Dispatchers.Main) {
                 snackString(getString(R.string.download_wifi_only_warning))
             }
@@ -395,9 +407,26 @@ class MangaDownloaderService : Service() {
                 snackString("${task.title} - ${task.chapter} Download finished")
             }
         } catch (e: Exception) {
-            Logger.log("Exception while downloading file: ${e.message}")
-            snackString("Exception while downloading file: ${e.message}")
-            Injekt.get<CrashlyticsInterface>().logException(e)
+            if (e is kotlinx.coroutines.CancellationException) {
+                Logger.log("Download cancelled: ${task.title} - ${task.chapter}")
+                val rerun = MangaServiceDataSingleton.downloadQueue
+                    .any { it.title == task.title && it.chapter == task.chapter } ||
+                    MangaServiceDataSingleton.currentTasks.toList()
+                        .any { it !== task && it.title == task.title && it.chapter == task.chapter }
+                if (!rerun) runCatching {
+                    DownloadsManager.findSubDirectory(
+                        this@MangaDownloaderService,
+                        MediaType.MANGA,
+                        task.title,
+                        task.chapter
+                    )?.deleteRecursively(this@MangaDownloaderService, false)
+                }
+            } else {
+                Logger.log("Exception while downloading file: ${e.message}")
+                snackString("Exception while downloading file: ${e.message}")
+                Injekt.get<CrashlyticsInterface>().logException(e)
+                DownloadHolds.holdFailed(task)
+            }
             broadcastDownloadFailed(task.uniqueName, task.sourceMedia?.id)
             broadcastDownloadFailed(task.chapter, task.sourceMedia?.id)
         }
@@ -563,9 +592,11 @@ class MangaDownloaderService : Service() {
     private val cancelReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == ACTION_CANCEL_DOWNLOAD) {
+                val mediaType = intent.getStringExtra(DownloadControl.EXTRA_MEDIA_TYPE)
+                if (mediaType != null && mediaType != MediaType.MANGA.name) return
                 val chapter = intent.getStringExtra(EXTRA_CHAPTER)
                 chapter?.let {
-                    cancelDownload(it)
+                    cancelDownload(it, intent.getStringExtra(DownloadControl.EXTRA_TITLE))
                 }
             }
         }

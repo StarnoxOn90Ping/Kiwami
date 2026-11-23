@@ -30,7 +30,10 @@ import nox.kiwami.media.novel.NovelReadFragment
 import nox.kiwami.parsers.novel.LnReaderNovelParser
 import nox.kiwami.snackString
 import nox.kiwami.util.Logger
+import com.anggrayudi.storage.file.deleteRecursively
 import com.anggrayudi.storage.file.forceDelete
+import nox.kiwami.download.queue.DownloadControl
+import nox.kiwami.download.queue.DownloadHolds
 import com.anggrayudi.storage.file.openOutputStream
 import com.google.gson.GsonBuilder
 import com.google.gson.InstanceCreator
@@ -149,6 +152,7 @@ class NovelDownloaderService : Service() {
             if (task != null) {
                 if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@NovelDownloaderService)) {
                     broadcastDownloadFailed(task.originalLink)
+                    DownloadHolds.holdFailed(task)
                     withContext(Dispatchers.Main) {
                         snackString(getString(R.string.download_wifi_only_warning))
                     }
@@ -157,6 +161,7 @@ class NovelDownloaderService : Service() {
                 val taskKey = "${task.title}_${task.chapter}"
                 val job = serviceScope.launch {
                     semaphore.withPermit {
+                        DownloadHolds.release(task)
                         NovelServiceDataSingleton.currentTasks.add(task)
                         updateNotification()
                         try {
@@ -201,19 +206,26 @@ class NovelDownloaderService : Service() {
         }
     }
 
-    fun cancelDownload(chapter: String) {
-        val tasks = NovelServiceDataSingleton.downloadQueue.filter { it.chapter == chapter }
+    fun cancelDownload(chapter: String, title: String? = null) {
+        val tasks = NovelServiceDataSingleton.downloadQueue.filter {
+            it.chapter == chapter && (title == null || it.title == title)
+        }
         tasks.forEach { task ->
             broadcastDownloadFailed(task.originalLink)
         }
         serviceScope.launch {
             mutex.withLock {
-                val toCancel = downloadJobs.filter { it.key == chapter || it.key.endsWith("_$chapter") }
+                val toCancel = downloadJobs.filter {
+                    if (title != null) it.key == "${title}_$chapter"
+                    else it.key == chapter || it.key.endsWith("_$chapter")
+                }
                 toCancel.forEach { (k, j) ->
                     j.cancel()
                     downloadJobs.remove(k)
                 }
-                NovelServiceDataSingleton.downloadQueue.removeAll { it.chapter == chapter }
+                NovelServiceDataSingleton.downloadQueue.removeAll {
+                    it.chapter == chapter && (title == null || it.title == title)
+                }
                 updateNotification()
             }
         }
@@ -259,6 +271,7 @@ class NovelDownloaderService : Service() {
     suspend fun download(task: DownloadTask) {
         if (PrefManager.getVal<Boolean>(PrefName.DownloadWifiOnly) && !nox.kiwami.isWifiConnected(this@NovelDownloaderService)) {
             broadcastDownloadFailed(task.originalLink)
+            DownloadHolds.holdFailed(task)
             withContext(Dispatchers.Main) {
                 snackString(getString(R.string.download_wifi_only_warning))
             }
@@ -324,9 +337,15 @@ class NovelDownloaderService : Service() {
                 snackString("${task.title} - ${task.chapter} Download finished")
             }
         } catch (e: Exception) {
-            Logger.log("HTML chapter download failed: ${e.message}")
-            snackString("Download failed: ${e.message}")
-            Injekt.get<CrashlyticsInterface>().logException(e)
+            if (e is kotlinx.coroutines.CancellationException) {
+                Logger.log("Download cancelled: ${task.title} - ${task.chapter}")
+                cleanupPartial(task)
+            } else {
+                Logger.log("HTML chapter download failed: ${e.message}")
+                snackString("Download failed: ${e.message}")
+                Injekt.get<CrashlyticsInterface>().logException(e)
+                DownloadHolds.holdFailed(task)
+            }
             broadcastDownloadFailed(task.originalLink)
         }
     }
@@ -349,6 +368,7 @@ class NovelDownloaderService : Service() {
                         return@withContext
                     }
                     Logger.log("Download link is not an .epub file")
+                    DownloadHolds.holdFailed(task)
                     broadcastDownloadFailed(task.originalLink)
                     snackString("Download link is not an .epub file")
                     return@withContext
@@ -435,10 +455,32 @@ class NovelDownloaderService : Service() {
                 snackString("${task.title} - ${task.chapter} Download finished")
             }
         } catch (e: Exception) {
-            Logger.log("Exception while downloading .epub: ${e.message}")
-            snackString("Exception while downloading .epub: ${e.message}")
-            Injekt.get<CrashlyticsInterface>().logException(e)
+            if (e is kotlinx.coroutines.CancellationException) {
+                Logger.log("Download cancelled: ${task.title} - ${task.chapter}")
+                cleanupPartial(task)
+            } else {
+                Logger.log("Exception while downloading .epub: ${e.message}")
+                snackString("Exception while downloading .epub: ${e.message}")
+                Injekt.get<CrashlyticsInterface>().logException(e)
+                DownloadHolds.holdFailed(task)
+            }
             broadcastDownloadFailed(task.originalLink)
+        }
+    }
+
+    private fun cleanupPartial(task: DownloadTask) {
+        val rerun = NovelServiceDataSingleton.downloadQueue
+            .any { it.title == task.title && it.chapter == task.chapter } ||
+            NovelServiceDataSingleton.currentTasks.toList()
+                .any { it !== task && it.title == task.title && it.chapter == task.chapter }
+        if (rerun) return
+        runCatching {
+            DownloadsManager.findSubDirectory(
+                this,
+                MediaType.NOVEL,
+                task.title,
+                task.chapter
+            )?.deleteRecursively(this, false)
         }
     }
 
@@ -541,8 +583,13 @@ class NovelDownloaderService : Service() {
 
     private val cancelReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == ACTION_CANCEL_DOWNLOAD)
-                intent.getStringExtra(EXTRA_CHAPTER)?.let { cancelDownload(it) }
+            if (intent.action == ACTION_CANCEL_DOWNLOAD) {
+                val mediaType = intent.getStringExtra(DownloadControl.EXTRA_MEDIA_TYPE)
+                if (mediaType != null && mediaType != MediaType.NOVEL.name) return
+                intent.getStringExtra(EXTRA_CHAPTER)?.let {
+                    cancelDownload(it, intent.getStringExtra(DownloadControl.EXTRA_TITLE))
+                }
+            }
         }
     }
 
