@@ -76,7 +76,11 @@ class DownloadQueueActivity : AppCompatActivity() {
             }
         }
 
-        adapter = QueueAdapter(coverCache) { item -> cancelTask(item) }
+        adapter = QueueAdapter(
+            coverCache,
+            onAction = { item -> toggleHold(item) },
+            onCancel = { item -> cancelTask(item) }
+        )
         binding.downloadQueueRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.downloadQueueRecyclerView.adapter = adapter
 
@@ -135,10 +139,13 @@ class DownloadQueueActivity : AppCompatActivity() {
                 queued = NovelServiceDataSingleton.downloadQueue.toList().map { QueueItem.Novel(it, false) }
             }
         }
-        val all = ArrayList<QueueItem>(active)
-        for (item in queued) {
-            if (all.none { it.uniqueId == item.uniqueId }) all.add(item)
+        val held = DownloadHolds.all().filter { it.mediaType == type }
+        val all = ArrayList<QueueItem>()
+        for (item in active + queued) {
+            val isHeld = held.any { it.title == item.title && it.uniqueId == item.uniqueId }
+            if (!isHeld && all.none { it.title == item.title && it.uniqueId == item.uniqueId }) all.add(item)
         }
+        all.addAll(held)
         return all
     }
 
@@ -150,8 +157,8 @@ class DownloadQueueActivity : AppCompatActivity() {
 
     private fun refresh() {
         val tabs = binding.downloadQueueTabLayout
-        val animeCount = tasksOf(MediaType.ANIME).size
-        val otherCount = tasksOf(MediaType.MANGA).size + tasksOf(MediaType.NOVEL).size
+        val animeCount = tasksOf(MediaType.ANIME).count { it.heldReason == null }
+        val otherCount = (tasksOf(MediaType.MANGA) + tasksOf(MediaType.NOVEL)).count { it.heldReason == null }
         tabs.getTabAt(0)?.let {
             val text = if (animeCount > 0) "${getString(R.string.anime)} ($animeCount)" else getString(R.string.anime)
             if (it.text != text) it.text = text
@@ -164,10 +171,16 @@ class DownloadQueueActivity : AppCompatActivity() {
 
         val items = tabTypes().flatMap { tasksOf(it) }
         val running = items.count { it.isActive }
+        val paused = items.count { it.heldReason == HoldReason.PAUSED }
+        val failed = items.count { it.heldReason == HoldReason.FAILED }
+        val waiting = items.size - running - paused - failed
         binding.downloadQueueStatus.text = if (items.isEmpty()) {
             getString(R.string.download_queue_desc)
         } else {
-            getString(R.string.download_queue_status, running, items.size - running)
+            val parts = arrayListOf(getString(R.string.download_queue_status, running, waiting))
+            if (paused > 0) parts.add(getString(R.string.download_queue_status_paused, paused))
+            if (failed > 0) parts.add(getString(R.string.download_queue_status_failed, failed))
+            parts.joinToString(" • ")
         }
 
         val rows = ArrayList<QueueRow>()
@@ -206,25 +219,22 @@ class DownloadQueueActivity : AppCompatActivity() {
         }
     }
 
-    private fun cancelTask(item: QueueItem) {
-        when (item) {
-            is QueueItem.Anime -> sendBroadcast(
-                Intent(AnimeDownloaderService.ACTION_CANCEL_DOWNLOAD)
-                    .putExtra(AnimeDownloaderService.EXTRA_TASK_NAME, item.uniqueId)
-            )
-            is QueueItem.Manga -> sendBroadcast(
-                Intent(MangaDownloaderService.ACTION_CANCEL_DOWNLOAD)
-                    .putExtra(MangaDownloaderService.EXTRA_CHAPTER, item.uniqueId)
-            )
-            is QueueItem.Novel -> sendBroadcast(
-                Intent(NovelDownloaderService.ACTION_CANCEL_DOWNLOAD)
-                    .putExtra(NovelDownloaderService.EXTRA_CHAPTER, item.uniqueId)
-            )
+    private fun toggleHold(item: QueueItem) {
+        if (item.heldReason == null) {
+            DownloadControl.pause(this, item)
+        } else {
+            DownloadControl.resume(this, item)
         }
         refresh()
     }
 
+    private fun cancelTask(item: QueueItem) {
+        DownloadControl.cancel(this, item)
+        refresh()
+    }
+
     private fun clearAllQueues() {
+        DownloadHolds.clear()
         AnimeServiceDataSingleton.downloadQueue.clear()
         MangaServiceDataSingleton.downloadQueue.clear()
         NovelServiceDataSingleton.downloadQueue.clear()
@@ -279,13 +289,16 @@ private class QueueDiff : DiffUtil.ItemCallback<QueueRow>() {
     override fun areContentsTheSame(oldItem: QueueRow, newItem: QueueRow): Boolean = when {
         oldItem is QueueRow.Group && newItem is QueueRow.Group -> oldItem == newItem
         oldItem is QueueRow.Task && newItem is QueueRow.Task ->
-            oldItem.progress == newItem.progress && oldItem.item.isActive == newItem.item.isActive
+            oldItem.progress == newItem.progress &&
+                oldItem.item.isActive == newItem.item.isActive &&
+                oldItem.item.heldReason == newItem.item.heldReason
         else -> false
     }
 }
 
 private class QueueAdapter(
     private val covers: Map<String, String?>,
+    private val onAction: (QueueItem) -> Unit,
     private val onCancel: (QueueItem) -> Unit
 ) : ListAdapter<QueueRow, RecyclerView.ViewHolder>(QueueDiff()) {
 
@@ -330,7 +343,12 @@ private class QueueAdapter(
                 val context = b.root.context
                 b.queueTaskName.text = item.subTitle
                 val state = context.getString(
-                    if (item.isActive) R.string.download_state_downloading else R.string.download_state_queued
+                    when {
+                        item.heldReason == HoldReason.PAUSED -> R.string.download_state_paused
+                        item.heldReason == HoldReason.FAILED -> R.string.download_state_failed
+                        item.isActive -> R.string.download_state_downloading
+                        else -> R.string.download_state_queued
+                    }
                 )
                 b.queueTaskState.text = "$state • ${item.type}"
                 if (item.isActive) {
@@ -346,6 +364,23 @@ private class QueueAdapter(
                 } else {
                     b.queueTaskProgressLayout.visibility = View.GONE
                 }
+                when (item.heldReason) {
+                    HoldReason.PAUSED -> {
+                        b.queueTaskAction.setImageResource(R.drawable.ic_round_play_arrow_24)
+                        b.queueTaskAction.contentDescription = context.getString(R.string.download_resume)
+                    }
+
+                    HoldReason.FAILED -> {
+                        b.queueTaskAction.setImageResource(R.drawable.ic_round_refresh_24)
+                        b.queueTaskAction.contentDescription = context.getString(R.string.download_retry)
+                    }
+
+                    null -> {
+                        b.queueTaskAction.setImageResource(R.drawable.ic_round_pause_24)
+                        b.queueTaskAction.contentDescription = context.getString(R.string.download_pause)
+                    }
+                }
+                b.queueTaskAction.setOnClickListener { onAction(item) }
                 b.queueTaskCancel.setOnClickListener { onCancel(item) }
             }
         }
