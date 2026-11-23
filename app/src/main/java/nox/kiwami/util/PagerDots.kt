@@ -22,7 +22,7 @@ class PagerDots @JvmOverloads constructor(
     private val activeWidth = 18.px
     private val gap = 6.px
     private val activeColor =
-        MaterialColors.getColor(context, com.google.android.material.R.attr.colorPrimary, Color.WHITE)
+        MaterialColors.getColor(context, androidx.appcompat.R.attr.colorPrimary, Color.WHITE)
     private val idleColor = ColorUtils.setAlphaComponent(
         MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnBackground, Color.WHITE),
         90
