@@ -217,10 +217,7 @@ class MediaAdaptor(
                                 AccelerateDecelerateInterpolator()
                             )
                         )
-                    loadBannerImage(
-                        if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
-                        media.banner ?: media.cover
-                    )
+                    bindHeroBanner(media, if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen)
                     bindHeroContent(
                         media,
                         b.itemCompactTitle,
@@ -256,10 +253,7 @@ class MediaAdaptor(
                                 AccelerateDecelerateInterpolator()
                             )
                         )
-                    loadBannerImage(
-                        if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
-                        media.banner ?: media.cover
-                    )
+                    bindHeroBanner(media, if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen)
                     bindHeroContent(
                         media,
                         b.itemCompactTitle,
@@ -283,6 +277,10 @@ class MediaAdaptor(
                 }
             }
         }
+    }
+
+    private fun bindHeroBanner(media: Media, target: ImageView) {
+        if (media.banner.isNullOrBlank()) blurImage(target, media.cover) else loadBannerImage(target, media.banner)
     }
 
     private fun bindHeroContent(
