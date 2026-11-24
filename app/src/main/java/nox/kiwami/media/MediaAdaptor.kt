@@ -230,6 +230,8 @@ class MediaAdaptor(
                         b.itemCompactScore,
                         b.itemCompactScoreBG,
                         b.itemCompactAddToList,
+                        b.itemCompactCoverCard,
+                        b.itemCompactCover,
                         b.itemCompactGenreChips
                     )
                     @SuppressLint("NotifyDataSetChanged")
@@ -266,6 +268,8 @@ class MediaAdaptor(
                         b.itemCompactScore,
                         b.itemCompactScoreBG,
                         b.itemCompactAddToList,
+                        b.itemCompactCoverCard,
+                        b.itemCompactCover,
                         b.itemCompactGenreChips
                     )
                     @SuppressLint("NotifyDataSetChanged")
@@ -295,6 +299,8 @@ class MediaAdaptor(
         score: TextView,
         scoreBackground: View,
         addToList: TextView,
+        coverCard: View,
+        cover: ImageView,
         chips: ViewGroup
     ) {
         title.text = media.userPreferredName
@@ -303,6 +309,10 @@ class MediaAdaptor(
         val description = media.description?.let { sanitizeDescription(it) }
         synopsis.text = description
         synopsis.isVisible = !description.isNullOrBlank()
+
+        val hasBanner = !media.banner.isNullOrBlank()
+        coverCard.isVisible = !hasBanner
+        if (!hasBanner) cover.loadImage(media.cover)
 
         status.text = media.status ?: ""
         addToList.text = activity.getString(if (media.userStatus != null) R.string.hero_edit_list else R.string.hero_add_to_list)
