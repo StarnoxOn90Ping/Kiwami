@@ -31,6 +31,7 @@ import nox.kiwami.databinding.ItemMediaPageBinding
 import nox.kiwami.databinding.ItemMediaPageSmallBinding
 import nox.kiwami.loadBannerImage
 import nox.kiwami.loadImage
+import nox.kiwami.loadLogoImage
 import nox.kiwami.setAnimation
 import nox.kiwami.setSafeOnClickListener
 import nox.kiwami.settings.saving.PrefManager
@@ -382,10 +383,23 @@ class MediaAdaptor(
         logoView.tag = currentId
 
         fun showLogo(url: String) {
-            logoView.loadImage(url)
-            logoView.visibility = View.VISIBLE
-            logoContainer?.visibility = View.VISIBLE
-            titleView.visibility = View.GONE
+            logoView.loadLogoImage(
+                url,
+                onAccepted = {
+                    if (logoView.tag == currentId) {
+                        logoView.visibility = View.VISIBLE
+                        logoContainer?.visibility = View.VISIBLE
+                        titleView.visibility = View.GONE
+                    }
+                },
+                onRejected = {
+                    if (logoView.tag == currentId) {
+                        titleView.visibility = View.VISIBLE
+                        logoView.visibility = View.GONE
+                        logoContainer?.visibility = View.GONE
+                    }
+                }
+            )
         }
 
         fun showTitle() {
@@ -395,6 +409,7 @@ class MediaAdaptor(
         }
 
         if (!media.clearLogo.isNullOrBlank()) {
+            showTitle()
             showLogo(media.clearLogo!!)
         } else {
             showTitle()

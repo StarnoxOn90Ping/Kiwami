@@ -1594,6 +1594,47 @@ suspend fun View.pop() {
 private const val BANNER_BLUR_RADIUS = 2
 private const val BANNER_BLUR_SAMPLING = 2
 
+private const val MIN_LOGO_ASPECT_RATIO = 1.6f
+
+fun ImageView.loadLogoImage(url: String, onAccepted: () -> Unit, onRejected: () -> Unit) {
+    if (!url.startsWith("http")) {
+        onAccepted()
+        loadImage(url)
+        return
+    }
+    val resolved = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { url }
+    Glide.with(context)
+        .load(GlideUrl(resolved))
+        .listener(object : RequestListener<Drawable> {
+            override fun onLoadFailed(
+                e: GlideException?,
+                model: Any?,
+                target: Target<Drawable>,
+                isFirstResource: Boolean
+            ): Boolean {
+                onRejected()
+                return false
+            }
+
+            override fun onResourceReady(
+                resource: Drawable,
+                model: Any,
+                target: Target<Drawable>,
+                dataSource: DataSource,
+                isFirstResource: Boolean
+            ): Boolean {
+                val ratio = resource.intrinsicWidth.toFloat() / resource.intrinsicHeight.coerceAtLeast(1)
+                if (ratio < MIN_LOGO_ASPECT_RATIO) {
+                    onRejected()
+                    return true
+                }
+                onAccepted()
+                return false
+            }
+        })
+        .into(this)
+}
+
 fun blurImage(imageView: ImageView, originalBanner: String?) {
     val banner = nox.kiwami.others.CustomMediaImages.overrideFor(originalBanner)?.absolutePath
         ?: originalBanner
