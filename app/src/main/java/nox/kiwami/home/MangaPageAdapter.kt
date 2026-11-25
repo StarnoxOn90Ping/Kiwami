@@ -41,6 +41,8 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
     private var trendHandler: Handler? = null
     private lateinit var trendRun: Runnable
     var trendingViewPager: ViewPager2? = null
+    private var pageCallback: ViewPager2.OnPageChangeCallback? = null
+    private var playbackCallback: ViewPager2.OnPageChangeCallback? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MangaPageViewHolder {
         val binding =
@@ -100,25 +102,34 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
         trendingBinding.trendingViewPager.adapter = adaptor
         val dotCount = adaptor.itemCount
         trendingBinding.trendingDots.setCount(dotCount)
-        trendingBinding.trendingViewPager.offscreenPageLimit = 3
+        trendingBinding.trendingViewPager.offscreenPageLimit = 1
         trendingBinding.trendingViewPager.getChildAt(0).overScrollMode =
             RecyclerView.OVER_SCROLL_NEVER
         trendingBinding.trendingViewPager.setPageTransformer(MediaPageTransformer())
+        trendHandler?.removeCallbacksAndMessages(null)
         trendHandler = Handler(Looper.getMainLooper())
         trendRun = Runnable {
             trendingBinding.trendingViewPager.currentItem += 1
         }
-        trendingBinding.trendingViewPager.registerOnPageChangeCallback(
-            object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    super.onPageSelected(position)
-                    if (dotCount > 0) trendingBinding.trendingDots.select(position % dotCount)
-                    trendHandler?.removeCallbacks(trendRun)
-                    if (PrefManager.getVal(PrefName.TrendingScroller))
-                        trendHandler!!.postDelayed(trendRun, 4000)
-                }
+        pageCallback?.let { trendingBinding.trendingViewPager.unregisterOnPageChangeCallback(it) }
+        playbackCallback?.let { trendingBinding.trendingViewPager.unregisterOnPageChangeCallback(it) }
+        val newPageCallback = object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                if (dotCount > 0) trendingBinding.trendingDots.select(position % dotCount)
+                trendHandler?.removeCallbacks(trendRun)
+                if (PrefManager.getVal(PrefName.TrendingScroller))
+                    trendHandler!!.postDelayed(trendRun, 4000)
             }
-        )
+        }
+        pageCallback = newPageCallback
+        trendingBinding.trendingViewPager.registerOnPageChangeCallback(newPageCallback)
+        val newPlaybackCallback = TrendingPlaybackCallback(trendingBinding.trendingViewPager)
+        playbackCallback = newPlaybackCallback
+        trendingBinding.trendingViewPager.registerOnPageChangeCallback(newPlaybackCallback)
+        trendingBinding.trendingViewPager.post {
+            trendingBinding.trendingViewPager.syncBannerPlayback(trendingBinding.trendingViewPager.currentItem, false)
+        }
 
         trendingBinding.trendingViewPager.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)

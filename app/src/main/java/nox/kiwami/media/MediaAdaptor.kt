@@ -50,6 +50,9 @@ class MediaAdaptor(
     private val isOtherUser: Boolean = false,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
+    private val carouselBannerSize by lazy {
+        (activity.resources.displayMetrics.widthPixels * 1.25f).toInt().coerceIn(512, 1080)
+    }
     private val releasingText by lazy { activity.getString(R.string.status_releasing) }
     private val episodePlural by lazy { activity.getString(R.string.episode_plural) }
     private val episodeSingular by lazy { activity.getString(R.string.episode_singular) }
@@ -218,6 +221,9 @@ class MediaAdaptor(
                             )
                         )
                     bindHeroBanner(media, if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen)
+                    if (bannerAnimations && viewPager != null) {
+                        if (position == viewPager.currentItem) b.itemCompactBanner.resume() else b.itemCompactBanner.pause()
+                    }
                     bindHeroContent(
                         media,
                         b.itemCompactTitle,
@@ -255,6 +261,9 @@ class MediaAdaptor(
                             )
                         )
                     bindHeroBanner(media, if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen)
+                    if (bannerAnimations && viewPager != null) {
+                        if (position == viewPager.currentItem) b.itemCompactBanner.resume() else b.itemCompactBanner.pause()
+                    }
                     bindHeroContent(
                         media,
                         b.itemCompactTitle,
@@ -282,7 +291,7 @@ class MediaAdaptor(
     }
 
     private fun bindHeroBanner(media: Media, target: ImageView) {
-        if (media.banner.isNullOrBlank()) blurImage(target, media.cover) else loadBannerImage(target, media.banner)
+        if (media.banner.isNullOrBlank()) blurImage(target, media.cover) else loadBannerImage(target, media.banner, carouselBannerSize)
     }
 
     private fun bindHeroContent(

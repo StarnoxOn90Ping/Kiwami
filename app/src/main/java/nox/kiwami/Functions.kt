@@ -1663,7 +1663,7 @@ fun blurImage(imageView: ImageView, originalBanner: String?) {
 
 private const val BANNER_SHARP_SIZE = 1080
 
-fun loadBannerImage(imageView: ImageView, originalBanner: String?) {
+fun loadBannerImage(imageView: ImageView, originalBanner: String?, size: Int = BANNER_SHARP_SIZE) {
     val banner = nox.kiwami.others.CustomMediaImages.overrideFor(originalBanner)?.absolutePath
         ?: originalBanner
     if (banner != null) {
@@ -1675,7 +1675,7 @@ fun loadBannerImage(imageView: ImageView, originalBanner: String?) {
                     if (banner.startsWith("http")) GlideUrl(url) else if (banner.startsWith("content://")) url.toUri() else File(url)
                 )
                 .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                .override(BANNER_SHARP_SIZE)
+                .override(size)
                 .into(imageView)
         }
     } else {
