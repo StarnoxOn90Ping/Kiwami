@@ -7,6 +7,7 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LayoutAnimationController
 import androidx.core.content.ContextCompat
@@ -46,6 +47,11 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
     private lateinit var trendRun: Runnable
     var trendingViewPager: ViewPager2? = null
     var selectedSeason = 1
+    private var seasonSwitching = false
+    private var seasonOutRunning = false
+    private var seasonDirection = 0
+    private var seasonToken = 0
+    private var seasonPendingSwap: (() -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AnimePageViewHolder {
         val binding =
@@ -64,7 +70,9 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
             binding.animeNextSeason
         ).forEachIndexed { i, it ->
             it.setSafeOnClickListener {
+                val direction = (i - selectedSeason).coerceIn(-1, 1)
                 selectSeason(i, true)
+                beginSeasonSwitch(direction)
                 onSeasonClick.invoke(i)
             }
             it.setOnLongClickListener { onSeasonLongClick.invoke(i) }
@@ -100,6 +108,76 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         }
         if (ready.value == false)
             ready.postValue(true)
+    }
+
+    private fun seasonShift(): Float =
+        20f * trendingBinding.trendingContainer.resources.displayMetrics.density
+
+    private fun beginSeasonSwitch(direction: Int) {
+        val container = trendingBinding.trendingContainer
+        val token = ++seasonToken
+        seasonSwitching = true
+        seasonOutRunning = true
+        seasonDirection = direction
+        seasonPendingSwap = null
+        container.animate().cancel()
+        container.animate()
+            .alpha(0.2f)
+            .translationX(-direction * seasonShift())
+            .setDuration(180)
+            .setInterpolator(AccelerateInterpolator())
+            .withLayer()
+            .withEndAction {
+                if (token != seasonToken) return@withEndAction
+                seasonOutRunning = false
+                seasonPendingSwap?.let { swap ->
+                    seasonPendingSwap = null
+                    swap()
+                    playSeasonIn()
+                }
+            }
+            .start()
+    }
+
+    private fun playSeasonIn() {
+        val container = trendingBinding.trendingContainer
+        seasonSwitching = false
+        container.animate().cancel()
+        container.translationX = seasonDirection * seasonShift()
+        container.animate()
+            .alpha(1f)
+            .translationX(0f)
+            .setDuration(300)
+            .setInterpolator(DecelerateInterpolator(1.5f))
+            .withLayer()
+            .start()
+    }
+
+    fun runSeasonSwitch(swap: () -> Unit) {
+        when {
+            !seasonSwitching -> swap()
+            seasonOutRunning -> seasonPendingSwap = swap
+            else -> {
+                swap()
+                playSeasonIn()
+            }
+        }
+    }
+
+    fun cancelSeasonSwitch() {
+        if (!seasonSwitching) return
+        val container = trendingBinding.trendingContainer
+        seasonToken++
+        seasonSwitching = false
+        seasonOutRunning = false
+        seasonPendingSwap = null
+        container.animate().cancel()
+        container.animate()
+            .alpha(1f)
+            .translationX(0f)
+            .setDuration(200)
+            .withLayer()
+            .start()
     }
 
     fun selectSeason(index: Int, animate: Boolean) {

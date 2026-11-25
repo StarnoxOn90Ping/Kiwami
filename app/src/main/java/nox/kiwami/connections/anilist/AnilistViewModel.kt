@@ -262,17 +262,16 @@ class AnilistAnimeViewModel : ViewModel() {
     suspend fun loadTrending(i: Int) {
         trendingSeason = i
         val (season, year) = Anilist.currentSeasons[i]
-        trending.postValue(
-            Anilist.query.searchAniManga(
-                type,
-                perPage = 12,
-                sort = Anilist.sortBy[2],
-                season = season,
-                seasonYear = year,
-                hd = true,
-                adultOnly = PrefManager.getVal(PrefName.AdultOnly)
-            )?.results
-        )
+        val results = Anilist.query.searchAniManga(
+            type,
+            perPage = 12,
+            sort = Anilist.sortBy[2],
+            season = season,
+            seasonYear = year,
+            hd = true,
+            adultOnly = PrefManager.getVal(PrefName.AdultOnly)
+        )?.results
+        if (trendingSeason == i) trending.postValue(results)
     }
 
 

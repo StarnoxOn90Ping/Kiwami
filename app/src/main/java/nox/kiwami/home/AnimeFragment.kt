@@ -238,14 +238,18 @@ class AnimeFragment : Fragment() {
                                     CarouselLogoResolver.preload(it)
                                 }
                             }
-                            animePageAdapter.updateTrending(
-                                MediaAdaptor(
-                                    if (PrefManager.getVal(PrefName.SmallView)) 3 else 2,
-                                    it,
-                                    requireActivity(),
-                                    viewPager = animePageAdapter.trendingViewPager
+                            animePageAdapter.runSeasonSwitch {
+                                animePageAdapter.updateTrending(
+                                    MediaAdaptor(
+                                        if (PrefManager.getVal(PrefName.SmallView)) 3 else 2,
+                                        it,
+                                        requireActivity(),
+                                        viewPager = animePageAdapter.trendingViewPager
+                                    )
                                 )
-                            )
+                            }
+                        } else {
+                            animePageAdapter.cancelSeasonSwitch()
                         }
                     }
                 }
