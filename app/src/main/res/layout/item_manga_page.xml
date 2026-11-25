@@ -16,21 +16,24 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:clipToPadding="false"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp">
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp">
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mangaGenre"
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:layout_margin="8dp"
-            app:cardCornerRadius="16dp"
-            app:layout_constrainedWidth="true"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
             app:layout_constraintEnd_toStartOf="@+id/mangaTopScore"
             app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginEnd="5dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_max="256dp">
+            app:strokeColor="?attr/colorPrimaryContainer"
+            app:strokeWidth="1dp">
 
             <ImageView
                 android:id="@+id/mangaGenreImage"
@@ -43,46 +46,52 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:alpha="0.75"
-                android:background="@color/bg_black" />
+                android:background="@drawable/bg_home_card_overlay" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:orientation="vertical">
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_round_filter_list_24"
+                    app:tint="?attr/colorPrimary"
+                    tools:ignore="ContentDescription" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
+                    android:layout_marginStart="10dp"
+                    android:ellipsize="end"
                     android:fontFamily="@font/poppins_bold"
+                    android:maxLines="1"
                     android:text="@string/genres"
-                    android:textAllCaps="true"
                     android:textColor="@color/bg_white"
                     android:textSize="16sp" />
-
-                <View
-                    android:layout_width="64dp"
-                    android:layout_height="2dp"
-                    android:layout_gravity="center"
-                    android:background="?attr/colorPrimary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mangaTopScore"
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:layout_margin="8dp"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="16dp"
-            app:layout_constrainedWidth="true"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/mangaGenre"
+            android:layout_marginStart="5dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_max="256dp">
+            app:strokeColor="?attr/colorPrimaryContainer"
+            app:strokeWidth="1dp">
 
             <ImageView
                 android:id="@+id/mangaTopScoreImage"
@@ -95,32 +104,35 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:alpha="0.75"
-                android:background="@color/bg_black" />
+                android:background="@drawable/bg_home_card_overlay" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:orientation="vertical">
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_round_star_24"
+                    app:tint="?attr/colorPrimary"
+                    tools:ignore="ContentDescription" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
+                    android:layout_marginStart="10dp"
+                    android:ellipsize="end"
                     android:fontFamily="@font/poppins_bold"
+                    android:maxLines="1"
                     android:text="@string/top_score"
-                    android:textAllCaps="true"
                     android:textColor="@color/bg_white"
                     android:textSize="16sp" />
-
-                <View
-                    android:layout_width="64dp"
-                    android:layout_height="2dp"
-                    android:layout_gravity="center"
-                    android:background="?attr/colorPrimary" />
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
