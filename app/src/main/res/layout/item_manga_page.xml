@@ -22,7 +22,7 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mangaGenre"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="68dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             app:layout_constraintEnd_toStartOf="@+id/mangaTopScore"
@@ -80,7 +80,7 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mangaTopScore"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="68dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             app:layout_constraintEnd_toEndOf="parent"
