@@ -190,7 +190,6 @@
                 android:layout_width="88dp"
                 android:layout_height="128dp"
                 android:layout_marginStart="14dp"
-                android:visibility="gone"
                 app:cardBackgroundColor="@android:color/transparent"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="0dp"
