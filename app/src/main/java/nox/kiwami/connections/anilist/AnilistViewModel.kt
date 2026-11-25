@@ -259,6 +259,7 @@ class AnilistAnimeViewModel : ViewModel() {
         }
 
     fun getTrending(): LiveData<MutableList<Media>> = trending
+    @Suppress("NullSafeMutableLiveData")
     suspend fun loadTrending(i: Int) {
         trendingSeason = i
         val (season, year) = Anilist.currentSeasons[i]
