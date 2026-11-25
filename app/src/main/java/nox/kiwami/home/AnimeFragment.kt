@@ -99,6 +99,7 @@ class AnimeFragment : Fragment() {
         binding.animePageRecyclerView.updatePaddingRelative(bottom = navBarHeight + 160f.px)
 
         animePageAdapter = AnimePageAdapter()
+        animePageAdapter.selectedSeason = model.trendingSeason
 
         var loading = true
         if (model.notSet) {
@@ -231,6 +232,7 @@ class AnimeFragment : Fragment() {
                     animePageAdapter.updateHeight()
                     model.getTrending().observe(viewLifecycleOwner) {
                         if (it != null) {
+                            animePageAdapter.selectSeason(model.trendingSeason, true)
                             if (PrefManager.getVal(PrefName.CarouselClearLogo)) {
                                 scope.launch(Dispatchers.IO) {
                                     CarouselLogoResolver.preload(it)

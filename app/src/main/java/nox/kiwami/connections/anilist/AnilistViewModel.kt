@@ -248,6 +248,7 @@ class AnilistAnimeViewModel : ViewModel() {
     var searched = false
     var notSet = true
     lateinit var aniMangaSearchResults: AniMangaSearchResults
+    var trendingSeason = 1
     private val type = "ANIME"
     private val trending: MutableLiveData<MutableList<Media>> =
         object : MutableLiveData<MutableList<Media>>(null) {
@@ -259,6 +260,7 @@ class AnilistAnimeViewModel : ViewModel() {
 
     fun getTrending(): LiveData<MutableList<Media>> = trending
     suspend fun loadTrending(i: Int) {
+        trendingSeason = i
         val (season, year) = Anilist.currentSeasons[i]
         trending.postValue(
             Anilist.query.searchAniManga(
@@ -349,7 +351,10 @@ class AnilistAnimeViewModel : ViewModel() {
         popularMovies.postValue(list["trendingMovies"])
         topRatedAnime.postValue(list["topRated"])
         mostFavAnime.postValue(list["mostFav"])
-        list["trending"]?.let { trending.postValue(it) }
+        list["trending"]?.let {
+            trendingSeason = 1
+            trending.postValue(it)
+        }
         list["popular"]?.let {
             animePopular.postValue(
                 AniMangaSearchResults(

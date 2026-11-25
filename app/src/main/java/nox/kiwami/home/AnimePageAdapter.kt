@@ -1,19 +1,23 @@
 package nox.kiwami.home
 
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.LayoutAnimationController
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.color.MaterialColors
 import nox.kiwami.MediaPageTransformer
 import nox.kiwami.R
 import nox.kiwami.connections.anilist.Anilist
@@ -41,6 +45,7 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
     private var trendHandler: Handler? = null
     private lateinit var trendRun: Runnable
     var trendingViewPager: ViewPager2? = null
+    var selectedSeason = 1
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AnimePageViewHolder {
         val binding =
@@ -58,9 +63,13 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
             binding.animeThisSeason,
             binding.animeNextSeason
         ).forEachIndexed { i, it ->
-            it.setSafeOnClickListener { onSeasonClick.invoke(i) }
+            it.setSafeOnClickListener {
+                selectSeason(i, true)
+                onSeasonClick.invoke(i)
+            }
             it.setOnLongClickListener { onSeasonLongClick.invoke(i) }
         }
+        binding.animeSeasonsCont.doOnLayout { updateSeasonSelector(false) }
 
         binding.animeGenreImage.loadImage("https://s4.anilist.co/file/anilistcdn/media/anime/banner/16498-8jpFCOcDmneX.jpg")
         binding.animeCalendarImage.loadImage("https://s4.anilist.co/file/anilistcdn/media/anime/banner/125367-hGPJLSNfprO3.jpg")
@@ -91,6 +100,49 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         }
         if (ready.value == false)
             ready.postValue(true)
+    }
+
+    fun selectSeason(index: Int, animate: Boolean) {
+        if (animate && index == selectedSeason) return
+        selectedSeason = index
+        updateSeasonSelector(animate)
+    }
+
+    private fun updateSeasonSelector(animate: Boolean) {
+        val container = binding.animeSeasonsCont
+        val indicator = binding.animeSeasonIndicator
+        val itemWidth = (container.width - container.paddingStart - container.paddingEnd) / 3
+        if (itemWidth <= 0) return
+        if (indicator.layoutParams.width != itemWidth) {
+            indicator.updateLayoutParams { width = itemWidth }
+        }
+        val target = (itemWidth * selectedSeason).toFloat()
+        indicator.animate().cancel()
+        if (animate) {
+            indicator.animate()
+                .translationX(target)
+                .setDuration(240)
+                .setInterpolator(DecelerateInterpolator(1.6f))
+                .start()
+        } else {
+            indicator.translationX = target
+        }
+        val selectedColor = MaterialColors.getColor(container, com.google.android.material.R.attr.colorOnPrimary)
+        val idleColor = MaterialColors.getColor(container, com.google.android.material.R.attr.colorOnSurfaceVariant)
+        listOf(
+            binding.animePreviousSeason,
+            binding.animeThisSeason,
+            binding.animeNextSeason
+        ).forEachIndexed { i, label ->
+            val color = if (i == selectedSeason) selectedColor else idleColor
+            if (animate && label.currentTextColor != color) {
+                ObjectAnimator.ofArgb(label, "textColor", label.currentTextColor, color)
+                    .setDuration(240)
+                    .start()
+            } else {
+                label.setTextColor(color)
+            }
+        }
     }
 
     lateinit var onSeasonClick: ((Int) -> Unit)
