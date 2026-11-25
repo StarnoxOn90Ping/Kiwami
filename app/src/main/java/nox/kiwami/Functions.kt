@@ -1595,6 +1595,7 @@ private const val BANNER_BLUR_RADIUS = 2
 private const val BANNER_BLUR_SAMPLING = 2
 
 private const val MIN_LOGO_ASPECT_RATIO = 1.6f
+private const val LOGO_LOAD_SIZE = 1000
 
 fun ImageView.loadLogoImage(url: String, onAccepted: () -> Unit, onRejected: () -> Unit) {
     if (!url.startsWith("http")) {
@@ -1605,6 +1606,7 @@ fun ImageView.loadLogoImage(url: String, onAccepted: () -> Unit, onRejected: () 
     val resolved = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { url }
     Glide.with(context)
         .load(GlideUrl(resolved))
+        .override(LOGO_LOAD_SIZE)
         .listener(object : RequestListener<Drawable> {
             override fun onLoadFailed(
                 e: GlideException?,
