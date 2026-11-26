@@ -391,23 +391,28 @@
                         android:id="@+id/homeHiddenItemsTitle"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/hidden"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeHiddenItemsMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
                 <nox.kiwami.FadingEdgeRecyclerView
@@ -441,23 +446,28 @@
                         android:id="@+id/homeContinueWatch"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/continue_watching"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeContinueWatchMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -536,23 +546,28 @@
                         android:id="@+id/homeFavAnime"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/fav_anime"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeFavAnimeMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
 
@@ -629,23 +644,28 @@
                         android:id="@+id/homePlannedAnime"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/planned_anime"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homePlannedAnimeMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
 
@@ -726,23 +746,28 @@
                         android:id="@+id/homeContinueRead"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/continue_reading"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeContinueReadMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -821,23 +846,28 @@
                         android:id="@+id/homeFavManga"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/fav_manga"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeFavMangaMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -913,24 +943,28 @@
                         android:id="@+id/homePlannedManga"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/planned_manga"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homePlannedMangaMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
 
@@ -1010,23 +1044,28 @@
                         android:id="@+id/homeMissingSequels"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/missing_sequels"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeMissingSequelsMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
 
@@ -1100,23 +1139,28 @@
                         android:id="@+id/homeRecommended"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="20dp"
                         android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:drawableStart="@drawable/ic_section_bar"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
+                        android:paddingStart="0dp"
                         android:text="@string/recommended"
-                        android:textSize="16sp" />
+                        android:textSize="20sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/homeRecommendedMore"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:layout_marginEnd="16dp"
-                        android:fontFamily="@font/poppins_bold"
+                        android:fontFamily="@font/poppins"
+                        android:gravity="center_vertical"
                         android:padding="8dp"
-                        android:src="@drawable/arrow_mark"
-                        android:textSize="16sp"
-                        tools:ignore="ContentDescription" />
+                        android:text="@string/see_all"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
 
