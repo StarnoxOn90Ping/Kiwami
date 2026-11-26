@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -42,6 +43,7 @@ import nox.kiwami.home.HomeFragment
 import nox.kiwami.home.LoginFragment
 import nox.kiwami.home.MangaFragment
 import nox.kiwami.home.OfflineScreen
+import nox.kiwami.home.NavGlow
 import nox.kiwami.home.OledNavStyle
 import nox.kiwami.home.OfflineLaunchDialog
 import nox.kiwami.home.OfflinePill
@@ -151,6 +153,7 @@ class MainActivity : AppCompatActivity() {
         val bottomNavBar = findViewById<AnimatedBottomBar>(R.id.navbar)
         bottomNavBar.background = ContextCompat.getDrawable(this, R.drawable.bottom_nav_gray)
         if (ThemeSurface.isOled(this)) OledNavStyle.pill(bottomNavBar)
+        NavGlow.wrap(bottomNavBar, GradientDrawable.RECTANGLE, 40f)
 
         val offset = try {
             val statusBarHeightId = resources.getIdentifier("status_bar_height", "dimen", "android")

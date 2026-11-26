@@ -1,6 +1,7 @@
 package nox.kiwami.home
 
 import android.content.Intent
+import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.OvershootInterpolator
@@ -37,6 +38,8 @@ class HomeSideButtons(
             OledNavStyle.circle(nav.calendarButton)
             OledNavStyle.circle(nav.downloadsButton)
         }
+        NavGlow.wrap(nav.calendarButton, GradientDrawable.OVAL, 0f)
+        NavGlow.wrap(nav.downloadsButton, GradientDrawable.OVAL, 0f)
         nav.calendarButton.setPressBounce(0.82f)
         nav.downloadsButton.setPressBounce(0.82f)
         nav.calendarButton.setOnClickListener { openCalendar() }
