@@ -43,6 +43,7 @@ import nox.kiwami.home.HomeFragment
 import nox.kiwami.home.LoginFragment
 import nox.kiwami.home.MangaFragment
 import nox.kiwami.home.OfflineScreen
+import nox.kiwami.home.NavFade
 import nox.kiwami.home.NavGlow
 import nox.kiwami.home.OledNavStyle
 import nox.kiwami.home.OfflineLaunchDialog
@@ -154,6 +155,7 @@ class MainActivity : AppCompatActivity() {
         bottomNavBar.background = ContextCompat.getDrawable(this, R.drawable.bottom_nav_gray)
         if (ThemeSurface.isOled(this)) OledNavStyle.pill(bottomNavBar)
         NavGlow.wrap(bottomNavBar, GradientDrawable.RECTANGLE, 40f)
+        NavFade.apply(binding.navbarFade)
 
         val offset = try {
             val statusBarHeightId = resources.getIdentifier("status_bar_height", "dimen", "android")
@@ -317,6 +319,9 @@ class MainActivity : AppCompatActivity() {
             }
             binding.includedNavbar.navbarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 bottomMargin = navBarHeight
+            }
+            binding.navbarFade.updateLayoutParams {
+                height = 180.toPx + navBarHeight
             }
             if (offlineMode) {
                 if (savedInstanceState?.getBoolean(KEY_OFFLINE_CHOSEN) == true) {
