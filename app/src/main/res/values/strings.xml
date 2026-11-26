@@ -51,6 +51,7 @@
     <string name="refresh">Refresh</string>
 
     <string name="search">Search</string>
+    <string name="search_manga">Search manga</string>
     <string name="search_results">Search Results</string>
     <string name="sort_by">Sort By</string>
     <string name="genre">Genre</string>

@@ -11,6 +11,42 @@
 
     <include layout="@layout/layout_trending" />
 
+    <LinearLayout
+        android:id="@+id/mangaSearchBar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_search_bar"
+        android:clickable="true"
+        android:contentDescription="@string/search"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_round_search_24"
+            app:tint="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="1"
+            android:text="@string/search_manga"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/mangaListContainer"
         android:layout_width="match_parent"
@@ -23,7 +59,7 @@
             android:id="@+id/mangaGenre"
             android:layout_width="0dp"
             android:layout_height="68dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             app:layout_constraintEnd_toStartOf="@+id/mangaTopScore"
             app:layout_constraintStart_toStartOf="parent"
@@ -79,7 +115,7 @@
             android:id="@+id/mangaTopScore"
             android:layout_width="0dp"
             android:layout_height="68dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/mangaGenre"

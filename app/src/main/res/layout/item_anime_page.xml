@@ -11,32 +11,44 @@
 
     <include layout="@layout/layout_trending" />
 
-    <FrameLayout
-        android:id="@+id/animeSeasonsCont"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="wrap_content"
         android:layout_marginStart="28dp"
         android:layout_marginEnd="28dp"
         android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_season_container"
-        android:padding="4dp">
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-        <View
-            android:id="@+id/animeSeasonIndicator"
-            android:layout_width="1dp"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_season_indicator" />
+        <FrameLayout
+            android:id="@+id/animeSeasonsCont"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_season_container"
+            android:padding="4dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal">
+            <View
+                android:id="@+id/animeSeasonIndicator"
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_season_indicator" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/animePreviousSeason"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_weight="3"
+                android:autoSizeMaxTextSize="14sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
                 android:background="@drawable/bg_season_item"
                 android:clickable="true"
                 android:ellipsize="end"
@@ -47,14 +59,17 @@
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
                 android:text="@string/previous_season_short"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp" />
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView
                 android:id="@+id/animeThisSeason"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_weight="4"
+                android:autoSizeMaxTextSize="14sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
                 android:background="@drawable/bg_season_item"
                 android:clickable="true"
                 android:ellipsize="end"
@@ -65,14 +80,17 @@
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
                 android:text="@string/this_season"
-                android:textColor="?attr/colorOnPrimary"
-                android:textSize="14sp" />
+                android:textColor="?attr/colorOnPrimary" />
 
             <TextView
                 android:id="@+id/animeNextSeason"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_weight="2"
+                android:autoSizeMaxTextSize="14sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
                 android:background="@drawable/bg_season_item"
                 android:clickable="true"
                 android:ellipsize="end"
@@ -83,10 +101,28 @@
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
                 android:text="@string/next_season_short"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp" />
-        </LinearLayout>
-    </FrameLayout>
+                android:textColor="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/animeSearchButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_search_circle"
+            android:clickable="true"
+            android:contentDescription="@string/search"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_round_search_24"
+                app:tint="?attr/colorPrimary" />
+        </FrameLayout>
+    </LinearLayout>
 
 
     <androidx.constraintlayout.widget.ConstraintLayout

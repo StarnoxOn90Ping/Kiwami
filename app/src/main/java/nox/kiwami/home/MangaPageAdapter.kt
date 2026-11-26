@@ -32,6 +32,7 @@ import nox.kiwami.setSlideUp
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.statusBarHeight
+import nox.kiwami.util.setPressBounce
 
 class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHolder>() {
     private val cardPool = RecyclerView.RecycledViewPool().apply { setMaxRecycledViews(0, 16) }
@@ -72,6 +73,15 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
                     .putExtra("type", "MANGA")
                     .putExtra("sortBy", Anilist.sortBy[0])
                     .putExtra("search", true),
+                null
+            )
+        }
+
+        binding.mangaSearchBar.setPressBounce(0.97f)
+        binding.mangaSearchBar.setOnClickListener {
+            ContextCompat.startActivity(
+                it.context,
+                Intent(it.context, SearchActivity::class.java).putExtra("type", "MANGA"),
                 null
             )
         }

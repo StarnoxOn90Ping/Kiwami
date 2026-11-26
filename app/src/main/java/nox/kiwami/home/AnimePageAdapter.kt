@@ -31,12 +31,14 @@ import nox.kiwami.media.GenreActivity
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaAdaptor
 import nox.kiwami.media.MediaListViewActivity
+import nox.kiwami.media.SearchActivity
 import nox.kiwami.setSafeOnClickListener
 import nox.kiwami.setSlideIn
 import nox.kiwami.setSlideUp
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.statusBarHeight
+import nox.kiwami.util.setPressBounce
 
 class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHolder>() {
     private val cardPool = RecyclerView.RecycledViewPool().apply { setMaxRecycledViews(0, 16) }
@@ -95,6 +97,15 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
             ContextCompat.startActivity(
                 it.context,
                 Intent(it.context, CalendarActivity::class.java),
+                null
+            )
+        }
+
+        binding.animeSearchButton.setPressBounce(0.86f)
+        binding.animeSearchButton.setOnClickListener {
+            ContextCompat.startActivity(
+                it.context,
+                Intent(it.context, SearchActivity::class.java).putExtra("type", "ANIME"),
                 null
             )
         }
@@ -191,12 +202,18 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
     private fun updateSeasonSelector(animate: Boolean) {
         val container = binding.animeSeasonsCont
         val indicator = binding.animeSeasonIndicator
-        val itemWidth = (container.width - container.paddingStart - container.paddingEnd) / 3
+        val labels = listOf(
+            binding.animePreviousSeason,
+            binding.animeThisSeason,
+            binding.animeNextSeason
+        )
+        val selected = labels[selectedSeason]
+        val itemWidth = selected.width
         if (itemWidth <= 0) return
         if (indicator.layoutParams.width != itemWidth) {
             indicator.updateLayoutParams { width = itemWidth }
         }
-        val target = (itemWidth * selectedSeason).toFloat()
+        val target = selected.left.toFloat()
         indicator.animate().cancel()
         if (animate) {
             indicator.animate()
@@ -209,11 +226,7 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         }
         val selectedColor = MaterialColors.getColor(container, com.google.android.material.R.attr.colorOnPrimary)
         val idleColor = MaterialColors.getColor(container, com.google.android.material.R.attr.colorOnSurfaceVariant)
-        listOf(
-            binding.animePreviousSeason,
-            binding.animeThisSeason,
-            binding.animeNextSeason
-        ).forEachIndexed { i, label ->
+        labels.forEachIndexed { i, label ->
             val color = if (i == selectedSeason) selectedColor else idleColor
             if (animate && label.currentTextColor != color) {
                 ObjectAnimator.ofArgb(label, "textColor", label.currentTextColor, color)
