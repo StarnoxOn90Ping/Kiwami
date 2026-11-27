@@ -292,14 +292,15 @@ class AnimeFragment : Fragment() {
                         getUserId(context) {}
                     }
                     model.loaded = true
-                    if (_binding?.animeRefresh?.isRefreshing == true) {
+                    val refreshing = _binding?.animeRefresh?.isRefreshing == true
+                    if (refreshing) {
                         withContext(Dispatchers.Main) {
                             model.aniMangaSearchResults.results.clear()
                             popularAdaptor.notifyDataSetChanged()
                         }
                     }
                     withContext(Dispatchers.IO) {
-                        model.loadAll(PrefManager.getVal(PrefName.PopularAnimeList))
+                        model.loadAll(PrefManager.getVal(PrefName.PopularAnimeList), forceRefresh = refreshing)
                     }
                     live.postValue(false)
                     _binding?.animeRefresh?.isRefreshing = false

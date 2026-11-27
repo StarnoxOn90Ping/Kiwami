@@ -361,8 +361,13 @@ class AnilistAnimeViewModel : ViewModel() {
         MutableLiveData<MutableList<Media>>(null)
 
     fun getMostFav(): LiveData<MutableList<Media>> = mostFavAnime
-    suspend fun loadAll(onList: Boolean = PrefManager.getVal(PrefName.PopularAnimeList)) {
-        val list = Anilist.query.loadAnimeList(onList)
+    suspend fun loadAll(
+        onList: Boolean = PrefManager.getVal(PrefName.PopularAnimeList),
+        forceRefresh: Boolean = false
+    ) {
+        val key = MainPageCache.key(onList)
+        val list = (if (forceRefresh) null else MainPageCache.load(MainPageCache.ANIME, key))
+            ?: Anilist.query.loadAnimeList(onList).also { MainPageCache.save(MainPageCache.ANIME, key, it) }
         updated.postValue(list["recentUpdates"])
         popularMovies.postValue(list["trendingMovies"])
         topRatedAnime.postValue(list["topRated"])
@@ -489,8 +494,13 @@ class AnilistMangaViewModel : ViewModel() {
         MutableLiveData<MutableList<Media>>(null)
 
     fun getMostFav(): LiveData<MutableList<Media>> = mostFavManga
-    suspend fun loadAll(onList: Boolean = PrefManager.getVal(PrefName.PopularMangaList)) {
-        val list = Anilist.query.loadMangaList(onList)
+    suspend fun loadAll(
+        onList: Boolean = PrefManager.getVal(PrefName.PopularMangaList),
+        forceRefresh: Boolean = false
+    ) {
+        val key = MainPageCache.key(onList)
+        val list = (if (forceRefresh) null else MainPageCache.load(MainPageCache.MANGA, key))
+            ?: Anilist.query.loadMangaList(onList).also { MainPageCache.save(MainPageCache.MANGA, key, it) }
         popularManga.postValue(list["trendingManga"])
         popularManhwa.postValue(list["trendingManhwa"])
         popularNovel.postValue(list["trendingNovel"])

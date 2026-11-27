@@ -268,14 +268,15 @@ class MangaFragment : Fragment() {
                         getUserId(context) {}
                     }
                     model.loaded = true
-                    if (_binding?.mangaRefresh?.isRefreshing == true) {
+                    val refreshing = _binding?.mangaRefresh?.isRefreshing == true
+                    if (refreshing) {
                         withContext(Dispatchers.Main) {
                             model.aniMangaSearchResults.results.clear()
                             popularAdaptor.notifyDataSetChanged()
                         }
                     }
                     withContext(Dispatchers.IO) {
-                        model.loadAll(PrefManager.getVal(PrefName.PopularMangaList))
+                        model.loadAll(PrefManager.getVal(PrefName.PopularMangaList), forceRefresh = refreshing)
                     }
 
                     live.postValue(false)
