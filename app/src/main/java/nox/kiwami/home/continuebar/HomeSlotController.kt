@@ -37,6 +37,7 @@ class HomeSlotController(
     }
 
     fun start(owner: LifecycleOwner) {
+        binding.homeContinueBar.strokeColor = ColorUtils.setAlphaComponent(activeDot, 110)
         slot.bind(binding.homeSlotContinue, binding.homeSlotSocial, binding.homeSlotDots)
         slot.onPageChanged = { page ->
             PrefManager.setVal(PrefName.HomeSlotPage, page)
