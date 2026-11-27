@@ -203,6 +203,7 @@ class AnilistHomeViewModel : ViewModel() {
             val cachedRes = Anilist.query.loadHomePageCache()
             if (cachedRes != null) {
                 postHomePageData(cachedRes)
+                if (nox.kiwami.others.SmartCache.shouldSkipRefresh()) return
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val freshRes = Anilist.query.initHomePage()
@@ -226,8 +227,7 @@ class AnilistHomeViewModel : ViewModel() {
     }
 
     private fun postHomePageData(res: Map<String, ArrayList<Media>>) {
-        val library = listOf("currentAnime", "currentAnimePlanned", "currentManga", "currentMangaPlanned")
-            .map { res[it] }
+        val library = nox.kiwami.others.SmartCache.libraryRowKeys().map { res[it] }
         if (library.any { it != null }) {
             nox.kiwami.others.PinnedImages.setLibrary(library)
             nox.kiwami.connections.anilist.MediaDetailsCache.setLibrary(
@@ -267,12 +267,7 @@ class AnilistAnimeViewModel : ViewModel() {
     var trendingSeason = 1
     private val type = "ANIME"
     private val trending: MutableLiveData<MutableList<Media>> =
-        object : MutableLiveData<MutableList<Media>>(null) {
-            override fun postValue(value: MutableList<Media>?) {
-                super.postValue(value)
-                nox.kiwami.others.PinnedImages.setTrending(true, value)
-            }
-        }
+        MutableLiveData<MutableList<Media>>(null)
 
     fun getTrending(): LiveData<MutableList<Media>> = trending
     @Suppress("NullSafeMutableLiveData")
@@ -399,12 +394,7 @@ class AnilistMangaViewModel : ViewModel() {
     lateinit var aniMangaSearchResults: AniMangaSearchResults
     private val type = "MANGA"
     private val trending: MutableLiveData<MutableList<Media>> =
-        object : MutableLiveData<MutableList<Media>>(null) {
-            override fun postValue(value: MutableList<Media>?) {
-                super.postValue(value)
-                nox.kiwami.others.PinnedImages.setTrending(false, value)
-            }
-        }
+        MutableLiveData<MutableList<Media>>(null)
 
     fun getTrending(): LiveData<MutableList<Media>> = trending
     suspend fun loadTrending() {

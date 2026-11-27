@@ -45,7 +45,7 @@ object MediaDetailsCache {
     }
 
     fun setLibrary(ids: Collection<Int>) {
-        if (!SmartCache.isEnabled()) return
+        if (!SmartCache.mediaEnabled()) return
         runCatching {
             val set = ids.map { it.toString() }.toSet()
             libraryIds = set
@@ -53,19 +53,19 @@ object MediaDetailsCache {
         }
     }
 
-    fun has(id: Int): Boolean = SmartCache.isEnabled() && runCatching {
+    fun has(id: Int): Boolean = SmartCache.mediaEnabled() && runCatching {
         val f = entry(id) ?: return false
         f.exists() && System.currentTimeMillis() - f.lastModified() <= TTL_MS
     }.getOrDefault(false)
 
-    fun get(id: Int): Query.Media? = if (!SmartCache.isEnabled()) null else runCatching {
+    fun get(id: Int): Query.Media? = if (!SmartCache.mediaEnabled()) null else runCatching {
         val f = entry(id) ?: return null
         if (!f.exists() || System.currentTimeMillis() - f.lastModified() > TTL_MS) return null
         Mapper.json.decodeFromString<Query.Media>(f.readText())
     }.getOrNull()
 
     fun put(id: Int, response: Query.Media) {
-        if (!SmartCache.isEnabled()) return
+        if (!SmartCache.mediaEnabled()) return
         runCatching {
             val d = dir() ?: return
             File(d, "$id.json").writeText(Mapper.json.encodeToString(response))

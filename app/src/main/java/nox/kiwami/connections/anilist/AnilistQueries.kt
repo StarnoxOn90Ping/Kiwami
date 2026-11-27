@@ -25,6 +25,7 @@ import nox.kiwami.media.Media
 import nox.kiwami.media.Studio
 import nox.kiwami.profile.User
 import nox.kiwami.util.Logger
+import nox.kiwami.others.SmartCache
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.snackString
@@ -64,6 +65,7 @@ class AnilistQueries {
     ) : Serializable
 
     fun loadHomePageCache(): Map<String, ArrayList<Media>>? {
+        if (SmartCache.homeEnabled()) return QuickLoadHome.load()
         val cached = PrefManager.getNullableCustomVal(
             "home_page_cache",
             null,
@@ -75,6 +77,10 @@ class AnilistQueries {
     }
 
     fun saveHomePageCache(data: Map<String, ArrayList<Media>>) {
+        if (SmartCache.homeEnabled()) {
+            QuickLoadHome.save(data)
+            return
+        }
         PrefManager.setCustomVal(
             "home_page_cache",
             HomePageCache(data, System.currentTimeMillis())
@@ -82,6 +88,7 @@ class AnilistQueries {
     }
 
     fun invalidateHomePageCache() {
+        QuickLoadHome.clear()
         PrefManager.setCustomVal("home_page_cache", null)
     }
 

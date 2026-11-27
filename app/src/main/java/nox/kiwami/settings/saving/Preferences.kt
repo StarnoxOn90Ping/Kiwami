@@ -93,6 +93,20 @@ enum class PrefName(val data: Pref) {
     AutoBackupMaxCopies(Pref(Location.General, Int::class, 3)),
     SmartCacheEnabled(Pref(Location.General, Boolean::class, false)),
     SmartCacheLimitMb(Pref(Location.General, Int::class, 500)),
+    QuickLoadHome(Pref(Location.General, Boolean::class, true)),
+    QuickLoadMedia(Pref(Location.General, Boolean::class, true)),
+    QuickLoadImages(Pref(Location.General, Boolean::class, true)),
+    QuickLoadHomeRows(
+        Pref(
+            Location.General,
+            List::class,
+            listOf(true, true, true, true, true, true)
+        )
+    ),
+    QuickLoadKeepLibraryImages(Pref(Location.General, Boolean::class, true)),
+    QuickLoadPinOnWifiOnly(Pref(Location.General, Boolean::class, false)),
+    QuickLoadProtectApi(Pref(Location.General, Boolean::class, true)),
+    QuickLoadMaxAgeHours(Pref(Location.General, Int::class, 6)),
     LastAutoBackupTimestamp(Pref(Location.General, Long::class, 0L)),
 
     EpisodeMetadataSource(Pref(Location.UI, Int::class, 0)),

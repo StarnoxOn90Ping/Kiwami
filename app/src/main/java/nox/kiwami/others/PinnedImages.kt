@@ -1,5 +1,7 @@
 package nox.kiwami.others
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.util.LruCache
 import nox.kiwami.currContext
 import nox.kiwami.media.Media
@@ -15,11 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object PinnedImages {
     private const val LIB = "L_"
-    private const val TREND = "T_"
 
     @Volatile private var libraryUrls: Set<String> = emptySet()
-    @Volatile private var trendingAnime: Set<String> = emptySet()
-    @Volatile private var trendingManga: Set<String> = emptySet()
 
     private val running = AtomicBoolean(false)
     @Volatile private var pending = false
@@ -51,12 +50,9 @@ object PinnedImages {
     }
 
     fun fileFor(url: String): File? {
-        if (!SmartCache.isEnabled()) return null
+        if (!SmartCache.pinsEnabled()) return null
         val d = lookupDir() ?: return null
-        val h = hash(url)
-        val lib = File(d, LIB + h)
-        if (lib.length() > 0) return lib
-        return File(d, TREND + h).takeIf { it.length() > 0 }
+        return File(d, LIB + hash(url)).takeIf { it.length() > 0 }
     }
 
     private fun urlsOf(list: Collection<Media>?): Set<String> =
@@ -69,15 +65,19 @@ object PinnedImages {
         sync()
     }
 
-    fun setTrending(anime: Boolean, list: Collection<Media>?) {
-        if (anime) trendingAnime = urlsOf(list) else trendingManga = urlsOf(list)
-        sync()
-    }
-
     fun requestSync() = sync()
 
+    fun clear() {
+        runCatching { dir()?.listFiles()?.forEach { it.delete() } }
+    }
+
+    private fun onMeteredNetwork(): Boolean {
+        val manager = currContext()?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        return manager?.isActiveNetworkMetered ?: false
+    }
+
     private fun sync() {
-        if (!SmartCache.isEnabled()) return
+        if (!SmartCache.pinsEnabled()) return
         pending = true
         if (!running.compareAndSet(false, true)) return
         CoroutineScope(Dispatchers.IO).launch {
@@ -94,18 +94,10 @@ object PinnedImages {
 
     private fun doSync() {
         val d = dir() ?: return
-        val lib = libraryUrls
-        val trend = (trendingAnime + trendingManga) - lib
-        val libHashes = lib.associateBy { hash(it) }
-        val trendHashes = trend.associateBy { hash(it) }
+        val wanted = libraryUrls.associateBy { hash(it) }
 
         d.listFiles()?.forEach { f ->
-            val keep = when {
-                f.name.startsWith(LIB) -> f.name.removePrefix(LIB) in libHashes
-                f.name.startsWith(TREND) -> f.name.removePrefix(TREND) in trendHashes
-                else -> false
-            }
-            if (!keep) f.delete()
+            if (!f.name.startsWith(LIB) || f.name.removePrefix(LIB) !in wanted) f.delete()
         }
 
         fun total() = d.listFiles()?.sumOf { it.length() } ?: 0L
@@ -113,22 +105,16 @@ object PinnedImages {
 
         if (total() > maxBytes) {
             d.listFiles()
-                ?.sortedWith(compareBy<File>({ it.name.startsWith(LIB) }, { it.lastModified() }))
+                ?.sortedBy { it.lastModified() }
                 ?.forEach { if (total() > maxBytes) it.delete() }
         }
 
-        for ((prefix, wanted) in listOf(LIB to libHashes, TREND to trendHashes)) {
-            for ((h, url) in wanted) {
-                if (File(d, prefix + h).exists()) continue
-                if (total() >= maxBytes) {
-                    if (prefix == TREND) return
-                    d.listFiles { f -> f.name.startsWith(TREND) }
-                        ?.sortedBy { it.lastModified() }
-                        ?.forEach { if (total() >= maxBytes) it.delete() }
-                    if (total() >= maxBytes) return
-                }
-                download(url, File(d, prefix + h))
-            }
+        if (SmartCache.pinOnWifiOnly() && onMeteredNetwork()) return
+
+        for ((h, url) in wanted) {
+            if (File(d, LIB + h).exists()) continue
+            if (total() >= maxBytes) return
+            download(url, File(d, LIB + h))
         }
     }
 
