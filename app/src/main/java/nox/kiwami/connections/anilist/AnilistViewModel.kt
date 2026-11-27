@@ -1,5 +1,7 @@
 package nox.kiwami.connections.anilist
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LiveData
@@ -42,10 +44,24 @@ fun userStatusSignature(list: List<User>): String = list.joinToString("\n") {
     "${it.id}|${it.name}|${it.pfp}|${it.status}|${it.progress}|${it.nextAiringEpisode}|${it.activity.size}"
 }
 
+private val userDataLock = Mutex()
+private var userDataFailedAt = 0L
+private const val USER_DATA_RETRY_GAP_MS = 5000L
+
+private fun needsUserData(): Boolean =
+    (!Anilist.initialized || Anilist.avatar == null) &&
+            PrefManager.getVal<String>(PrefName.AnilistToken) != ""
+
 suspend fun getUserId(context: Context? = null, block: () -> Unit) {
-    if ((!Anilist.initialized || Anilist.avatar == null) && PrefManager.getVal<String>(PrefName.AnilistToken) != "") {
-        if (!Anilist.query.getUserData()) {
-            context?.let { snackString(it.getString(R.string.error_loading_anilist_user_data)) }
+    if (needsUserData()) {
+        userDataLock.withLock {
+            val recentlyFailed = System.currentTimeMillis() - userDataFailedAt < USER_DATA_RETRY_GAP_MS
+            if (needsUserData() && !recentlyFailed) {
+                if (!Anilist.query.getUserData()) {
+                    userDataFailedAt = System.currentTimeMillis()
+                    context?.let { snackString(it.getString(R.string.error_loading_anilist_user_data)) }
+                }
+            }
         }
     }
     block.invoke()
