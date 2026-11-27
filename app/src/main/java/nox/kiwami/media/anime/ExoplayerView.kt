@@ -111,6 +111,7 @@ import nox.kiwami.parsers.Video
 import nox.kiwami.parsers.VideoExtractor
 import nox.kiwami.parsers.VideoType
 import nox.kiwami.settings.PlayerSettingsActivity
+import nox.kiwami.home.continuebar.ContinueTracker
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.snackString
@@ -916,6 +917,7 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         if (list.contains(media.id)) list.remove(media.id)
         list.add(media.id)
         PrefManager.setCustomVal("continueAnimeList", list)
+        ContinueTracker.stampAnime()
 
         lifecycleScope.launch(Dispatchers.IO) { extractor?.onVideoStopped(video) }
 

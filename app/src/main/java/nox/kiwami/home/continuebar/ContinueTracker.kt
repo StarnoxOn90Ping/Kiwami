@@ -1,0 +1,55 @@
+package nox.kiwami.home.continuebar
+
+import nox.kiwami.media.Media
+import nox.kiwami.settings.saving.PrefManager
+
+object ContinueTracker {
+    private const val ANIME = "Anime"
+    private const val MANGA = "Manga"
+
+    fun stampAnime() = stamp(ANIME)
+
+    fun stampManga() = stamp(MANGA)
+
+    fun markNovel(id: Int) {
+        @Suppress("UNCHECKED_CAST")
+        val list = (PrefManager.getNullableCustomVal(
+            "continueMangaList",
+            listOf<Int>(),
+            List::class.java
+        ) as List<Int>).toMutableList()
+        list.remove(id)
+        list.add(id)
+        PrefManager.setCustomVal("continueMangaList", list)
+        stamp(MANGA)
+    }
+
+    fun pick(anime: List<Media>?, manga: List<Media>?): Media? {
+        val a = anime?.firstOrNull { canContinue(it) }
+        val m = manga?.firstOrNull { canContinue(it) }
+        if (a == null || m == null) return a ?: m
+        val sa = stampOf(ANIME)
+        val sm = stampOf(MANGA)
+        if (sa != sm) return if (sa > sm) a else m
+        return if ((a.userUpdatedAt ?: 0L) >= (m.userUpdatedAt ?: 0L)) a else m
+    }
+
+    fun canContinue(media: Media): Boolean {
+        if (media.id <= 0) return false
+        val progress = media.userProgress ?: 0
+        val anime = media.anime
+        if (anime != null) {
+            val limit = anime.nextAiringEpisode ?: anime.totalEpisodes
+            return limit == null || progress < limit
+        }
+        val total = media.manga?.totalChapters
+        return total == null || progress < total
+    }
+
+    private fun stamp(type: String) {
+        PrefManager.setCustomVal("continue${type}Stamp", System.currentTimeMillis())
+    }
+
+    private fun stampOf(type: String): Long =
+        PrefManager.getCustomVal("continue${type}Stamp", 0L)
+}

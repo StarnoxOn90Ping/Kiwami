@@ -93,6 +93,7 @@ import nox.kiwami.settings.CurrentReaderSettings.DualPageModes.Force
 import nox.kiwami.settings.CurrentReaderSettings.DualPageModes.No
 import nox.kiwami.settings.CurrentReaderSettings.Layouts.CONTINUOUS_PAGED
 import nox.kiwami.settings.CurrentReaderSettings.Layouts.PAGED
+import nox.kiwami.home.continuebar.ContinueTracker
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.showSystemBarsRetractView
@@ -341,6 +342,7 @@ class MangaReaderActivity : AppCompatActivity() {
         list.add(media.id)
 
         PrefManager.setCustomVal("continueMangaList", list)
+        ContinueTracker.stampManga()
         if (PrefManager.getVal(PrefName.AutoDetectWebtoon) && media.countryOfOrigin != "JP") applyWebtoon(
             defaultSettings
         )

@@ -54,6 +54,7 @@ import nox.kiwami.setBaseline
 import nox.kiwami.toPx
 import nox.kiwami.isOnline
 import nox.kiwami.parsers.ShowResponse
+import nox.kiwami.home.continuebar.ContinueTracker
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import nox.kiwami.snackString
@@ -153,6 +154,7 @@ class NovelReadFragment : Fragment(),
                     setDataAndType(fileUri, "application/epub+zip")
                     flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 }
+                ContinueTracker.markNovel(media.id)
                 startActivity(intent)
                 return true
             } catch (e: Exception) {
@@ -203,6 +205,7 @@ class NovelReadFragment : Fragment(),
                     setDataAndType(fileUri, "application/epub+zip")
                     flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 }
+                ContinueTracker.markNovel(media.id)
                 startActivity(intent)
                 return true
             } catch (e: Exception) {
@@ -353,6 +356,7 @@ class NovelReadFragment : Fragment(),
         NovelReaderSession.parser = parser
 
         val intent = Intent(requireContext(), NovelReaderActivity::class.java)
+        ContinueTracker.markNovel(media.id)
         startActivity(intent)
     }
 
