@@ -102,6 +102,7 @@ class SettingsAdapter(
                         b.root.context, settings.icon
                     )
                 )
+                b.settingsButton.setOnCheckedChangeListener(null)
                 b.settingsButton.isChecked = settings.isChecked
                 b.settingsButton.setOnCheckedChangeListener { _, isChecked ->
                     settings.switch?.invoke(isChecked, b)
