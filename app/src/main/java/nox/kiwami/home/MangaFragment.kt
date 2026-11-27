@@ -17,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import nox.kiwami.connections.anilist.MainPageCache
 import nox.kiwami.R
 import nox.kiwami.Refresh
 import nox.kiwami.bottomBarOrNull
@@ -256,7 +257,7 @@ class MangaFragment : Fragment() {
         }
 
         var running = false
-        val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
+        val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(false) }
         live.observe(viewLifecycleOwner) {
             if (!running && it) {
                 running = true
@@ -287,8 +288,14 @@ class MangaFragment : Fragment() {
         }
     }
 
+    private fun mainPageReady(): Boolean {
+        val onList = PrefManager.getVal<Boolean>(PrefName.PopularMangaList)
+        return MainPageCache.has(MainPageCache.MANGA, MainPageCache.key(onList)) ||
+                MainPageLaunch.isOpen(MainPageCache.MANGA)
+    }
+
     override fun onResume() {
-        if (!model.loaded) Refresh.activity[this.hashCode()]!!.postValue(true)
+        if (!model.loaded && mainPageReady()) Refresh.activity[this.hashCode()]!!.postValue(true)
         if (mangaPageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()

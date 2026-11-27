@@ -18,20 +18,19 @@ object MainPageCache {
 
     private class Snapshot(
         val day: Long,
-        val key: String,
         val data: Map<String, ArrayList<Media>>
     ) : Serializable
 
-    private fun today(): Long {
-        val now = System.currentTimeMillis()
-        return (now + TimeZone.getDefault().getOffset(now)) / DAY_MS
+    private fun dayOf(millis: Long): Long =
+        (millis + TimeZone.getDefault().getOffset(millis)) / DAY_MS
+
+    private fun dir(): File? {
+        val base = currContext()?.filesDir ?: return null
+        return File(base, "main_page_cache").apply { mkdirs() }
     }
 
-    private fun file(type: String): File? {
-        val base = currContext()?.filesDir ?: return null
-        val dir = File(base, "main_page_cache").apply { mkdirs() }
-        return File(dir, "$type.bin")
-    }
+    private fun file(type: String, key: String): File? =
+        dir()?.let { File(it, "${type}_${key.hashCode().toUInt()}.bin") }
 
     fun key(onList: Boolean): String {
         val adult = runCatching { PrefManager.getVal<Boolean>(PrefName.AdultOnly) }.getOrDefault(false)
@@ -39,21 +38,29 @@ object MainPageCache {
         return "$onList|$adult|$listOnly"
     }
 
+    fun has(type: String, key: String): Boolean = runCatching {
+        val f = file(type, key) ?: return false
+        f.exists() && dayOf(f.lastModified()) == dayOf(System.currentTimeMillis())
+    }.getOrDefault(false)
+
     fun load(type: String, key: String): Map<String, ArrayList<Media>>? = runCatching {
-        val f = file(type)?.takeIf { it.exists() } ?: return@runCatching null
+        val f = file(type, key)?.takeIf { it.exists() } ?: return@runCatching null
         val snapshot = ObjectInputStream(f.inputStream().buffered()).use { it.readObject() as Snapshot }
-        if (snapshot.day == today() && snapshot.key == key) snapshot.data else null
+        if (snapshot.day == dayOf(System.currentTimeMillis())) snapshot.data else null
     }.getOrNull()
 
     fun save(type: String, key: String, data: Map<String, ArrayList<Media>>) {
         if (data.values.none { it.isNotEmpty() }) return
         runCatching {
-            val target = file(type) ?: return
+            val target = file(type, key) ?: return
             val temp = File(target.parentFile, "$type.tmp")
             ObjectOutputStream(temp.outputStream().buffered()).use {
-                it.writeObject(Snapshot(today(), key, data))
+                it.writeObject(Snapshot(dayOf(System.currentTimeMillis()), data))
             }
-            temp.renameTo(target)
+            if (temp.renameTo(target)) {
+                target.parentFile?.listFiles { f -> f.name.startsWith("${type}_") && f != target }
+                    ?.forEach { it.delete() }
+            }
         }
     }
 }
