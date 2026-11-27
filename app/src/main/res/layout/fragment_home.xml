@@ -356,7 +356,7 @@
                     android:id="@+id/homeSlotContinue"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
+                    android:layout_gravity="top"
                     android:visibility="gone">
 
                     <com.google.android.material.card.MaterialCardView
@@ -364,7 +364,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="88dp"
                         android:layout_marginHorizontal="32dp"
-                        android:layout_marginVertical="8dp"
+                        android:layout_marginTop="0dp"
+                        android:layout_marginBottom="8dp"
                         android:clickable="true"
                         android:focusable="true"
                         app:cardBackgroundColor="@color/bg_black"
