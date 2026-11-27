@@ -1,0 +1,84 @@
+
+name: Discord Release Announcement
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord announcement
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          ROLE_ID: ${{ secrets.DISCORD_RELEASE_ROLE_ID }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+
+        run: |
+          if [ "$RELEASE_PRERELEASE" = "true" ]; then
+            RELEASE_TYPE="Pre-release"
+          else
+            RELEASE_TYPE="Stable Release"
+          fi
+
+          TITLE="${RELEASE_NAME:-$RELEASE_TAG}"
+
+          jq -n \
+            --arg content "<@&$ROLE_ID>" \
+            --arg role_id "$ROLE_ID" \
+            --arg title "$RELEASE_TYPE — $TITLE" \
+            --arg url "$RELEASE_URL" \
+            --arg tag "$RELEASE_TAG" \
+            --arg type "$RELEASE_TYPE" \
+            --arg description "$RELEASE_BODY" \
+            '{
+              content: $content,
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: (
+                  if $description == ""
+                  then "No release notes provided. View the GitHub release for details."
+                  else $description[0:3500]
+                  end
+                ),
+                color: (
+                  if $type == "Pre-release"
+                  then 16753920
+                  else 5763719
+                  end
+                ),
+                fields: [
+                  {
+                    name: "Version",
+                    value: $tag,
+                    inline: true
+                  },
+                  {
+                    name: "Release Type",
+                    value: $type,
+                    inline: true
+                  }
+                ],
+                footer: {
+                  text: "KIWAMI • Official GitHub Release"
+                }
+              }],
+              allowed_mentions: {
+                parse: [],
+                roles: [$role_id]
+              }
+            }' |
+          curl -fsS \
+            -H "Content-Type: application/json" \
+            --data-binary @- \
+            "$WEBHOOK_URL"
