@@ -27,7 +27,7 @@ class HomeSlotController(
     private var boundKey: String? = null
 
     private val activeDot by lazy {
-        MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+        MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
     }
     private val idleDot by lazy {
         ColorUtils.setAlphaComponent(
