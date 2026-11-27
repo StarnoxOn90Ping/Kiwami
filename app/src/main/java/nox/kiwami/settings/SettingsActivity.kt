@@ -150,6 +150,16 @@ class SettingsActivity : AppCompatActivity() {
                     ),
                     Settings(
                         type = 1,
+                        name = getString(R.string.quick_load),
+                        desc = getString(R.string.quick_load_desc),
+                        icon = R.drawable.ic_round_auto_awesome_24,
+                        onClick = {
+                            startActivity(Intent(context, QuickLoadSettingsActivity::class.java))
+                        },
+                        isActivity = true
+                    ),
+                    Settings(
+                        type = 1,
                         name = getString(R.string.anime),
                         desc = getString(R.string.anime_desc),
                         icon = R.drawable.ic_round_movie_filter_24,

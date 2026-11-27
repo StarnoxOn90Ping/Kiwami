@@ -26,8 +26,6 @@ import nox.kiwami.util.SizeFormatter
 import nox.kiwami.initActivity
 import nox.kiwami.media.MediaType
 import nox.kiwami.navBarHeight
-import nox.kiwami.others.SmartCache
-import com.google.android.material.slider.Slider
 import nox.kiwami.util.LauncherWrapper
 import nox.kiwami.util.StoragePermissions
 import nox.kiwami.restartApp
@@ -57,9 +55,6 @@ class SettingsDataActivity : AppCompatActivity() {
     private lateinit var launcher: LauncherWrapper
     private var cacheSize: Long = 0L
     private var cacheCalculated = false
-    private var smartCacheUsage = "Calculating…"
-    private var smartCacheSwitchItem: Settings? = null
-    private var suppressSmartCacheSwitch = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -235,24 +230,11 @@ class SettingsDataActivity : AppCompatActivity() {
             externalCacheDir?.let { size += getFolderSize(it) }
             cacheSize = size
             cacheCalculated = true
-            smartCacheUsage = buildSmartCacheUsage()
             withContext(Dispatchers.Main) {
                 binding.dataSettingsRecyclerView.adapter?.notifyDataSetChanged()
             }
         }
     }
-
-    private fun buildSmartCacheUsage(): String {
-        if (!SmartCache.isEnabled()) return "Off. Nothing is being saved."
-        val images = SmartCache.pinnedBytes(this) + SmartCache.glideBytes(this)
-        val info = SmartCache.infoBytes(this)
-        return "Images and banners: ${Formatter.formatFileSize(this, images)} " +
-            "of ${sizeLabel(SmartCache.limitMb().toFloat())}\n" +
-            "Title info: ${Formatter.formatFileSize(this, info)}"
-    }
-
-    private fun sizeLabel(mb: Float): String =
-        if (mb >= 1000f) "1 GB" else "${mb.toInt()} MB"
 
     private fun getFolderSize(dir: File): Long {
         var size = 0L
@@ -355,109 +337,6 @@ class SettingsDataActivity : AppCompatActivity() {
                         show()
                     }
                 }
-            ),
-
-            Settings(
-                type = 2,
-                name = "Smart cache",
-                desc = "Save covers, banners and info",
-                icon = R.drawable.ic_round_auto_awesome_24,
-                isChecked = PrefManager.getVal(PrefName.SmartCacheEnabled),
-                switch = { isChecked, view ->
-                    if (isChecked) {
-                        context.customAlertDialog().apply {
-                            setTitle("Turn on Smart cache?")
-                            setMessage(
-                                "The first time, this will download the covers and banners of your " +
-                                    "library and the trending lists, which can use a good amount of " +
-                                    "internet (tens of MB or more, depending on your library). " +
-                                    "Wi-Fi is recommended.\n\nImages and info are kept on your device " +
-                                    "until you turn this off, which deletes them again."
-                            )
-                            setCancelable(false)
-                            setPosButton("Turn on") {
-                                PrefManager.setVal(PrefName.SmartCacheEnabled, true)
-                                smartCacheSwitchItem?.isChecked = true
-                                SmartCache.onEnabled()
-                                toast("Smart cache is on. The image cache size fully applies after restarting the app.")
-                                calculateCacheSize()
-                            }
-                            setNegButton("Cancel") {
-                                suppressSmartCacheSwitch = true
-                                view.settingsButton.isChecked = false
-                                suppressSmartCacheSwitch = false
-                            }
-                            show()
-                        }
-                    } else if (!suppressSmartCacheSwitch) {
-                        PrefManager.setVal(PrefName.SmartCacheEnabled, false)
-                        smartCacheSwitchItem?.isChecked = false
-                        smartCacheUsage = "Deleting…"
-                        binding.dataSettingsRecyclerView.adapter?.notifyDataSetChanged()
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            SmartCache.clearAll(context)
-                            withContext(Dispatchers.Main) {
-                                toast("Smart cache is off and its saved data was deleted")
-                                calculateCacheSize()
-                            }
-                        }
-                    }
-                }
-            ).also { smartCacheSwitchItem = it },
-
-            Settings(
-                type = 1,
-                name = "Smart cache size",
-                desc = "",
-                icon = R.drawable.ic_round_folder_24,
-                attach = { b ->
-                    b.settingsDesc.text = "Limit for saved images and banners: " +
-                        sizeLabel(SmartCache.limitMb().toFloat())
-                    b.attachView.removeAllViews()
-                    val steps = (SmartCache.MAX_MB - SmartCache.MIN_MB) / SmartCache.STEP_MB
-                    val snapped = SmartCache.MIN_MB + SmartCache.STEP_MB *
-                        ((SmartCache.limitMb() - SmartCache.MIN_MB).toFloat() / SmartCache.STEP_MB)
-                            .toInt().coerceIn(0, steps)
-                    val slider = Slider(context).apply {
-                        valueFrom = SmartCache.MIN_MB.toFloat()
-                        valueTo = SmartCache.MAX_MB.toFloat()
-                        stepSize = SmartCache.STEP_MB.toFloat()
-                        value = snapped.toFloat()
-                        isEnabled = SmartCache.isEnabled()
-                        setLabelFormatter { v -> sizeLabel(v) }
-                        addOnChangeListener { _, v, fromUser ->
-                            if (fromUser) {
-                                b.settingsDesc.text = "Limit for saved images and banners: " + sizeLabel(v)
-                            }
-                        }
-                        addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
-                            override fun onStartTrackingTouch(slider: Slider) {}
-                            override fun onStopTrackingTouch(slider: Slider) {
-                                PrefManager.setVal(PrefName.SmartCacheLimitMb, slider.value.toInt())
-                                SmartCache.onLimitChanged()
-                                toast("Saved. The image cache size fully applies after restarting the app.")
-                                calculateCacheSize()
-                            }
-                        })
-                    }
-                    b.attachView.addView(
-                        slider,
-                        ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT
-                        )
-                    )
-                },
-                onClick = {}
-            ),
-
-            Settings(
-                type = 1,
-                name = "Smart cache usage",
-                desc = "",
-                icon = R.drawable.ic_round_folder_24,
-                attach = { b -> b.settingsDesc.text = smartCacheUsage },
-                onClick = {}
             ),
 
             Settings(

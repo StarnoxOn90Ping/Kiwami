@@ -983,6 +983,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="rem_repository">Remove store?</string>
 
     <string name="see_all">See all ›</string>
+    <string name="quick_load">Quick Load</string>
+    <string name="quick_load_desc">Show saved content instantly</string>
     <string name="trending_movies">Trending Movies</string>
     <string name="include_list">Include list</string>
     <string name="top_rated">Top rated</string>
