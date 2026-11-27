@@ -92,6 +92,12 @@ object Anilist {
     @Volatile
     private var rateRemainingAt: Long = 0L
 
+    fun recordRemaining(remaining: Int) {
+        if (remaining < 0) return
+        rateRemaining = remaining
+        rateRemainingAt = System.currentTimeMillis()
+    }
+
     fun lowOnRequests(): Boolean {
         val now = System.currentTimeMillis()
         if (rateLimitReset > now / 1000) return true
@@ -422,10 +428,7 @@ object Anilist {
                 )
                 val remaining = json.headers["X-RateLimit-Remaining"]?.toIntOrNull() ?: -1
                 Logger.log("Remaining requests: $remaining")
-                if (remaining >= 0) {
-                    rateRemaining = remaining
-                    rateRemainingAt = System.currentTimeMillis()
-                }
+                recordRemaining(remaining)
                 if (json.code == 429) {
                     val currentSec = System.currentTimeMillis() / 1000
                     val retry = json.headers["Retry-After"]?.toIntOrNull() ?: -1
