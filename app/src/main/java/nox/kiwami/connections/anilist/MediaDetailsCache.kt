@@ -19,9 +19,13 @@ object MediaDetailsCache {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Media>?) = size > MEMORY_MAX
     }
 
-    fun getMemory(id: Int): Media? = synchronized(memory) { memory[id] }
+    fun getMemory(id: Int): Media? {
+        if (SmartCache.mediaEnabled()) return null
+        return synchronized(memory) { memory[id] }
+    }
 
     fun putMemory(id: Int, media: Media) {
+        if (SmartCache.mediaEnabled()) return
         synchronized(memory) { memory[id] = media }
     }
 
