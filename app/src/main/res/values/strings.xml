@@ -332,6 +332,7 @@
         <item>Recommended</item>
         <item>Social Feeds</item>
         <item>Missed Sequels</item>
+        <item>Continue Bar</item>
     </string-array>
 
     <string name="startUpTab">Default Start Up Tab</string>

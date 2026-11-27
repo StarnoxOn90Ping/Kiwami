@@ -839,8 +839,9 @@ class AnilistQueries {
         val removedMedia = ArrayList<Media>()
         val toShow = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout).toMutableList()
 
+        val continueBarOn = toShow.getOrElse(9) { true }
         val queries = mutableListOf<String>()
-        if (toShow.getOrNull(0) == true) {
+        if (toShow.getOrNull(0) == true || continueBarOn) {
             queries.add("""currentAnime: ${continueMediaQuery("ANIME", "CURRENT")}""")
             queries.add("""repeatingAnime: ${continueMediaQuery("ANIME", "REPEATING")}""")
         }
@@ -853,7 +854,7 @@ class AnilistQueries {
                 )
             }"""
         )
-        if (toShow.getOrNull(3) == true) {
+        if (toShow.getOrNull(3) == true || continueBarOn) {
             queries.add("""currentManga: ${continueMediaQuery("MANGA", "CURRENT")}""")
             queries.add("""repeatingManga: ${continueMediaQuery("MANGA", "REPEATING")}""")
         }
@@ -948,7 +949,7 @@ class AnilistQueries {
             returnMap["current$type"] = returnArray
         }
 
-        if (toShow.getOrNull(0) == true) processMedia(
+        if (toShow.getOrNull(0) == true || continueBarOn) processMedia(
             "Anime",
             response?.data?.currentAnime?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
             response?.data?.repeatingAnime?.lists?.flatMap { it.entries ?: emptyList() }?.reversed()
@@ -958,7 +959,7 @@ class AnilistQueries {
             response?.data?.plannedAnime?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
             null
         )
-        if (toShow.getOrNull(3) == true) processMedia(
+        if (toShow.getOrNull(3) == true || continueBarOn) processMedia(
             "Manga",
             response?.data?.currentManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
             response?.data?.repeatingManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed()

@@ -47,7 +47,7 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
             val currentVisibility = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout).toMutableList()
             var currentOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder).toMutableList()
             val views = resources.getStringArray(R.array.home_layouts)
-            val fixedIndex = 7
+            val fixedIndices = listOf(7, 9)
 
             if (currentVisibility.size < views.size) {
                 repeat(views.size - currentVisibility.size) { currentVisibility.add(true) }
@@ -55,7 +55,7 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
                 currentVisibility.subList(views.size, currentVisibility.size).clear()
             }
 
-            val reorderable = views.indices.filter { it != fixedIndex }
+            val reorderable = views.indices.filter { it !in fixedIndices }
             if (currentOrder.isEmpty()) {
                 currentOrder = reorderable.toMutableList()
             } else {
@@ -65,15 +65,15 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
                 currentOrder = sanitizedOrder
             }
 
-            val displayList = mutableListOf(fixedIndex)
-            displayList.addAll(currentOrder.filter { it != fixedIndex })
+            val displayList = fixedIndices.toMutableList()
+            displayList.addAll(currentOrder.filter { it !in fixedIndices })
 
             val recyclerView = RecyclerView(this).apply {
                 layoutManager = LinearLayoutManager(this@UserInterfaceSettingsActivity)
                 setPadding(0, 32, 0, 0)
                 clipToPadding = false
             }
-            val adapter = HomeLayoutAdapter(displayList, views, currentVisibility)
+            val adapter = HomeLayoutAdapter(displayList, views, currentVisibility, fixedIndices.size)
             recyclerView.adapter = adapter
 
             val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
@@ -87,7 +87,7 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
                     val fromPos = viewHolder.bindingAdapterPosition
                     val toPos = target.bindingAdapterPosition
 
-                    if (fromPos == 0 || toPos == 0) return false
+                    if (fromPos < fixedIndices.size || toPos < fixedIndices.size) return false
 
                     val item = displayList.removeAt(fromPos)
                     displayList.add(toPos, item)
@@ -116,7 +116,7 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
                 setCustomView(recyclerView)
                 setPosButton(R.string.ok) {
                     PrefManager.setVal(PrefName.HomeLayout, currentVisibility)
-                    PrefManager.setVal(PrefName.HomeLayoutOrder, displayList.drop(1))
+                    PrefManager.setVal(PrefName.HomeLayoutOrder, displayList.drop(fixedIndices.size))
                     restartApp()
                 }
                 setNegButton(R.string.cancel, null)
@@ -196,7 +196,8 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
     inner class HomeLayoutAdapter(
         private val displayList: MutableList<Int>,
         private val views: Array<String>,
-        private val currentVisibility: MutableList<Boolean>
+        private val currentVisibility: MutableList<Boolean>,
+        private val fixedCount: Int
     ) : RecyclerView.Adapter<HomeLayoutAdapter.ViewHolder>() {
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -220,7 +221,7 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
                 currentVisibility[originalIndex] = isChecked
             }
 
-            if (position == 0) {
+            if (position < fixedCount) {
                 holder.dragHandle.visibility = View.INVISIBLE
             } else {
                 holder.dragHandle.visibility = View.VISIBLE

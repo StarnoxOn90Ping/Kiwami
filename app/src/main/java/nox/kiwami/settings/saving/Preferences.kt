@@ -130,7 +130,7 @@ enum class PrefName(val data: Pref) {
         Pref(
             Location.UI,
             List::class,
-            listOf(true, false, false, true, false, false, true, true, false)
+            listOf(true, false, false, true, false, false, true, true, false, true)
         )
     ),
     HomeLayoutOrder(
