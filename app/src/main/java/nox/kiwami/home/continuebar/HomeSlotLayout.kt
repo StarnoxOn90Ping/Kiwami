@@ -33,6 +33,7 @@ class HomeSlotLayout @JvmOverloads constructor(
     private var downY = 0f
     private var originY = 0f
     private var progress = 0f
+    private var pending: (() -> Unit)? = null
 
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private val flingVelocity = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 6f
@@ -46,6 +47,10 @@ class HomeSlotLayout @JvmOverloads constructor(
     fun configure(hasTop: Boolean, hasBottom: Boolean, preferred: Int) {
         val top = topPane ?: return
         val bottom = bottomPane ?: return
+        if (state == DRAGGING || animator?.isRunning == true) {
+            pending = { configure(hasTop, hasBottom, preferred) }
+            return
+        }
         val wasBoth = swapEnabled
         when {
             !hasTop && !hasBottom -> {
@@ -74,26 +79,13 @@ class HomeSlotLayout @JvmOverloads constructor(
                 swapEnabled = true
                 dots?.visibility = VISIBLE
                 if (wasBoth) return
-                val target = preferred.coerceIn(0, 1)
                 val shown = when {
                     top.visibility == VISIBLE -> 0
                     bottom.visibility == VISIBLE -> 1
                     else -> -1
                 }
-                if (shown == -1 || shown == target) {
-                    page = target
-                    settle()
-                } else {
-                    page = shown
-                    reset(top)
-                    reset(bottom)
-                    top.visibility = if (shown == 0) VISIBLE else INVISIBLE
-                    bottom.visibility = if (shown == 1) VISIBLE else INVISIBLE
-                    post {
-                        beginMove()
-                        animateSwap(0f, true, false)
-                    }
-                }
+                page = if (shown == -1) preferred.coerceIn(0, 1) else shown
+                settle()
             }
         }
     }
@@ -122,12 +114,12 @@ class HomeSlotLayout @JvmOverloads constructor(
                 tracker?.addMovement(ev)
                 when (state) {
                     UNDECIDED -> {
-                        val dx = ev.x - downX
+                        val ax = abs(ev.x - downX)
                         val dy = ev.y - downY
-                        if (abs(dx) > slop || abs(dy) > slop) {
-                            val vertical = abs(dy) > abs(dx)
+                        val ay = abs(dy)
+                        if (ax > slop || ay > slop) {
                             val allowed = (page == 0 && dy < 0) || (page == 1 && dy > 0)
-                            if (vertical && allowed) {
+                            if (allowed && ay > ax * 1.6f) {
                                 state = DRAGGING
                                 originY = ev.y
                                 cancelChildren(ev)
@@ -135,7 +127,7 @@ class HomeSlotLayout @JvmOverloads constructor(
                                 return true
                             }
                             state = PASSING
-                            if (vertical) parent?.requestDisallowInterceptTouchEvent(false)
+                            parent?.requestDisallowInterceptTouchEvent(false)
                         }
                         return super.dispatchTouchEvent(ev)
                     }
@@ -177,6 +169,7 @@ class HomeSlotLayout @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        pending = null
         stopAnimation()
         super.onDetachedFromWindow()
     }
@@ -243,10 +236,15 @@ class HomeSlotLayout @JvmOverloads constructor(
     }
 
     private fun finish(commit: Boolean, fromUser: Boolean) {
+        animator = null
         if (commit) page = 1 - page
         settle()
         progress = 0f
         if (commit && fromUser) onPageChanged?.invoke(page)
+        pending?.let {
+            pending = null
+            it()
+        }
     }
 
     private fun settle() {
