@@ -267,12 +267,12 @@
                 android:layout_weight="1"
                 android:fontFamily="@font/poppins_semi_bold"
                 android:drawableStart="@drawable/ic_section_bar"
-                android:drawablePadding="12dp"
+                android:drawablePadding="10dp"
                 android:gravity="center_vertical"
                 android:padding="8dp"
                 android:paddingStart="0dp"
                 android:text="@string/updated"
-                android:textSize="20sp"
+                android:textSize="17.5sp"
                 android:visibility="invisible"
                 tools:visibility="visible" />
 
@@ -286,7 +286,7 @@
                 android:padding="8dp"
                 android:text="@string/see_all"
                 android:textColor="?attr/colorPrimary"
-                android:textSize="15sp"
+                android:textSize="12.5sp"
                 android:visibility="gone" />
         </LinearLayout>
 
@@ -335,12 +335,12 @@
             android:layout_marginStart="20dp"
             android:fontFamily="@font/poppins_semi_bold"
             android:drawableStart="@drawable/ic_section_bar"
-            android:drawablePadding="12dp"
+            android:drawablePadding="10dp"
             android:gravity="center_vertical"
             android:padding="8dp"
             android:paddingStart="0dp"
             android:text="@string/trending_movies"
-            android:textSize="20sp"
+            android:textSize="17.5sp"
             android:visibility="invisible"
             tools:visibility="visible" />
 
@@ -354,7 +354,7 @@
             android:padding="8dp"
             android:text="@string/see_all"
             android:textColor="?attr/colorPrimary"
-            android:textSize="15sp"
+            android:textSize="12.5sp"
             android:visibility="invisible" />
     </LinearLayout>
 
@@ -401,12 +401,12 @@
             android:layout_marginStart="20dp"
             android:fontFamily="@font/poppins_semi_bold"
             android:drawableStart="@drawable/ic_section_bar"
-            android:drawablePadding="12dp"
+            android:drawablePadding="10dp"
             android:gravity="center_vertical"
             android:padding="8dp"
             android:paddingStart="0dp"
             android:text="@string/top_rated"
-            android:textSize="20sp"
+            android:textSize="17.5sp"
             android:visibility="invisible"
             tools:visibility="visible" />
 
@@ -420,7 +420,7 @@
             android:padding="8dp"
             android:text="@string/see_all"
             android:textColor="?attr/colorPrimary"
-            android:textSize="15sp"
+            android:textSize="12.5sp"
             android:visibility="invisible" />
     </LinearLayout>
 
@@ -466,12 +466,12 @@
             android:layout_marginStart="20dp"
             android:fontFamily="@font/poppins_semi_bold"
             android:drawableStart="@drawable/ic_section_bar"
-            android:drawablePadding="12dp"
+            android:drawablePadding="10dp"
             android:gravity="center_vertical"
             android:padding="8dp"
             android:paddingStart="0dp"
             android:text="@string/most_favourite"
-            android:textSize="20sp"
+            android:textSize="17.5sp"
             android:visibility="invisible"
             tools:visibility="visible" />
 
@@ -485,7 +485,7 @@
             android:padding="8dp"
             android:text="@string/see_all"
             android:textColor="?attr/colorPrimary"
-            android:textSize="15sp"
+            android:textSize="12.5sp"
             android:visibility="invisible" />
     </LinearLayout>
 

@@ -395,12 +395,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/hidden"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeHiddenItemsMore"
@@ -412,7 +412,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
                 <nox.kiwami.FadingEdgeRecyclerView
@@ -450,12 +450,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/continue_watching"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeContinueWatchMore"
@@ -467,7 +467,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -550,12 +550,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/fav_anime"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeFavAnimeMore"
@@ -567,7 +567,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
 
@@ -648,12 +648,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/planned_anime"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homePlannedAnimeMore"
@@ -665,7 +665,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
 
@@ -750,12 +750,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/continue_reading"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeContinueReadMore"
@@ -767,7 +767,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -850,12 +850,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/fav_manga"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeFavMangaMore"
@@ -867,7 +867,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -947,12 +947,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/planned_manga"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homePlannedMangaMore"
@@ -964,7 +964,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
 
@@ -1048,12 +1048,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/missing_sequels"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeMissingSequelsMore"
@@ -1065,7 +1065,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
 
@@ -1143,12 +1143,12 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_semi_bold"
                         android:drawableStart="@drawable/ic_section_bar"
-                        android:drawablePadding="12dp"
+                        android:drawablePadding="10dp"
                         android:gravity="center_vertical"
                         android:padding="8dp"
                         android:paddingStart="0dp"
                         android:text="@string/recommended"
-                        android:textSize="20sp" />
+                        android:textSize="17.5sp" />
 
                     <TextView
                         android:id="@+id/homeRecommendedMore"
@@ -1160,7 +1160,7 @@
                         android:padding="8dp"
                         android:text="@string/see_all"
                         android:textColor="?attr/colorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="12.5sp" />
                 </LinearLayout>
 
 
