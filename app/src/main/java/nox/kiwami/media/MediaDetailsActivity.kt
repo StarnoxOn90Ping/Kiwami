@@ -589,7 +589,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             navBar.addTab(commentTab)
         }
         if (model.continueMedia == null && media.cameFromContinue) {
-            model.continueMedia = PrefManager.getVal(PrefName.ContinueMedia)
+            model.continueMedia = intent.getBooleanExtra("forceContinue", false) ||
+                PrefManager.getVal(PrefName.ContinueMedia)
         }
         if (intent.getStringExtra("FRAGMENT_TO_LOAD") != null && PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1) selected = 2
         if (viewPager.currentItem != selected) viewPager.post {

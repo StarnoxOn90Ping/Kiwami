@@ -346,33 +346,165 @@
 
             </FrameLayout>
 
-            <FrameLayout
-                android:id="@+id/homeUserStatusContainer"
+            <nox.kiwami.home.continuebar.HomeSlotLayout
+                android:id="@+id/homeSlot"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="120dp"
-                android:layout_marginVertical="8dp"
                 android:visibility="gone">
-                <ProgressBar
-                    android:id="@+id/homeUserStatusProgressBar"
-                    style="?android:attr/progressBarStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center" />
 
-                <nox.kiwami.FadingEdgeRecyclerView
-                    android:id="@+id/homeUserStatusRecyclerView"
+                <FrameLayout
+                    android:id="@+id/homeSlotContinue"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:clipToPadding="false"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:requiresFadingEdge="horizontal"
-                    tools:itemCount="4"
-                    tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:listitem="@layout/item_user_status"
-                    tools:orientation="horizontal" />
-            </FrameLayout>
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/homeContinueBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="80dp"
+                        android:layout_marginHorizontal="32dp"
+                        android:layout_marginVertical="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="0dp">
+
+                        <ImageView
+                            android:id="@+id/homeContinueBarImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            tools:ignore="ContentDescription"
+                            tools:src="@tools:sample/backgrounds/scenic" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:alpha="0.6"
+                            android:background="@color/bg_black" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="16dp">
+
+                            <TextView
+                                android:id="@+id/homeContinueBarTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:alpha="0.75"
+                                android:ellipsize="end"
+                                android:fontFamily="@font/poppins"
+                                android:gravity="center"
+                                android:includeFontPadding="false"
+                                android:maxLines="1"
+                                android:textColor="@color/bg_white"
+                                android:textSize="11sp"
+                                tools:text="Frieren: Beyond Journey's End" />
+
+                            <TextView
+                                android:id="@+id/homeContinueBarText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:ellipsize="end"
+                                android:fontFamily="@font/poppins_bold"
+                                android:gravity="center"
+                                android:includeFontPadding="false"
+                                android:maxLines="1"
+                                android:textColor="@color/bg_white"
+                                android:textSize="14sp"
+                                app:drawableEndCompat="@drawable/ic_round_play_arrow_24"
+                                tools:text="Continue : Episode 12" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom"
+                            android:orientation="horizontal">
+
+                            <View
+                                android:id="@+id/homeContinueBarProgress"
+                                android:layout_width="0dp"
+                                android:layout_height="2dp"
+                                android:layout_weight="0"
+                                android:background="?attr/colorPrimary" />
+
+                            <View
+                                android:id="@+id/homeContinueBarProgressEmpty"
+                                android:layout_width="0dp"
+                                android:layout_height="2dp"
+                                android:layout_weight="1" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/homeSlotSocial"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone">
+
+                    <FrameLayout
+                        android:id="@+id/homeUserStatusContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="120dp"
+                        android:layout_marginVertical="8dp"
+                        android:visibility="gone">
+                        <ProgressBar
+                            android:id="@+id/homeUserStatusProgressBar"
+                            style="?android:attr/progressBarStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center" />
+
+                        <nox.kiwami.FadingEdgeRecyclerView
+                            android:id="@+id/homeUserStatusRecyclerView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clipToPadding="false"
+                            android:paddingStart="20dp"
+                            android:paddingEnd="20dp"
+                            android:requiresFadingEdge="horizontal"
+                            tools:itemCount="4"
+                            tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                            tools:listitem="@layout/item_user_status"
+                            tools:orientation="horizontal" />
+                    </FrameLayout>
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/homeSlotDots"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:orientation="vertical"
+                    android:padding="8dp"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/homeSlotDotTop"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:background="@drawable/bg_slot_dot" />
+
+                    <View
+                        android:id="@+id/homeSlotDotBottom"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:layout_marginTop="5dp"
+                        android:background="@drawable/bg_slot_dot" />
+                </LinearLayout>
+            </nox.kiwami.home.continuebar.HomeSlotLayout>
 
             <LinearLayout
                 android:id="@+id/homeHiddenItemsContainer"

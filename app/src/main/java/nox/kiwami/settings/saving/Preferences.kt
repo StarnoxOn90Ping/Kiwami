@@ -140,6 +140,7 @@ enum class PrefName(val data: Pref) {
             listOf(0, 1, 2, 3, 4, 5, 6, 8)
         )
     ),
+    HomeSlotPage(Pref(Location.UI, Int::class, 0)),
     BannerAnimations(Pref(Location.UI, Boolean::class, true)),
     LayoutAnimations(Pref(Location.UI, Boolean::class, true)),
     WatchedShimmer(Pref(Location.UI, Boolean::class, true)),

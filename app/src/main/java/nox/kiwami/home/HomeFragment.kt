@@ -34,6 +34,7 @@ import nox.kiwami.connections.anilist.mediaSignature
 import nox.kiwami.connections.anilist.userStatusSignature
 import nox.kiwami.currContext
 import nox.kiwami.databinding.FragmentHomeBinding
+import nox.kiwami.home.continuebar.HomeSlotController
 import nox.kiwami.home.pill.InfoPillController
 import nox.kiwami.home.streak.HomeHeaderController
 import nox.kiwami.home.status.UserStatusAdapter
@@ -70,6 +71,7 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
     private var headerController: HomeHeaderController? = null
     private var pillController: InfoPillController? = null
+    private var slotController: HomeSlotController? = null
     private var lastStatsFetch = 0L
 
     // The header totals are fetched on every refresh and again in onResume, which fires right
@@ -95,6 +97,7 @@ class HomeFragment : Fragment() {
         headerController = null
         pillController?.release()
         pillController = null
+        slotController = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             _binding?.homeScroll?.setOnScrollChangeListener(null as View.OnScrollChangeListener?)
         }
@@ -110,6 +113,7 @@ class HomeFragment : Fragment() {
         Logger.log("HomeFragment")
         headerController = HomeHeaderController(binding).also { it.start() }
         pillController = InfoPillController(binding, viewLifecycleOwner, model).also { it.start() }
+        slotController = HomeSlotController(binding, model).also { it.start(viewLifecycleOwner) }
         model.getAnimeContinue().observe(viewLifecycleOwner) { CalendarRepository.warm() }
         // load() runs more than once at launch (directly, then after the user data is ready).
         // Only the first run plays the intro animations; later runs just refresh what changed.
@@ -523,6 +527,7 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                     binding.homeUserStatusContainer.visibility = View.GONE
                 }
             }
+            slotController?.refresh()
         }
         PrefManager.getLiveVal(PrefName.RefreshStatus, false).asLiveBool()
             .observe(viewLifecycleOwner) {
@@ -677,6 +682,8 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                                 containers[i].visibility = View.GONE
                             }
                         }
+                        if (homeLayoutShow.getOrElse(9) { true }) empty = false
+                        slotController?.refresh()
 
                         // re-ordering removes and re-adds every section (a full relayout), so only
                         // do it when the order really changed since the last time
@@ -686,7 +693,7 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                             var insertIndex = binding.homeContainer.indexOfChild(binding.homeHiddenItemsContainer) + 1
 
                             homeLayoutOrder.forEach { i ->
-                                val container = containers.getOrNull(i)
+                                val container = containers.getOrNull(i)?.takeIf { i != 7 }
                                 if (container != null) {
                                     binding.homeContainer.removeView(container)
                                     binding.homeContainer.addView(container, insertIndex)
@@ -723,6 +730,7 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
             binding.homeNotificationCount.text = Anilist.unreadNotificationCount.toString()
             headerController?.onReturn()
             pillController?.onReturn()
+            slotController?.refresh()
             if (Anilist.initialized) {
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     fetchStats(force = false)
