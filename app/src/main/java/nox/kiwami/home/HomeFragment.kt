@@ -708,6 +708,7 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                     async(Dispatchers.IO) { model.setListImages() }
                     async(Dispatchers.IO) { model.initUserStatus(forceRefresh = isPullToRefresh) }
                     initHomePage.await()
+                    model.homeSettled.postValue(true)
 
                     withContext(Dispatchers.Main) {
                         model.empty.postValue(empty)

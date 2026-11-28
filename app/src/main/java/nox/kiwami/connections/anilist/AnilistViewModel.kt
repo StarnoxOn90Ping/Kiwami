@@ -269,6 +269,7 @@ class AnilistHomeViewModel : ViewModel() {
     }
 
     val empty = MutableLiveData<Boolean>(null)
+    val homeSettled = MutableLiveData(false)
 
     var loaded: Boolean = false
     val genres: MutableLiveData<Boolean?> = MutableLiveData(null)

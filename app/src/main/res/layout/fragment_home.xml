@@ -359,6 +359,50 @@
                     android:layout_gravity="top"
                     android:visibility="gone">
 
+                    <nox.kiwami.util.ShimmerLayout
+                        android:id="@+id/homeContinueSkeleton"
+                        android:layout_width="match_parent"
+                        android:layout_height="93dp"
+                        android:layout_marginHorizontal="32dp"
+                        android:layout_marginBottom="5dp"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_continue_skeleton" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|start"
+                            android:layout_marginStart="15dp"
+                            android:layout_marginBottom="12dp"
+                            android:orientation="vertical">
+
+                            <View
+                                android:layout_width="72dp"
+                                android:layout_height="8dp"
+                                android:background="@drawable/bg_comment_pill"
+                                android:backgroundTint="#26808080" />
+
+                            <View
+                                android:layout_width="170dp"
+                                android:layout_height="16dp"
+                                android:layout_marginTop="6dp"
+                                android:background="@drawable/bg_comment_pill"
+                                android:backgroundTint="#26808080" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_marginEnd="14dp"
+                            android:layout_marginBottom="12dp"
+                            android:background="@drawable/bg_skeleton_oval" />
+                    </nox.kiwami.util.ShimmerLayout>
+
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/homeContinueBar"
                         android:layout_width="match_parent"

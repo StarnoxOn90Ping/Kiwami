@@ -63,6 +63,7 @@ class HomeSlotController(
         binding.homeContinueBar.setOnClickListener { open() }
         model.getAnimeContinue().observe(owner) { refresh() }
         model.getMangaContinue().observe(owner) { refresh() }
+        model.homeSettled.observe(owner) { refresh() }
         refresh()
     }
 
@@ -76,9 +77,15 @@ class HomeSlotController(
             null
         }
         val hasSocial = socialOn && binding.homeUserStatusContainer.visibility != View.GONE
+        val barLoading = barOn && media == null &&
+            model.homeSettled.value != true &&
+            model.getAnimeContinue().value == null &&
+            model.getMangaContinue().value == null
         shown = media
         if (media != null) bind(media)
-        slot.configure(media != null, hasSocial, PrefManager.getVal(PrefName.HomeSlotPage))
+        binding.homeContinueBar.visibility = if (media != null) View.VISIBLE else View.GONE
+        binding.homeContinueSkeleton.visibility = if (barLoading) View.VISIBLE else View.GONE
+        slot.configure(media != null || barLoading, hasSocial, PrefManager.getVal(PrefName.HomeSlotPage))
         paintDots(slot.page)
     }
 
