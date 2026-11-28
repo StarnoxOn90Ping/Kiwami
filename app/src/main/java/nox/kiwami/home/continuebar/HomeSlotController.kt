@@ -151,11 +151,11 @@ class HomeSlotController(
     private companion object {
         const val SOCIAL_INDEX = 7
         const val CONTINUE_INDEX = 9
-        const val BANNER_WIDTH = 64
-        const val BANNER_HEIGHT = 18
-        const val BLUR_RADIUS = 4
-        const val TARGET_LUMA = 0.27f
-        const val SATURATION = 1.25f
+        const val BANNER_WIDTH = 640
+        const val BANNER_HEIGHT = 190
+        const val BLUR_RADIUS = 3
+        const val TARGET_LUMA = 0.45f
+        const val SATURATION = 1.1f
         const val BLUR_SAMPLING = 1
         const val PRESS_MS = 120L
         const val PRESS_BAR_SCALE = 0.97f

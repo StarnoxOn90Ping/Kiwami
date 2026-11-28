@@ -59,9 +59,9 @@ class BannerToneTransformation(
     override fun hashCode(): Int = ID.hashCode() + 31 * targetLuma.hashCode() + saturation.hashCode()
 
     private companion object {
-        const val ID = "nox.kiwami.home.continuebar.BannerToneTransformation"
+        const val ID = "nox.kiwami.home.continuebar.BannerToneTransformation.v2"
         const val MIN_MEAN = 0.04f
-        const val MIN_GAIN = 0.2f
-        const val MAX_GAIN = 1.6f
+        const val MIN_GAIN = 0.6f
+        const val MAX_GAIN = 1.3f
     }
 }
