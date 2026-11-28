@@ -19,7 +19,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import nox.kiwami.connections.anilist.MainPageCache
 import nox.kiwami.R
 import nox.kiwami.Refresh
 import nox.kiwami.bottomBarOrNull
@@ -311,14 +310,8 @@ class AnimeFragment : Fragment() {
         }
     }
 
-    private fun mainPageReady(): Boolean {
-        val onList = PrefManager.getVal<Boolean>(PrefName.PopularAnimeList)
-        return MainPageCache.has(MainPageCache.ANIME, MainPageCache.key(onList)) ||
-                MainPageLaunch.isOpen(MainPageCache.ANIME)
-    }
-
     override fun onResume() {
-        if (!model.loaded && mainPageReady()) Refresh.activity[this.hashCode()]!!.postValue(true)
+        if (!model.loaded) Refresh.activity[this.hashCode()]!!.postValue(true)
         if (animePageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()

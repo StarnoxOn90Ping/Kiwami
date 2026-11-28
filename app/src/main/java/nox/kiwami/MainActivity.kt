@@ -34,9 +34,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import nox.kiwami.torrent.TorrentServerManager
 import nox.kiwami.addons.torrent.TorrentServerService
 import nox.kiwami.connections.anilist.Anilist
-import nox.kiwami.connections.anilist.AnilistAnimeViewModel
 import nox.kiwami.connections.anilist.AnilistHomeViewModel
-import nox.kiwami.connections.anilist.AnilistMangaViewModel
 import nox.kiwami.databinding.ActivityMainBinding
 import nox.kiwami.databinding.DialogUserAgentBinding
 import nox.kiwami.databinding.SplashScreenBinding
@@ -45,7 +43,6 @@ import nox.kiwami.home.HomeFragment
 import nox.kiwami.home.LoginFragment
 import nox.kiwami.home.MangaFragment
 import nox.kiwami.home.OfflineScreen
-import nox.kiwami.home.MainPageLaunch
 import nox.kiwami.home.NavFade
 import nox.kiwami.home.NavGlow
 import nox.kiwami.home.OledNavStyle
@@ -311,23 +308,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
             }
-            val startPage = if (offlineMode) 0 else selectedOption
-            MainPageLaunch.begin(startPage)
-            if (!offlineMode) {
-                val animeModel: AnilistAnimeViewModel by viewModels()
-                val mangaModel: AnilistMangaViewModel by viewModels()
-                lifecycleScope.launch(Dispatchers.IO) {
-                    MainPageLaunch.warmUp(this@MainActivity, animeModel, mangaModel)
-                }
-            }
-            if (mainViewPager.currentItem != startPage) {
-                mainViewPager.post {
-                    mainViewPager.setCurrentItem(
-                        startPage,
-                        false
-                    )
-                }
-            }
+            mainViewPager.setCurrentItem(if (offlineMode) 0 else selectedOption, false)
             binding.includedNavbar.navbarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 bottomMargin = navBarHeight
             }
