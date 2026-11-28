@@ -76,6 +76,7 @@
                         android:includeFontPadding="false"
                         android:textColor="#FFFFFF"
                         android:textSize="11sp"
+                        android:translationX="1.5dp"
                         tools:ignore="TextContrastCheck"
                         tools:text="0.0" />
 
