@@ -7,9 +7,15 @@ object ContinueTracker {
     private const val ANIME = "Anime"
     private const val MANGA = "Manga"
 
-    fun stampAnime() = stamp(ANIME)
+    fun stampAnime(id: Int, number: Float?) {
+        LastPlayed.record(true, id, number)
+        stamp(ANIME)
+    }
 
-    fun stampManga() = stamp(MANGA)
+    fun stampManga(id: Int, number: Float?) {
+        LastPlayed.record(false, id, number)
+        stamp(MANGA)
+    }
 
     fun markNovel(id: Int) {
         @Suppress("UNCHECKED_CAST")
@@ -21,7 +27,7 @@ object ContinueTracker {
         list.remove(id)
         list.add(id)
         PrefManager.setCustomVal("continueMangaList", list)
-        stamp(MANGA)
+        stampManga(id, null)
     }
 
     fun pick(anime: List<Media>?, manga: List<Media>?): Media? {

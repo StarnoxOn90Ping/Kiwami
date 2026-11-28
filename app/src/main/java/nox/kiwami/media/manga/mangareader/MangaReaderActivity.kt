@@ -342,7 +342,10 @@ class MangaReaderActivity : AppCompatActivity() {
         list.add(media.id)
 
         PrefManager.setCustomVal("continueMangaList", list)
-        ContinueTracker.stampManga()
+        ContinueTracker.stampManga(
+            media.id,
+            media.manga?.selectedChapter?.number?.let { MediaNameAdapter.findChapterNumber(it) }
+        )
         if (PrefManager.getVal(PrefName.AutoDetectWebtoon) && media.countryOfOrigin != "JP") applyWebtoon(
             defaultSettings
         )
@@ -1762,6 +1765,7 @@ class MangaReaderActivity : AppCompatActivity() {
             val oldChapter = chapter
             val oldChapNum = MediaNameAdapter.findChapterNumber(oldChapter.number)
             val newChapNum = MediaNameAdapter.findChapterNumber(newChapter.number)
+            ContinueTracker.stampManga(media.id, newChapNum)
             val oldIdx = chaptersArr.indexOf(oldChapter.uniqueNumber())
             val newIdx = chaptersArr.indexOf(newChapter.uniqueNumber())
             val isMovingForward = if (oldChapNum != null && newChapNum != null && oldChapNum != newChapNum) {

@@ -917,7 +917,7 @@ class ExoplayerView : AppCompatActivity(), Player.Listener {
         if (list.contains(media.id)) list.remove(media.id)
         list.add(media.id)
         PrefManager.setCustomVal("continueAnimeList", list)
-        ContinueTracker.stampAnime()
+        ContinueTracker.stampAnime(media.id, MediaNameAdapter.findEpisodeNumber(episode.number))
 
         lifecycleScope.launch(Dispatchers.IO) { extractor?.onVideoStopped(video) }
 
