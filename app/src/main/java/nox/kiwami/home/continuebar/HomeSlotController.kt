@@ -1,13 +1,14 @@
 package nox.kiwami.home.continuebar
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.view.MotionEvent
 import android.view.View
-import android.widget.LinearLayout
 import androidx.core.graphics.ColorUtils
-import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.LifecycleOwner
 import com.google.android.material.color.MaterialColors
+import nox.kiwami.FileUrl
 import nox.kiwami.R
 import nox.kiwami.connections.anilist.AnilistHomeViewModel
 import nox.kiwami.databinding.FragmentHomeBinding
@@ -36,8 +37,19 @@ class HomeSlotController(
         )
     }
 
+    private val pressDistance by lazy { 2f * binding.root.resources.displayMetrics.density }
+
+    @SuppressLint("ClickableViewAccessibility")
     fun start(owner: LifecycleOwner) {
         binding.homeContinueBar.strokeColor = ColorUtils.setAlphaComponent(activeDot, 110)
+        binding.homeContinuePlayHalo.backgroundTintList = ColorStateList.valueOf(activeDot)
+        binding.homeContinueBar.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> press(true)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> press(false)
+            }
+            false
+        }
         slot.bind(binding.homeSlotContinue, binding.homeSlotSocial, binding.homeSlotDots)
         slot.onPageChanged = { page ->
             PrefManager.setVal(PrefName.HomeSlotPage, page)
@@ -73,6 +85,17 @@ class HomeSlotController(
             ColorStateList.valueOf(if (page == 1) activeDot else idleDot)
     }
 
+    private fun press(down: Boolean) {
+        val bar = if (down) PRESS_BAR_SCALE else 1f
+        val core = if (down) PRESS_CORE_SCALE else 1f
+        binding.homeContinueBar.animate().scaleX(bar).scaleY(bar).setDuration(PRESS_MS).start()
+        binding.homeContinuePlayCore.animate().scaleX(core).scaleY(core).setDuration(PRESS_MS).start()
+        binding.homeContinuePlayIcon.animate()
+            .translationX(if (down) pressDistance else 0f)
+            .setDuration(PRESS_MS)
+            .start()
+    }
+
     private fun bind(media: Media) {
         val progress = media.userProgress ?: 0
         val key = "${media.id}:$progress"
@@ -80,20 +103,14 @@ class HomeSlotController(
         boundKey = key
         val context = binding.root.context
         val isAnime = media.anime != null
-        val total = (if (isAnime) media.anime?.totalEpisodes else media.manga?.totalChapters) ?: 0
-        val fraction = if (total > 0) (progress.toFloat() / total).coerceIn(0f, 1f) else 0f
-        binding.homeContinueBarImage.loadImage(media.banner ?: media.cover)
+        (media.banner ?: media.cover)?.let {
+            binding.homeContinueBarImage.loadImage(FileUrl(it), BANNER_WIDTH, BANNER_HEIGHT)
+        }
         binding.homeContinueBarTitle.text = media.mainName()
-        binding.homeContinueBarText.text = context.getString(
+        binding.homeContinueBarLabel.text = context.getString(
             if (isAnime) R.string.home_continue_episode else R.string.home_continue_chapter,
             progress + 1
         )
-        binding.homeContinueBarProgress.updateLayoutParams<LinearLayout.LayoutParams> {
-            weight = fraction
-        }
-        binding.homeContinueBarProgressEmpty.updateLayoutParams<LinearLayout.LayoutParams> {
-            weight = 1f - fraction
-        }
     }
 
     private fun open() {
@@ -110,5 +127,10 @@ class HomeSlotController(
     private companion object {
         const val SOCIAL_INDEX = 7
         const val CONTINUE_INDEX = 9
+        const val BANNER_WIDTH = 260
+        const val BANNER_HEIGHT = 66
+        const val PRESS_MS = 120L
+        const val PRESS_BAR_SCALE = 0.97f
+        const val PRESS_CORE_SCALE = 0.9f
     }
 }

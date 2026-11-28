@@ -319,9 +319,8 @@
     <string name="immersive_mode">Hide Status Bar</string>
     <string name="immersive_modelist">Hide Status Bar for list</string>
     <string name="immersive_mode_info">Requires App restart to fully apply.</string>
-    <string name="home_continue_label">Continue</string>
-    <string name="home_continue_episode">Episode %1$d</string>
-    <string name="home_continue_chapter">Chapter %1$d</string>
+    <string name="home_continue_episode">Continue · Ep %1$d</string>
+    <string name="home_continue_chapter">Continue · Ch %1$d</string>
     <string name="home_layout_show">Show/Hide Layouts on Home</string>
     <string-array name="home_layouts">
         <item>Continue Watching</item>
