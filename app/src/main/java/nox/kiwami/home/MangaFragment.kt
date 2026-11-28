@@ -299,6 +299,7 @@ class MangaFragment : Fragment() {
         if (mangaPageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()
+            mangaPageAdapter.nudge()
         }
         super.onResume()
     }

@@ -322,6 +322,7 @@ class AnimeFragment : Fragment() {
         if (animePageAdapter.trendingViewPager != null) {
             binding.root.requestApplyInsets()
             binding.root.requestLayout()
+            animePageAdapter.nudge()
         }
         super.onResume()
     }

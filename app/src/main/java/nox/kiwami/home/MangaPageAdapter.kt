@@ -103,6 +103,11 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
 
     override fun getItemCount(): Int = 1
 
+    fun nudge() {
+        if (trendingViewPager == null) return
+        pumpDraw(binding.root)
+    }
+
     fun updateHeight() {
         trendingViewPager!!.updateLayoutParams { height += statusBarHeight }
     }
@@ -145,7 +150,7 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
             LayoutAnimationController(setSlideIn(), 0.25f)
         binding.mangaListContainer.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
-
+        pumpDraw(binding.root, trendingBinding.trendingViewPager, binding.mangaListContainer)
     }
 
     fun updateTrendingManga(adaptor: MediaAdaptor, media: MutableList<Media>) {
@@ -256,6 +261,7 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
         more.startAnimation(setSlideUp())
         recyclerView.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
+        pumpDraw(binding.root, recyclerView)
     }
 
     inner class MangaPageViewHolder(val binding: ItemMangaPageBinding) :

@@ -244,6 +244,11 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
 
     override fun getItemCount(): Int = 1
 
+    fun nudge() {
+        if (trendingViewPager == null) return
+        pumpDraw(binding.root)
+    }
+
     fun updateHeight() {
         trendingViewPager!!.updateLayoutParams { height += statusBarHeight }
     }
@@ -289,6 +294,12 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
             LayoutAnimationController(setSlideIn(), 0.25f)
         binding.animeSeasonsCont.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
+        pumpDraw(
+            binding.root,
+            trendingBinding.trendingViewPager,
+            binding.animeListContainer,
+            binding.animeSeasonsCont
+        )
     }
 
     fun updateRecent(adaptor: MediaAdaptor, media: MutableList<Media>) {
@@ -390,6 +401,7 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
         more.startAnimation(setSlideUp())
         recyclerView.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
+        pumpDraw(binding.root, recyclerView)
     }
 
     inner class AnimePageViewHolder(val binding: ItemAnimePageBinding) :
