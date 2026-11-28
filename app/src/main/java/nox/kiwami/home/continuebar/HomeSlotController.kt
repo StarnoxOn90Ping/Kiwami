@@ -9,6 +9,7 @@ import android.view.View
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.LifecycleOwner
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.MultiTransformation
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 import com.bumptech.glide.request.RequestOptions
@@ -109,7 +110,14 @@ class HomeSlotController(
         Glide.with(view)
             .load(source)
             .override(BANNER_WIDTH, BANNER_HEIGHT)
-            .apply(RequestOptions.bitmapTransform(BlurTransformation(BLUR_RADIUS, BLUR_SAMPLING)))
+            .apply(
+                RequestOptions.bitmapTransform(
+                    MultiTransformation(
+                        BlurTransformation(BLUR_RADIUS, BLUR_SAMPLING),
+                        BannerToneTransformation(TARGET_LUMA, SATURATION)
+                    )
+                )
+            )
             .transition(withCrossFade())
             .into(view)
     }
@@ -145,7 +153,9 @@ class HomeSlotController(
         const val CONTINUE_INDEX = 9
         const val BANNER_WIDTH = 64
         const val BANNER_HEIGHT = 18
-        const val BLUR_RADIUS = 8
+        const val BLUR_RADIUS = 4
+        const val TARGET_LUMA = 0.27f
+        const val SATURATION = 1.25f
         const val BLUR_SAMPLING = 1
         const val PRESS_MS = 120L
         const val PRESS_BAR_SCALE = 0.97f
