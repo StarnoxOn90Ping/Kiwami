@@ -26,6 +26,7 @@ class HomeSlotLayout @JvmOverloads constructor(
     private var bottomPane: View? = null
     private var dots: View? = null
     private var swapEnabled = false
+    private var userSwapped = false
     private var animator: ValueAnimator? = null
     private var tracker: VelocityTracker? = null
     private var state = IDLE
@@ -84,8 +85,13 @@ class HomeSlotLayout @JvmOverloads constructor(
                     bottom.visibility == VISIBLE -> 1
                     else -> -1
                 }
-                page = if (shown == -1) preferred.coerceIn(0, 1) else shown
+                val target = if (userSwapped && shown != -1) shown else preferred.coerceIn(0, 1)
+                page = if (shown == -1) target else shown
                 settle()
+                if (shown != -1 && shown != target) {
+                    beginMove()
+                    animateSwap(0f, true, false)
+                }
             }
         }
     }
@@ -238,6 +244,7 @@ class HomeSlotLayout @JvmOverloads constructor(
     private fun finish(commit: Boolean, fromUser: Boolean) {
         animator = null
         if (commit) page = 1 - page
+        if (commit && fromUser) userSwapped = true
         settle()
         progress = 0f
         if (commit && fromUser) onPageChanged?.invoke(page)
