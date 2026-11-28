@@ -76,7 +76,9 @@ class HomeSlotController(
         } else {
             null
         }
-        val hasSocial = socialOn && binding.homeUserStatusContainer.visibility != View.GONE
+        val socialLoading = socialOn && model.getUserStatus().value == null
+        val hasSocial = socialOn &&
+            (socialLoading || binding.homeUserStatusContainer.visibility != View.GONE)
         val barLoading = barOn && media == null &&
             model.homeSettled.value != true &&
             model.getAnimeContinue().value == null &&

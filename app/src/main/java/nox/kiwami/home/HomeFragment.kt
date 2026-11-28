@@ -482,7 +482,7 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
             .getOrElse(7) { true }
         binding.homeUserStatusContainer.visibility =
             if (storiesEnabled) View.VISIBLE else View.GONE
-        binding.homeUserStatusProgressBar.visibility =
+        binding.homeUserStatusSkeleton.visibility =
             if (storiesEnabled) View.VISIBLE else View.GONE
         binding.homeUserStatusRecyclerView.visibility = View.GONE
         binding.homeUserStatusRecyclerView.layoutManager = LinearLayoutManager(
@@ -499,13 +499,13 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                         .getOrElse(7) { true }
                     if (show && latestStatusUsers.isEmpty()) {
                         binding.homeUserStatusContainer.visibility = View.VISIBLE
-                        binding.homeUserStatusProgressBar.visibility = View.VISIBLE
+                        binding.homeUserStatusSkeleton.visibility = View.VISIBLE
                         binding.homeUserStatusRecyclerView.visibility = View.GONE
                     }
                 }
                 users.isNotEmpty() -> {
                     latestStatusUsers = users
-                    binding.homeUserStatusProgressBar.visibility = View.GONE
+                    binding.homeUserStatusSkeleton.visibility = View.GONE
                     binding.homeUserStatusContainer.visibility = View.VISIBLE
                     val sig = userStatusSignature(users)
                     if (sig != shownStatusSig || binding.homeUserStatusRecyclerView.adapter == null) {
@@ -522,7 +522,7 @@ binding.homeRecommendedRecyclerView.addOnScrollListener(object :
                 else -> {
                     latestStatusUsers = arrayListOf()
                     shownStatusSig = null
-                    binding.homeUserStatusProgressBar.visibility = View.GONE
+                    binding.homeUserStatusSkeleton.visibility = View.GONE
                     binding.homeUserStatusRecyclerView.visibility = View.GONE
                     binding.homeUserStatusContainer.visibility = View.GONE
                 }
