@@ -3,18 +3,23 @@ package nox.kiwami.home.continuebar
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.LifecycleOwner
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.model.GlideUrl
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
+import com.bumptech.glide.request.RequestOptions
 import com.google.android.material.color.MaterialColors
-import nox.kiwami.FileUrl
+import jp.wasabeef.glide.transformations.BlurTransformation
 import nox.kiwami.R
 import nox.kiwami.connections.anilist.AnilistHomeViewModel
 import nox.kiwami.databinding.FragmentHomeBinding
-import nox.kiwami.loadImage
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
+import nox.kiwami.others.CustomMediaImages
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import java.io.Serializable
@@ -41,8 +46,9 @@ class HomeSlotController(
 
     @SuppressLint("ClickableViewAccessibility")
     fun start(owner: LifecycleOwner) {
-        binding.homeContinueBar.strokeColor = ColorUtils.setAlphaComponent(activeDot, 110)
-        binding.homeContinuePlayHalo.backgroundTintList = ColorStateList.valueOf(activeDot)
+        binding.homeContinueBar.strokeColor = ColorUtils.setAlphaComponent(Color.WHITE, 40)
+        binding.homeContinuePlayHalo.backgroundTintList =
+            ColorStateList.valueOf(ColorUtils.setAlphaComponent(activeDot, 77))
         binding.homeContinueBar.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> press(true)
@@ -96,6 +102,18 @@ class HomeSlotController(
             .start()
     }
 
+    private fun loadSoftBanner(url: String) {
+        val view = binding.homeContinueBarImage
+        val source: Any = CustomMediaImages.overrideFor(url)
+            ?: GlideUrl(PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { url })
+        Glide.with(view)
+            .load(source)
+            .override(BANNER_WIDTH, BANNER_HEIGHT)
+            .apply(RequestOptions.bitmapTransform(BlurTransformation(BLUR_RADIUS, BLUR_SAMPLING)))
+            .transition(withCrossFade())
+            .into(view)
+    }
+
     private fun bind(media: Media) {
         val progress = media.userProgress ?: 0
         val key = "${media.id}:$progress"
@@ -103,9 +121,7 @@ class HomeSlotController(
         boundKey = key
         val context = binding.root.context
         val isAnime = media.anime != null
-        (media.banner ?: media.cover)?.let {
-            binding.homeContinueBarImage.loadImage(FileUrl(it), BANNER_WIDTH, BANNER_HEIGHT)
-        }
+        (media.banner ?: media.cover)?.let { loadSoftBanner(it) }
         binding.homeContinueBarTitle.text = media.mainName()
         binding.homeContinueBarLabel.text = context.getString(
             if (isAnime) R.string.home_continue_episode else R.string.home_continue_chapter,
@@ -127,8 +143,10 @@ class HomeSlotController(
     private companion object {
         const val SOCIAL_INDEX = 7
         const val CONTINUE_INDEX = 9
-        const val BANNER_WIDTH = 260
-        const val BANNER_HEIGHT = 66
+        const val BANNER_WIDTH = 64
+        const val BANNER_HEIGHT = 18
+        const val BLUR_RADIUS = 8
+        const val BLUR_SAMPLING = 1
         const val PRESS_MS = 120L
         const val PRESS_BAR_SCALE = 0.97f
         const val PRESS_CORE_SCALE = 0.9f
