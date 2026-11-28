@@ -196,7 +196,8 @@ class AnilistMutations {
         startedAt: FuzzyDate? = null,
         completedAt: FuzzyDate? = null,
         customList: List<String>? = null,
-        advancedScores: List<Double>? = null
+        advancedScores: List<Double>? = null,
+        isAnime: Boolean? = null
     ) {
         MediaDetailsCache.remove(mediaID)
         val headerParams = mutableListOf(
@@ -278,7 +279,13 @@ class AnilistMutations {
         executeQuery<JsonObject>(query, variables, show = true)
         CalendarRepository.onListEdited(mediaID, status, progress)
         Anilist.query.invalidateUserStatusCache()
-        Anilist.query.invalidateHomePageCache()
+        val onlyProgress = isAnime != null && (progress != null || status != null) &&
+                progressVolumes == null && score == null && repeat == null && notes == null && private == null &&
+                priority == null && hiddenFromStatusLists == null && startedAt == null && completedAt == null && customList == null &&
+                advancedScores == null
+        if (!(onlyProgress && Anilist.query.patchHomePageCache(mediaID, isAnime!!, progress, status))) {
+            Anilist.query.invalidateHomePageCache()
+        }
         Anilist.query.scheduleUserStatsRefresh()
     }
 

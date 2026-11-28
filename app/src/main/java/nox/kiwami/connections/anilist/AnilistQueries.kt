@@ -87,6 +87,9 @@ class AnilistQueries {
         )
     }
 
+    fun patchHomePageCache(mediaId: Int, isAnime: Boolean, progress: Int?, status: String?): Boolean =
+        SmartCache.homeEnabled() && QuickLoadHome.patch(mediaId, isAnime, progress, status)
+
     fun invalidateHomePageCache() {
         QuickLoadHome.clear()
         PrefManager.setCustomVal("home_page_cache", null)

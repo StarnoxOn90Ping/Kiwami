@@ -55,12 +55,12 @@ fun updateProgress(media: Media, number: String) {
                     Anilist.mutation.editList(
                         media.id,
                         a,
-                        status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT"
+                        status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT",
+                        isAnime = media.anime != null
                     )
                     toast(currContext()?.getString(R.string.setting_progress, a))
                     media.userProgress = a
                 }
-                Anilist.query.invalidateHomePageCache()
                 Anilist.query.invalidateUserStatusCache()
                 Refresh.all()
             }
