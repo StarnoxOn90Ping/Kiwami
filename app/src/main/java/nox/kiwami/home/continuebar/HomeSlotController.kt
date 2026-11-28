@@ -9,12 +9,9 @@ import android.view.View
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.LifecycleOwner
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.MultiTransformation
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
-import com.bumptech.glide.request.RequestOptions
 import com.google.android.material.color.MaterialColors
-import jp.wasabeef.glide.transformations.BlurTransformation
 import nox.kiwami.R
 import nox.kiwami.connections.anilist.AnilistHomeViewModel
 import nox.kiwami.databinding.FragmentHomeBinding
@@ -103,21 +100,13 @@ class HomeSlotController(
             .start()
     }
 
-    private fun loadSoftBanner(url: String) {
+    private fun loadBanner(url: String) {
         val view = binding.homeContinueBarImage
         val source: Any = CustomMediaImages.overrideFor(url)
             ?: GlideUrl(PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { url })
         Glide.with(view)
             .load(source)
             .override(BANNER_WIDTH, BANNER_HEIGHT)
-            .apply(
-                RequestOptions.bitmapTransform(
-                    MultiTransformation(
-                        BlurTransformation(BLUR_RADIUS, BLUR_SAMPLING),
-                        BannerToneTransformation(TARGET_LUMA, SATURATION)
-                    )
-                )
-            )
             .transition(withCrossFade())
             .into(view)
     }
@@ -129,7 +118,7 @@ class HomeSlotController(
         boundKey = key
         val context = binding.root.context
         val isAnime = media.anime != null
-        (media.banner ?: media.cover)?.let { loadSoftBanner(it) }
+        (media.banner ?: media.cover)?.let { loadBanner(it) }
         binding.homeContinueBarTitle.text = media.mainName()
         binding.homeContinueBarLabel.text = context.getString(
             if (isAnime) R.string.home_continue_episode else R.string.home_continue_chapter,
@@ -153,10 +142,6 @@ class HomeSlotController(
         const val CONTINUE_INDEX = 9
         const val BANNER_WIDTH = 640
         const val BANNER_HEIGHT = 190
-        const val BLUR_RADIUS = 3
-        const val TARGET_LUMA = 0.45f
-        const val SATURATION = 1.1f
-        const val BLUR_SAMPLING = 1
         const val PRESS_MS = 120L
         const val PRESS_BAR_SCALE = 0.97f
         const val PRESS_CORE_SCALE = 0.9f
