@@ -31,6 +31,12 @@ object ContinueTracker {
     }
 
     fun pick(anime: List<Media>?, manga: List<Media>?): Media? {
+        val last = LastPlayed.get()
+        if (last != null) {
+            val source = if (last.anime) anime else manga
+            val match = source?.firstOrNull { it.id == last.mediaId && canContinue(it) }
+            if (match != null) return match
+        }
         val a = anime?.firstOrNull { canContinue(it) }
         val m = manga?.firstOrNull { canContinue(it) }
         if (a == null || m == null) return a ?: m
@@ -38,6 +44,13 @@ object ContinueTracker {
         val sm = stampOf(MANGA)
         if (sa != sm) return if (sa > sm) a else m
         return if ((a.userUpdatedAt ?: 0L) >= (m.userUpdatedAt ?: 0L)) a else m
+    }
+
+    fun nextNumber(media: Media): Int {
+        val next = (media.userProgress ?: 0) + 1
+        val last = LastPlayed.get() ?: return next
+        if (last.mediaId != media.id || last.anime != (media.anime != null)) return next
+        return maxOf(next, last.number?.toInt() ?: 0)
     }
 
     fun canContinue(media: Media): Boolean {

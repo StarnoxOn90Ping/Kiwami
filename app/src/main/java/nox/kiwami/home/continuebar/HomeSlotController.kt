@@ -112,17 +112,17 @@ class HomeSlotController(
     }
 
     private fun bind(media: Media) {
-        val progress = media.userProgress ?: 0
-        val key = "${media.id}:$progress"
+        val number = ContinueTracker.nextNumber(media)
+        val isAnime = media.anime != null
+        val key = "${media.id}:$isAnime:$number"
         if (key == boundKey) return
         boundKey = key
         val context = binding.root.context
-        val isAnime = media.anime != null
         (media.banner ?: media.cover)?.let { loadBanner(it) }
         binding.homeContinueBarTitle.text = media.mainName()
         binding.homeContinueBarLabel.text = context.getString(
             if (isAnime) R.string.home_continue_episode else R.string.home_continue_chapter,
-            progress + 1
+            number
         )
     }
 
