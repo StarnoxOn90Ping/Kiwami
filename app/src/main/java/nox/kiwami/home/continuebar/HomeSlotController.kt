@@ -18,6 +18,7 @@ import nox.kiwami.databinding.FragmentHomeBinding
 import nox.kiwami.media.Media
 import nox.kiwami.media.MediaDetailsActivity
 import nox.kiwami.others.CustomMediaImages
+import nox.kiwami.setSlideIn
 import nox.kiwami.settings.saving.PrefManager
 import nox.kiwami.settings.saving.PrefName
 import java.io.Serializable
@@ -29,6 +30,7 @@ class HomeSlotController(
     private val slot = binding.homeSlot
     private var shown: Media? = null
     private var boundKey: String? = null
+    private var skeletonShown = false
 
     private val activeDot by lazy {
         MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
@@ -85,7 +87,10 @@ class HomeSlotController(
             model.getMangaContinue().value == null
         shown = media
         if (media != null) bind(media)
+        val reveal = media != null && skeletonShown
+        if (barLoading) skeletonShown = true else if (media != null) skeletonShown = false
         binding.homeContinueBar.visibility = if (media != null) View.VISIBLE else View.GONE
+        if (reveal) binding.homeContinueBar.startAnimation(setSlideIn())
         binding.homeContinueSkeleton.visibility = if (barLoading) View.VISIBLE else View.GONE
         slot.configure(media != null || barLoading, hasSocial, PrefManager.getVal(PrefName.HomeSlotPage))
         paintDots(slot.page)

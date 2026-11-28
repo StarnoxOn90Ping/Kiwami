@@ -35,6 +35,7 @@ class HomeSlotLayout @JvmOverloads constructor(
     private var originY = 0f
     private var progress = 0f
     private var pending: (() -> Unit)? = null
+    private var fullHeight = 0
 
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private val flingVelocity = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 6f
@@ -43,6 +44,7 @@ class HomeSlotLayout @JvmOverloads constructor(
         topPane = top
         bottomPane = bottom
         dots = dotsView
+        fullHeight = layoutParams?.height ?: 0
     }
 
     fun configure(hasTop: Boolean, hasBottom: Boolean, preferred: Int) {
@@ -57,13 +59,13 @@ class HomeSlotLayout @JvmOverloads constructor(
             !hasTop && !hasBottom -> {
                 stopAnimation()
                 swapEnabled = false
-                top.visibility = GONE
-                bottom.visibility = GONE
                 dots?.visibility = GONE
-                visibility = GONE
+                collapse(top, bottom)
             }
 
             hasTop != hasBottom -> {
+                val keep = if (hasTop) top else bottom
+                val reveal = visibility == VISIBLE && keep.visibility != VISIBLE
                 stopAnimation()
                 swapEnabled = false
                 visibility = VISIBLE
@@ -73,6 +75,10 @@ class HomeSlotLayout @JvmOverloads constructor(
                 reset(bottom)
                 top.visibility = if (hasTop) VISIBLE else GONE
                 bottom.visibility = if (hasBottom) VISIBLE else GONE
+                if (reveal) {
+                    keep.alpha = 0f
+                    keep.animate().alpha(1f).setDuration(REVEAL_MS).start()
+                }
             }
 
             else -> {
@@ -263,7 +269,56 @@ class HomeSlotLayout @JvmOverloads constructor(
         bottom.visibility = if (page == 1) VISIBLE else INVISIBLE
     }
 
+    private fun collapse(top: View, bottom: View) {
+        val startHeight = height
+        val hide = {
+            top.visibility = GONE
+            bottom.visibility = GONE
+            visibility = GONE
+        }
+        if (startHeight <= 0 || visibility != VISIBLE || !ValueAnimator.areAnimatorsEnabled()) {
+            hide()
+            return
+        }
+        val restore = {
+            if (fullHeight != 0) layoutParams.height = fullHeight
+            alpha = 1f
+            requestLayout()
+        }
+        animator = ValueAnimator.ofInt(startHeight, 0).apply {
+            duration = COLLAPSE_MS
+            interpolator = DecelerateInterpolator(1.6f)
+            addUpdateListener {
+                val value = it.animatedValue as Int
+                layoutParams.height = value
+                alpha = value.toFloat() / startHeight
+                requestLayout()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                private var cancelled = false
+
+                override fun onAnimationCancel(animation: Animator) {
+                    cancelled = true
+                    restore()
+                }
+
+                override fun onAnimationEnd(animation: Animator) {
+                    if (cancelled) return
+                    animator = null
+                    hide()
+                    restore()
+                    pending?.let {
+                        pending = null
+                        it()
+                    }
+                }
+            })
+            start()
+        }
+    }
+
     private fun reset(view: View) {
+        view.animate().cancel()
         view.translationY = 0f
         view.alpha = 1f
         view.setLayerType(LAYER_TYPE_NONE, null)
@@ -280,5 +335,7 @@ class HomeSlotLayout @JvmOverloads constructor(
         const val UNDECIDED = 1
         const val DRAGGING = 2
         const val PASSING = 3
+        const val REVEAL_MS = 220L
+        const val COLLAPSE_MS = 240L
     }
 }
