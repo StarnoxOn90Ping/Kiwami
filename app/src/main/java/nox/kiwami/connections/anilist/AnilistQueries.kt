@@ -835,6 +835,104 @@ class AnilistQueries {
         return """ MediaListCollection(userId: ${Anilist.userid}, type: $type, status: $status , sort: UPDATED_TIME ) { lists { entries { progress private score(format:POINT_100) status updatedAt media { id idMal type isAdult status chapters episodes nextAiringEpisode {episode} meanScore isFavourite format bannerImage coverImage{large} title { english romaji userPreferred } } } } } """
     }
 
+    private fun continueRow(
+        type: String,
+        currentMedia: List<MediaList>?,
+        repeatingMedia: List<MediaList>?,
+        removeList: Set<Int>,
+        hidePrivate: Boolean,
+        removedMedia: MutableList<Media>
+    ): ArrayList<Media> {
+        val subMap = mutableMapOf<Int, Media>()
+        val returnArray = arrayListOf<Media>()
+
+        (currentMedia ?: emptyList()).forEach { entry ->
+            val media = Media(entry)
+            if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
+                media.cameFromContinue = true
+                subMap[media.id] = media
+            } else {
+                removedMedia.add(media)
+            }
+        }
+
+        (repeatingMedia ?: emptyList()).forEach { entry ->
+            val media = Media(entry)
+            if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
+                media.cameFromContinue = true
+                subMap[media.id] = media
+            } else {
+                removedMedia.add(media)
+            }
+        }
+        @Suppress("UNCHECKED_CAST")
+        val list = PrefManager.getNullableCustomVal(
+            "continue${type}List",
+            listOf<Int>(),
+            List::class.java
+        ) as List<Int>
+        if (list.isNotEmpty()) {
+            list.reversed().forEach { id ->
+                subMap[id]?.let { returnArray.add(it) }
+            }
+
+            subMap.values
+                .filter { it !in returnArray }
+                .sortedByDescending { it.userUpdatedAt ?: 0L }
+                .forEach { returnArray.add(it) }
+
+        } else {
+            returnArray.addAll(
+                subMap.values.sortedByDescending { it.userUpdatedAt ?: 0L }
+            )
+        }
+        return returnArray
+    }
+
+    suspend fun refreshContinueRows(): Map<String, ArrayList<Media>> {
+        val toShow = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout)
+        val barOn = toShow.getOrElse(9) { true }
+        val wantAnime = toShow.getOrNull(0) == true || barOn
+        val wantManga = toShow.getOrNull(3) == true || barOn
+        val queries = mutableListOf<String>()
+        if (wantAnime) {
+            queries.add("""currentAnime: ${continueMediaQuery("ANIME", "CURRENT")}""")
+            queries.add("""repeatingAnime: ${continueMediaQuery("ANIME", "REPEATING")}""")
+        }
+        if (wantManga) {
+            queries.add("""currentManga: ${continueMediaQuery("MANGA", "CURRENT")}""")
+            queries.add("""repeatingManga: ${continueMediaQuery("MANGA", "REPEATING")}""")
+        }
+        if (queries.isEmpty()) return emptyMap()
+        val response = executeQuery<Query.HomePageMedia>("{${queries.joinToString(",")}}")
+            ?: return emptyMap()
+        val removeList = PrefManager.getCustomVal<Set<String>>("removeList", emptySet())
+            .mapNotNull { it.toIntOrNull() }.toSet()
+        val hidePrivate = PrefManager.getVal<Boolean>(PrefName.HidePrivate)
+        val result = mutableMapOf<String, ArrayList<Media>>()
+        if (wantAnime) {
+            result["currentAnime"] = continueRow(
+                "Anime",
+                response.data?.currentAnime?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
+                response.data?.repeatingAnime?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
+                removeList,
+                hidePrivate,
+                arrayListOf()
+            )
+        }
+        if (wantManga) {
+            result["currentManga"] = continueRow(
+                "Manga",
+                response.data?.currentManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
+                response.data?.repeatingManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
+                removeList,
+                hidePrivate,
+                arrayListOf()
+            )
+        }
+        return result
+    }
+
     suspend fun initHomePage(): Map<String, ArrayList<Media>> {
         val removeList = PrefManager.getCustomVal<Set<String>>("removeList", emptySet())
             .mapNotNull { it.toIntOrNull() }.toSet()
@@ -906,50 +1004,14 @@ class AnilistQueries {
             currentMedia: List<MediaList>?,
             repeatingMedia: List<MediaList>?
         ) {
-            val subMap = mutableMapOf<Int, Media>()
-            val returnArray = arrayListOf<Media>()
-
-            (currentMedia ?: emptyList()).forEach { entry ->
-                val media = Media(entry)
-                if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
-                    media.cameFromContinue = true
-                    subMap[media.id] = media
-                } else {
-                    removedMedia.add(media)
-                }
-            }
-
-            (repeatingMedia ?: emptyList()).forEach { entry ->
-                val media = Media(entry)
-                if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
-                    media.cameFromContinue = true
-                    subMap[media.id] = media
-                } else {
-                    removedMedia.add(media)
-                }
-            }
-            @Suppress("UNCHECKED_CAST")
-            val list = PrefManager.getNullableCustomVal(
-                "continue${type}List",
-                listOf<Int>(),
-                List::class.java
-            ) as List<Int>
-            if (list.isNotEmpty()) {
-                list.reversed().forEach { id ->
-                    subMap[id]?.let { returnArray.add(it) }
-                }
-
-                subMap.values
-                    .filter { it !in returnArray }
-                    .sortedByDescending { it.userUpdatedAt ?: 0L }
-                    .forEach { returnArray.add(it) }
-
-            } else {
-                returnArray.addAll(
-                    subMap.values.sortedByDescending { it.userUpdatedAt ?: 0L }
-                )
-            }
-            returnMap["current$type"] = returnArray
+            returnMap["current$type"] = continueRow(
+                type,
+                currentMedia,
+                repeatingMedia,
+                removeList,
+                hidePrivate,
+                removedMedia
+            )
         }
 
         if (toShow.getOrNull(0) == true || continueBarOn) processMedia(

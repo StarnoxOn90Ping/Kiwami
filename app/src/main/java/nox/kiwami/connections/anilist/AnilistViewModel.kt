@@ -204,10 +204,19 @@ class AnilistHomeViewModel : ViewModel() {
             if (cachedRes != null) {
                 postHomePageData(cachedRes)
                 if (nox.kiwami.others.SmartCache.shouldSkipRefresh()) return
+                val fullPosted = java.util.concurrent.atomic.AtomicBoolean(false)
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val rows = Anilist.query.refreshContinueRows()
+                        if (!fullPosted.get()) postContinueRows(rows)
+                    } catch (_: Exception) {
+                    }
+                }
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val freshRes = Anilist.query.initHomePage()
                         if (freshRes.isNotEmpty()) {
+                            fullPosted.set(true)
                             Anilist.query.saveHomePageCache(freshRes)
                             withContext(Dispatchers.Main) {
                                 postHomePageData(freshRes)
@@ -224,6 +233,11 @@ class AnilistHomeViewModel : ViewModel() {
             Anilist.query.saveHomePageCache(res)
             postHomePageData(res)
         }
+    }
+
+    private fun postContinueRows(res: Map<String, ArrayList<Media>>) {
+        res["currentAnime"]?.let { postIfChanged("currentAnime", animeContinue, it) }
+        res["currentManga"]?.let { postIfChanged("currentManga", mangaContinue, it) }
     }
 
     private fun postHomePageData(res: Map<String, ArrayList<Media>>) {
