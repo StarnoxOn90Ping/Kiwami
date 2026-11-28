@@ -5,11 +5,13 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:paddingHorizontal="6dp"
+    android:paddingVertical="3dp">
 
     <FrameLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/profileUserAvatarContainer"
@@ -22,32 +24,31 @@
 
             <ImageView
                 android:id="@+id/profileUserAvatar"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 tools:ignore="ContentDescription,ImageContrastCheck"
                 tools:tint="@color/transparent" />
 
         </com.google.android.material.card.MaterialCardView>
         <nox.kiwami.home.status.CircleView
             android:id="@+id/profileUserStatusIndicator"
-            android:layout_width="78dp"
-            android:layout_height="78dp">
-
-        </nox.kiwami.home.status.CircleView>
+            android:layout_width="54dp"
+            android:layout_height="54dp" />
     </FrameLayout>
 
     <TextView
         android:id="@+id/profileUserName"
-        android:layout_width="64dp"
-        android:layout_marginTop="8dp"
+        android:layout_width="60dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal|center_vertical"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="3dp"
         android:ellipsize="end"
         android:fontFamily="@font/poppins_semi_bold"
         android:gravity="center"
+        android:includeFontPadding="false"
         android:singleLine="true"
         android:text="@string/username"
         android:textColor="?attr/colorOnBackground"
-        android:textSize="12sp" />
+        android:textSize="11sp" />
 
 </LinearLayout>
